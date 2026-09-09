@@ -24,8 +24,12 @@ onboarding:
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
   credit_card_required: false
 
-# Startwerte, noch nicht gemessen. Mistral nennt fuer den Experiment-Tarif rund
-# eine Milliarde Token im Monat; das Minutenfenster ist die eigentliche Grenze.
+# Am 09.09.2026 gemessen: nur codestral-latest war erreichbar. Alle anderen
+# Modelle antworteten mit 429 und x-ratelimit-limit-req-minute: 0 — das ist
+# kein voruebergehendes Limit, sondern gar kein Kontingent. Fast sicher der
+# unter Billing nicht ausgewaehlte Experiment-Tarif; nach dem Aktivieren
+# neu vermessen.
+#
 # Die -latest-Aliase sind stabil und veralten nicht mit jedem Modellwechsel.
 models:
   - id: mistral-small-latest
@@ -46,6 +50,19 @@ models:
     latency_class: normal
     capabilities:
       vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 60
+
+  # Mistrals eigene Reasoning-Linie — die duennste Stelle im Routing.
+  - id: magistral-small-latest
+    label: Magistral Small
+    profiles: [reasoning]
+    latency_class: normal
+    capabilities:
+      vision: false
       tools: true
       structured_output: true
       context_tokens: 131072

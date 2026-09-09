@@ -84,3 +84,26 @@ def test_muell_wird_ignoriert_statt_zu_werfen() -> None:
     info = parse_headers({"x-ratelimit-limit-requests": "keine Zahl"})
     assert info.limit_requests is None
     assert info.raw
+
+
+def test_mistral_kodiert_das_fenster_im_headernamen() -> None:
+    """x-ratelimit-limit-req-minute nennt die Fensterlaenge im Namen. Das ist
+    genauer als jede Schaetzung aus einem Reset-Zeitpunkt — und es war der
+    Grund, ueberhaupt alle Rate-Limit-Header roh mitzuschreiben."""
+    info = parse_headers(
+        {
+            "x-ratelimit-limit-req-minute": "60",
+            "x-ratelimit-remaining-req-minute": "59",
+        }
+    )
+    assert info.limit_requests == 60
+    assert info.remaining_requests == 59
+    assert info.reset_requests_s == 60.0
+
+
+def test_limit_null_bedeutet_kein_kontingent() -> None:
+    """Mistral meldet auf Modellen ausserhalb des Tarifs eine Null — das ist
+    kein voruebergehendes Limit, sondern gar kein Zugang."""
+    info = parse_headers({"x-ratelimit-limit-req-minute": "0"})
+    assert info.limit_requests == 0
+    assert not info.is_empty

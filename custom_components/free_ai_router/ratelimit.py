@@ -101,6 +101,12 @@ def parse_headers(headers: Mapping[str, str], api_style: str = "") -> RateLimitI
     lowered = _lower(headers)
     raw = {key: value for key, value in lowered.items() if _INTERESTING.match(key)}
 
+    # Mistral kodiert das Fenster im Headernamen statt in einem Reset-Wert:
+    # x-ratelimit-limit-req-minute. Das wird hier zuerst geprueft, weil es die
+    # Fensterlaenge sicher verraet — genauer als jede Schaetzung aus einem
+    # Reset-Zeitpunkt.
+    named_window = _named_window(lowered)
+
     limit_requests = _parse_int(
         lowered.get("x-ratelimit-limit-requests")
         or lowered.get("anthropic-ratelimit-requests-limit")
@@ -113,6 +119,10 @@ def parse_headers(headers: Mapping[str, str], api_style: str = "") -> RateLimitI
         or lowered.get("x-ratelimit-remaining")
         or lowered.get("ratelimit-remaining")
     )
+    if named_window is not None:
+        limit_requests, remaining_requests, named_reset = named_window
+    else:
+        named_reset = None
     limit_tokens = _parse_int(
         lowered.get("x-ratelimit-limit-tokens")
         or lowered.get("anthropic-ratelimit-tokens-limit")
@@ -122,11 +132,13 @@ def parse_headers(headers: Mapping[str, str], api_style: str = "") -> RateLimitI
         or lowered.get("anthropic-ratelimit-tokens-remaining")
     )
 
-    reset_requests_s = _reset_seconds(
-        lowered.get("x-ratelimit-reset-requests")
-        or lowered.get("x-ratelimit-reset")
-        or lowered.get("ratelimit-reset")
-    )
+    reset_requests_s = named_reset
+    if reset_requests_s is None:
+        reset_requests_s = _reset_seconds(
+            lowered.get("x-ratelimit-reset-requests")
+            or lowered.get("x-ratelimit-reset")
+            or lowered.get("ratelimit-reset")
+        )
     reset_tokens_s = _reset_seconds(lowered.get("x-ratelimit-reset-tokens"))
 
     retry_after = lowered.get("retry-after")
@@ -142,6 +154,31 @@ def parse_headers(headers: Mapping[str, str], api_style: str = "") -> RateLimitI
         retry_after_s=retry_after_s,
         raw=raw,
     )
+
+
+#: Fensterlaengen, die manche Anbieter in den Headernamen schreiben.
+_NAMED_WINDOWS = (
+    ("minute", 60.0),
+    ("hour", 3600.0),
+    ("day", 86400.0),
+    ("month", 30 * 86400.0),
+)
+
+
+def _named_window(lowered: dict[str, str]) -> tuple[int | None, int | None, float] | None:
+    """Werte Header vom Typ ``x-ratelimit-limit-req-minute`` aus.
+
+    Bei Gleichstand gewinnt das kuerzeste Fenster: das Minutenfenster bremst
+    zuerst, und danach richtet sich die Warteschlange.
+    """
+    for suffix, seconds in _NAMED_WINDOWS:
+        limit_key = f"x-ratelimit-limit-req-{suffix}"
+        if limit_key not in lowered:
+            continue
+        limit = _parse_int(lowered[limit_key])
+        remaining = _parse_int(lowered.get(f"x-ratelimit-remaining-req-{suffix}"))
+        return limit, remaining, seconds
+    return None
 
 
 def _reset_seconds(value: str | None) -> float | None:
