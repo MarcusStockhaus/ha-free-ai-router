@@ -250,7 +250,10 @@ class ProviderAdapter(abc.ABC):
                 rate_limit=info,
                 body=body,
             )
-        if status in (401, 403):
+        if status in (401, 402, 403):
+            # 402 heisst bei Cerebras und anderen: Key gueltig, aber kein
+            # aktiver Tarif. Wie ein abgelehnter Schluessel zu behandeln —
+            # Wiederholen hilft nie, der Kanal muss sofort ausfallen.
             raise ProviderError(
                 f"Schluessel abgelehnt — {snippet}",
                 status=status,

@@ -14,19 +14,24 @@ onboarding:
   signup_url: https://cloud.cerebras.ai/platform/apikeys
   summary_de: >-
     Sehr schnelle Inferenz, zweiter Kanal fuer Assist neben Groq.
-    Keine Bildmodelle in der kostenlosen Stufe.
   steps_de:
     - Bei Cerebras Cloud mit Google- oder GitHub-Konto anmelden
+    - 'Unter "Billing" pruefen, ob ein Tarif aktiv ist — ohne das antwortet die API mit 402, obwohl der Key gueltig ist'
     - Links im Menue auf "API Keys" gehen
     - '"Generate API Key" klicken, Namen vergeben, Key kopieren'
   data_note_de: >-
     Kein Training auf Inhalten der kostenlosen Stufe.
   credit_card_required: false
 
-# Startwerte, noch nicht gemessen. Cerebras liefert x-ratelimit-*-Header —
+# Startwerte, noch nicht gemessen — am 09.09.2026 antwortete das Testkonto
+# mit 402 (kein aktiver Tarif), sodass keine Messung zustande kam.
+# Cerebras liefert x-ratelimit-*-Header —
 # was das Probe-CLI dort abliest, gewinnt. Vor dem ersten Vermessen:
 #   python tools/probe_cli.py --provider cerebras --models
 models:
+  # gemma-4-31b steht zwar in /models, liefert aber 404 "do not have access".
+  # Nicht eingetragen: die Modell-Liste sagt, was der Anbieter fuehrt, nicht,
+  # was der eigene Schluessel darf.
   - id: qwen-3.8-27b
     label: Qwen3.8 27B
     profiles: [schnell, reasoning]

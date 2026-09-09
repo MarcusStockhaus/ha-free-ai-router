@@ -348,3 +348,19 @@ async def test_werkzeugaufruf_wird_normalisiert(welt) -> None:
     assert call.name == "licht"
     assert call.arguments == {"raum": "Kueche", "an": True}
     assert call.call_id == "c1"
+
+
+async def test_402_gilt_als_abgelehnter_schluessel(welt) -> None:
+    """Cerebras antwortet mit 402, wenn der Key gueltig ist, das Konto aber
+    keinen aktiven Tarif hat. Wiederholen hilft da nie — der Kanal muss sofort
+    ausfallen statt dreimal anzuklopfen."""
+    welt["erst"].status = 402
+
+    execution = await welt["client"].run(
+        Requirements.for_profile("schnell"), welt["channels"], instructions="Hallo"
+    )
+
+    assert execution.candidate.key == "reserve/modell-b"
+    gesperrt = welt["ledger"].availability(welt["provider_a"], welt["model_a"])
+    assert not gesperrt.ok
+    assert "Schluessel" in gesperrt.reason
