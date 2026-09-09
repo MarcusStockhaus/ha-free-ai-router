@@ -1,0 +1,54 @@
+id: cerebras
+name: Cerebras
+api_style: openai_compatible
+base_url: https://api.cerebras.ai/v1
+auth:
+  type: bearer
+
+# Zweitkanal fuer Assist, direkt hinter Groq.
+preference: 40
+limits_scope: per_model
+daily_reset_timezone: UTC
+
+onboarding:
+  signup_url: https://cloud.cerebras.ai/platform/apikeys
+  summary_de: >-
+    Sehr schnelle Inferenz, zweiter Kanal fuer Assist neben Groq.
+    Keine Bildmodelle in der kostenlosen Stufe.
+  steps_de:
+    - Bei Cerebras Cloud mit Google- oder GitHub-Konto anmelden
+    - Links im Menue auf "API Keys" gehen
+    - '"Generate API Key" klicken, Namen vergeben, Key kopieren'
+  data_note_de: >-
+    Kein Training auf Inhalten der kostenlosen Stufe.
+  credit_card_required: false
+
+# Startwerte, noch nicht gemessen. Cerebras liefert x-ratelimit-*-Header —
+# was das Probe-CLI dort abliest, gewinnt. Vor dem ersten Vermessen:
+#   python tools/probe_cli.py --provider cerebras --models
+models:
+  - id: qwen-3.8-27b
+    label: Qwen3.8 27B
+    profiles: [schnell, reasoning]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 14400
+
+  - id: gpt-oss-120b
+    label: GPT-OSS 120B
+    profiles: [reasoning]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 14400

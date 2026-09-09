@@ -1,0 +1,65 @@
+id: mistral
+name: Mistral
+api_style: openai_compatible
+base_url: https://api.mistral.ai/v1
+auth:
+  type: bearer
+
+preference: 50
+limits_scope: per_key
+daily_reset_timezone: UTC
+
+onboarding:
+  signup_url: https://console.mistral.ai/api-keys
+  summary_de: >-
+    Sehr grosses Monatskontingent gegen Datenfreigabe. Kraeftig beim
+    Automationsbau, Mistral Small nimmt auch Bilder.
+  steps_de:
+    - Auf console.mistral.ai anmelden
+    - Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu
+    - 'Unter "Billing" den Tarif "Experiment" ausdruecklich auswaehlen (keine Kreditkarte noetig, aber ohne diese Auswahl bleibt der Key wirkungslos)'
+    - 'Unter "API Keys" auf "Create new key", Ablaufdatum setzen, Key kopieren'
+  data_note_de: >-
+    Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training
+    verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
+  credit_card_required: false
+
+# Startwerte, noch nicht gemessen. Mistral nennt fuer den Experiment-Tarif rund
+# eine Milliarde Token im Monat; das Minutenfenster ist die eigentliche Grenze.
+# Die -latest-Aliase sind stabil und veralten nicht mit jedem Modellwechsel.
+models:
+  - id: mistral-small-latest
+    label: Mistral Small
+    profiles: [schnell, vision]
+    latency_class: schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 60
+
+  - id: mistral-medium-latest
+    label: Mistral Medium
+    profiles: [reasoning]
+    latency_class: normal
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 60
+
+  - id: codestral-latest
+    label: Codestral
+    profiles: [reasoning]
+    latency_class: schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 262144
+    limits:
+      rpm: 60
