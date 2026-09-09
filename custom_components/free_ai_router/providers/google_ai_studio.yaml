@@ -1,0 +1,59 @@
+id: google_ai_studio
+name: Google AI Studio
+api_style: google
+base_url: https://generativelanguage.googleapis.com/v1beta
+auth:
+  type: header
+  name: x-goog-api-key
+
+# Redaktionelle Rangfolge, kleiner = frueher (Erste Wahl fuer Bildanalyse).
+preference: 10
+limits_scope: per_model
+daily_reset_timezone: America/Los_Angeles
+
+onboarding:
+  signup_url: https://aistudio.google.com/apikey
+  summary_de: Traegt die Bildanalyse. Grosse Kontingente, gute Vision-Qualitaet.
+  steps_de:
+    - Mit Google-Konto anmelden
+    - '"Create API key" klicken'
+    - Key kopieren und hier einfuegen
+  data_note_de: >-
+    Kostenlose Stufe: Inhalte werden zur Produktverbesserung genutzt.
+    Kamerabilder verlassen damit die EU.
+  credit_card_required: false
+
+models:
+  - id: gemini-2.5-flash-lite
+    label: Gemini 2.5 Flash-Lite
+    profiles: [schnell, vision]
+    latency_class: schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 1000000
+    limits:
+      rpm: 15
+      rpd: 1000
+      tpm: 250000
+    pricing:
+      input_per_mtok: 0.10
+      output_per_mtok: 0.40
+
+  - id: gemini-2.5-flash
+    label: Gemini 2.5 Flash
+    profiles: [vision, reasoning]
+    latency_class: normal
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 1000000
+    limits:
+      rpm: 10
+      rpd: 250
+      tpm: 250000
+    pricing:
+      input_per_mtok: 0.30
+      output_per_mtok: 2.50

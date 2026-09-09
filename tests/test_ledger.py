@@ -1,0 +1,286 @@
+"""Ledger-Tests: Fenster, Zeitzonen, Sperren, Warteschlange."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
+
+import pytest
+from conftest import make_model, make_provider
+
+from custom_components.free_ai_router.ledger import (
+    DEFAULT_COOLDOWN_S,
+    Ledger,
+    bucket_key,
+)
+from custom_components.free_ai_router.ratelimit import RateLimitInfo
+
+
+def build(*, rpm=None, rpd=None, scope="per_model", tz="UTC"):
+    model_a = make_model("a", "p", rpm=rpm, rpd=rpd)
+    model_b = make_model("b", "p", rpm=rpm, rpd=rpd)
+    provider = make_provider(
+        "p", (model_a, model_b), limits_scope=scope, daily_reset_timezone=tz
+    )
+    return provider, model_a, model_b
+
+
+# --------------------------------------------------------------------------
+# Toepfe
+# --------------------------------------------------------------------------
+
+
+def test_per_model_zaehlt_getrennt() -> None:
+    provider, model_a, model_b = build(rpm=2)
+    assert bucket_key(provider, model_a) != bucket_key(provider, model_b)
+
+    ledger = Ledger()
+    ledger.record_request(provider, model_a)
+    ledger.record_request(provider, model_a)
+
+    assert not ledger.availability(provider, model_a).ok
+    assert ledger.availability(provider, model_b).ok
+
+
+def test_per_key_zaehlt_gemeinsam() -> None:
+    """OpenRouter zaehlt je Schluessel ueber alle Modelle — wer das
+    verwechselt, rennt in ein Limit, das der Zaehler nicht kennt."""
+    provider, model_a, model_b = build(rpm=2, scope="per_key")
+    assert bucket_key(provider, model_a) == bucket_key(provider, model_b)
+
+    ledger = Ledger()
+    ledger.record_request(provider, model_a)
+    ledger.record_request(provider, model_b)
+
+    assert not ledger.availability(provider, model_a).ok
+    assert not ledger.availability(provider, model_b).ok
+
+
+# --------------------------------------------------------------------------
+# Fenster
+# --------------------------------------------------------------------------
+
+
+def test_minutenfenster_dreht_weiter() -> None:
+    provider, model, _ = build(rpm=1)
+    ledger = Ledger()
+    now = 1_000_000.0
+
+    ledger.record_request(provider, model, now=now)
+    blocked = ledger.availability(provider, model, now=now + 10)
+    assert not blocked.ok
+    assert "Minutenlimit" in blocked.reason
+    assert blocked.wait_s == pytest.approx(50.0, abs=1.0)
+    assert blocked.queueable
+
+    assert ledger.availability(provider, model, now=now + 61).ok
+
+
+def test_tagesfenster_folgt_der_zeitzone_des_anbieters() -> None:
+    """Google setzt in Pacific Time zurueck, nicht lokal. Um 08:00 UTC ist
+    dort noch der Vortag — der Zaehler darf da nicht schon zurueckspringen."""
+    provider, model, _ = build(rpd=1, tz="America/Los_Angeles")
+    ledger = Ledger()
+
+    pacific = ZoneInfo("America/Los_Angeles")
+    # 2026-03-10 23:30 Pacific
+    abends = datetime(2026, 3, 10, 23, 30, tzinfo=pacific).timestamp()
+    ledger.record_request(provider, model, now=abends)
+    assert not ledger.availability(provider, model, now=abends + 60).ok
+
+    # Eine Stunde spaeter ist es in Pacific der naechste Tag.
+    nachts = datetime(2026, 3, 11, 0, 30, tzinfo=pacific).timestamp()
+    assert ledger.availability(provider, model, now=nachts).ok
+
+
+def test_tagesfenster_bleibt_zu_wenn_nur_die_lokale_zone_umschlaegt() -> None:
+    provider, model, _ = build(rpd=1, tz="America/Los_Angeles")
+    ledger = Ledger()
+
+    # 2026-03-10 16:00 Pacific = 2026-03-11 00:00 UTC.
+    nachmittag = datetime(2026, 3, 11, 0, 0, tzinfo=UTC).timestamp()
+    ledger.record_request(provider, model, now=nachmittag)
+    assert not ledger.availability(provider, model, now=nachmittag + 300).ok
+
+
+def test_tageslimit_ist_nicht_einreihbar() -> None:
+    provider, model, _ = build(rpd=1)
+    ledger = Ledger()
+    now = time.time()
+    ledger.record_request(provider, model, now=now)
+
+    availability = ledger.availability(provider, model, now=now)
+    assert not availability.ok
+    assert not availability.queueable
+    assert availability.wait_s > 120
+
+
+def test_headroom_sinkt_mit_dem_verbrauch() -> None:
+    provider, model, _ = build(rpm=10)
+    ledger = Ledger()
+    now = 500.0
+    assert ledger.availability(provider, model, now=now).headroom == 1.0
+    for _ in range(5):
+        ledger.record_request(provider, model, now=now)
+    assert ledger.availability(provider, model, now=now).headroom == pytest.approx(0.5)
+
+
+# --------------------------------------------------------------------------
+# Sperren
+# --------------------------------------------------------------------------
+
+
+def test_beobachteter_429_sperrt_haerter_als_die_eigene_zaehlung() -> None:
+    provider, model, _ = build(rpm=100)
+    ledger = Ledger()
+    now = 900.0
+
+    assert ledger.availability(provider, model, now=now).ok
+    ledger.record_rate_limited(provider, model, now=now)
+
+    blocked = ledger.availability(provider, model, now=now + 1)
+    assert not blocked.ok
+    assert "429" in blocked.reason
+    assert ledger.availability(provider, model, now=now + DEFAULT_COOLDOWN_S + 1).ok
+
+
+def test_retry_after_bestimmt_die_sperrdauer() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 900.0
+    ledger.record_rate_limited(provider, model, retry_after_s=5.0, now=now)
+
+    assert not ledger.availability(provider, model, now=now + 2).ok
+    assert ledger.availability(provider, model, now=now + 6).ok
+
+
+def test_einzelner_fehler_schaltet_keinen_kanal_ab() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 900.0
+
+    ledger.record_failure(provider, model, reason="Netzhaenger", now=now)
+    assert ledger.availability(provider, model, now=now).ok
+
+    ledger.record_failure(provider, model, now=now)
+    ledger.record_failure(provider, model, now=now)
+    assert not ledger.availability(provider, model, now=now).ok
+
+
+def test_fatal_sperrt_sofort() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 900.0
+    ledger.record_failure(provider, model, fatal=True, reason="Schluessel abgelehnt", now=now)
+
+    availability = ledger.availability(provider, model, now=now)
+    assert not availability.ok
+    assert "Schluessel" in availability.reason
+
+
+def test_erfolg_hebt_die_sperre_auf() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 900.0
+    ledger.record_failure(provider, model, fatal=True, now=now)
+    ledger.record_success(provider, model, now=now)
+
+    assert ledger.availability(provider, model, now=now).ok
+
+
+def test_anbieter_meldet_rest_null() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 900.0
+    ledger.absorb_headers(
+        provider,
+        model,
+        RateLimitInfo(remaining_requests=0, raw={"x-ratelimit-remaining-requests": "0"}),
+        now=now,
+    )
+
+    availability = ledger.availability(provider, model, now=now)
+    assert not availability.ok
+    assert "Rest 0" in availability.reason
+    # Nach zwei Minuten gilt die Header-Angabe als veraltet.
+    assert ledger.availability(provider, model, now=now + 200).ok
+
+
+def test_leere_header_aendern_nichts() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    ledger.absorb_headers(provider, model, RateLimitInfo())
+    assert ledger.availability(provider, model).ok
+
+
+# --------------------------------------------------------------------------
+# Warteschlange und Persistenz
+# --------------------------------------------------------------------------
+
+
+async def test_warteschlange_wartet_bis_das_fenster_aufgeht() -> None:
+    provider, model, _ = build(rpm=1)
+    ledger = Ledger()
+    ledger.record_request(provider, model)
+    # Fenster kuenstlich fast abgelaufen.
+    ledger.bucket(bucket_key(provider, model)).minute_start = time.time() - 59.9
+
+    availability = await ledger.wait_for_slot(provider, model, max_wait_s=2.0)
+    assert availability.ok
+
+
+async def test_warteschlange_verwirft_sauber_statt_zu_haengen() -> None:
+    """Akzeptanzkriterium: am RPM-Anschlag wird eingereiht oder sauber
+    verworfen — es fliegt keine Ausnahme."""
+    provider, model, _ = build(rpm=1)
+    ledger = Ledger()
+    ledger.record_request(provider, model)
+
+    started = asyncio.get_running_loop().time()
+    availability = await ledger.wait_for_slot(provider, model, max_wait_s=0.05)
+    dauer = asyncio.get_running_loop().time() - started
+
+    assert not availability.ok
+    assert "Minutenlimit" in availability.reason
+    assert dauer < 1.0
+
+
+async def test_persistenz_haelt_die_zaehler() -> None:
+    provider, model, _ = build(rpm=5)
+    gespeichert: dict = {}
+
+    async def save(data):
+        gespeichert.update(data)
+
+    ledger = Ledger(save=save)
+    ledger.record_request(provider, model)
+    await ledger.async_save()
+
+    wieder = Ledger()
+    wieder.restore(gespeichert)
+    assert wieder.bucket(bucket_key(provider, model)).minute_requests == 1
+
+
+async def test_save_nur_bei_aenderung() -> None:
+    provider, model, _ = build()
+    aufrufe = []
+
+    async def save(data):
+        aufrufe.append(data)
+
+    ledger = Ledger(save=save)
+    await ledger.async_save()
+    assert aufrufe == []
+
+    ledger.record_request(provider, model)
+    await ledger.async_save()
+    assert len(aufrufe) == 1
+
+
+def test_unbekannte_zeitzone_faellt_auf_utc_zurueck() -> None:
+    provider, model, _ = build(rpd=1, tz="Mars/Olympus_Mons")
+    ledger = Ledger()
+    # Darf nicht werfen.
+    assert ledger.availability(provider, model).ok

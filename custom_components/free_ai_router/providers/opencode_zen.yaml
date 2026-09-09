@@ -1,0 +1,56 @@
+id: opencode_zen
+name: OpenCode Zen
+api_style: openai_compatible
+base_url: https://opencode.ai/zen/v1
+auth:
+  type: bearer
+
+# Redaktionelle Rangfolge, kleiner = frueher (Stark beim Automationsbau).
+preference: 30
+limits_scope: per_key
+daily_reset_timezone: UTC
+
+onboarding:
+  signup_url: https://opencode.ai/auth
+  summary_de: >-
+    Grosse Kontextfenster, stark beim Bauen von Automationen.
+    Kostenlose Modelle sind ausdruecklich befristet.
+  steps_de:
+    - Bei OpenCode Zen anmelden
+    - Zahlungsdaten hinterlegen (auch fuer die kostenlosen Modelle verlangt)
+    - Unter "API Keys" einen Schluessel erzeugen und hier einfuegen
+  data_note_de: >-
+    "Trial use only": Anfragen der kostenlosen Modelle werden zur
+    Modellverbesserung ausgewertet.
+  credit_card_required: true
+
+models:
+  - id: big-pickle
+    profiles: [reasoning, schnell]
+    latency_class: normal
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 200000
+    limits: {}
+
+  - id: nemotron-3.5-lightning-free
+    profiles: [schnell]
+    latency_class: schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 128000
+    limits: {}
+
+  - id: ling-3.0-flash-fin-free
+    profiles: [reasoning]
+    latency_class: normal
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 128000
+    limits: {}

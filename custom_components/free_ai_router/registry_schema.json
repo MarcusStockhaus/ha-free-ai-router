@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/-/ha-free-ai-router/registry_schema.json",
+  "title": "Free AI Router — Anbieter-Registry",
+  "description": "Eine Datei je Anbieter unter providers/. Ein neuer Anbieter darf kein Python erfordern.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "api_style",
+    "base_url",
+    "auth",
+    "onboarding",
+    "models"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stabile Kennung. Muss zum Dateinamen passen."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "api_style": {
+      "enum": [
+        "openai_compatible",
+        "anthropic",
+        "google"
+      ]
+    },
+    "base_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Host muss zusaetzlich in der Python-Allowlist stehen."
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "header",
+            "query",
+            "bearer"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Header- bzw. Query-Parametername. Bei type=bearer ignoriert."
+        }
+      }
+    },
+    "extra_headers": {
+      "type": "object",
+      "description": "Statische Zusatzheader (z. B. HTTP-Referer bei OpenRouter).",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "limits_scope": {
+      "enum": [
+        "per_model",
+        "per_key"
+      ],
+      "default": "per_model",
+      "description": "Gelten die Limits je Modell (Google) oder je Schluessel ueber alle Modelle (OpenRouter)?"
+    },
+    "daily_reset_timezone": {
+      "type": "string",
+      "default": "UTC",
+      "description": "IANA-Zone, in der das Tagesfenster des Anbieters umschlaegt — nicht die lokale Zone."
+    },
+    "onboarding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signup_url",
+        "steps_de",
+        "data_note_de",
+        "credit_card_required"
+      ],
+      "properties": {
+        "signup_url": {
+          "type": "string",
+          "pattern": "^https://",
+          "description": "Deep-Link zur Key-Seite, nicht zur Startseite."
+        },
+        "steps_de": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "data_note_de": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Eine ehrliche Zeile, kein Rechtstext."
+        },
+        "credit_card_required": {
+          "type": "boolean"
+        },
+        "summary_de": {
+          "type": "string"
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "profiles",
+          "capabilities"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string"
+          },
+          "profiles": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "schnell",
+                "vision",
+                "reasoning"
+              ]
+            }
+          },
+          "capabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "vision",
+              "tools",
+              "structured_output",
+              "context_tokens"
+            ],
+            "properties": {
+              "vision": {
+                "type": "boolean"
+              },
+              "tools": {
+                "type": "boolean"
+              },
+              "structured_output": {
+                "type": "boolean"
+              },
+              "context_tokens": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "limits": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "rpm": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "rpd": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "tpm": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "tpd": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              }
+            }
+          },
+          "pricing": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "input_per_mtok": {
+                "type": "number",
+                "minimum": 0
+              },
+              "output_per_mtok": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "latency_class": {
+            "enum": [
+              "sehr_schnell",
+              "schnell",
+              "normal",
+              "langsam"
+            ],
+            "default": "normal",
+            "description": "Startwert fuer die Rangfolge. Gemessene Latenz gewinnt."
+          }
+        }
+      }
+    },
+    "preference": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50,
+      "description": "Redaktionelle Rangfolge, kleiner = frueher. 10 = erste Wahl, 90 = Reserve."
+    }
+  }
+}

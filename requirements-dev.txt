@@ -1,0 +1,8 @@
+aiohttp>=3.9
+PyYAML>=6.0
+jsonschema>=4.20
+voluptuous>=0.14
+voluptuous-openapi>=0.0.5
+pytest>=8.0
+pytest-asyncio>=0.23
+tzdata>=2024.1 ; sys_platform == 'win32'

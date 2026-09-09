@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anbieter auswählen",
+        "description": "Du kannst mehrere Anbieter nacheinander einrichten. Der Router verteilt die Anfragen später selbst und weicht auf die Reserve aus, wenn ein Kanal ausfällt.\n\n{cards}\n\nBereits eingerichtet: {configured}",
+        "data": {
+          "provider": "Anbieter"
+        }
+      },
+      "key": {
+        "title": "Schlüssel für {name}",
+        "description": "Key-Seite öffnen: {signup_url}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+        "data": {
+          "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "api_key": "Wird sofort mit einem echten Aufruf geprüft."
+        }
+      },
+      "result": {
+        "title": "{name}: {working} von {total} Modellen erreichbar",
+        "description": "Gemessen, nicht abgeschrieben:\n\n{report}",
+        "menu_options": {
+          "add_another": "Weiteren Anbieter hinzufügen",
+          "summary": "Fertig, Übersicht anzeigen"
+        }
+      },
+      "summary": {
+        "title": "Übersicht",
+        "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht."
+      }
+    },
+    "progress": {
+      "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
+    },
+    "error": {
+      "key_rejected": "Der Schlüssel wurde nicht angenommen."
+    },
+    "abort": {
+      "already_configured": "Free AI Router ist bereits eingerichtet.",
+      "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
+      "reconfigure_successful": "Anbieter übernommen."
+    }
+  },
+  "entity": {
+    "ai_task": {
+      "schnell": { "name": "Schnell" },
+      "vision": { "name": "Bildanalyse" },
+      "reasoning": { "name": "Reasoning" }
+    },
+    "conversation": {
+      "assist": { "name": "Assist" }
+    }
+  },
+  "exceptions": {
+    "no_channel": {
+      "message": "Kein Anbieter konnte die Anfrage übernehmen: {detail}"
+    }
+  }
+}

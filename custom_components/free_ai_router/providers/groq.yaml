@@ -1,0 +1,65 @@
+id: groq
+name: Groq
+api_style: openai_compatible
+base_url: https://api.groq.com/openai/v1
+auth:
+  type: bearer
+
+# Redaktionelle Rangfolge, kleiner = frueher (Erste Wahl fuer Assist).
+preference: 20
+limits_scope: per_model
+daily_reset_timezone: UTC
+
+onboarding:
+  signup_url: https://console.groq.com/keys
+  summary_de: Latenz-Koenig. Erste Wahl fuer Assist-Sprachbefehle, kann keine Bilder.
+  steps_de:
+    - Mit GitHub- oder Google-Konto anmelden
+    - '"Create API Key" klicken und einen Namen vergeben'
+    - Key sofort kopieren, er wird nur einmal angezeigt
+  data_note_de: >-
+    Kein Training auf Inhalten der kostenlosen Stufe.
+  credit_card_required: false
+
+models:
+  - id: llama-3.3-70b-versatile
+    label: Llama 3.3 70B
+    profiles: [schnell, reasoning]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 1000
+      tpm: 12000
+
+  - id: llama-3.1-8b-instant
+    label: Llama 3.1 8B Instant
+    profiles: [schnell]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 14400
+      tpm: 6000
+
+  - id: openai/gpt-oss-20b
+    label: GPT-OSS 20B
+    profiles: [reasoning]
+    latency_class: schnell
+    capabilities:
+      vision: false
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 1000
+      tpm: 8000

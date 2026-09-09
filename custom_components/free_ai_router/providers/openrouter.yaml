@@ -1,0 +1,55 @@
+id: openrouter
+name: OpenRouter
+api_style: openai_compatible
+base_url: https://openrouter.ai/api/v1
+auth:
+  type: bearer
+extra_headers:
+  HTTP-Referer: https://github.com/home-assistant-free-ai-router
+  X-Title: Home Assistant Free AI Router
+
+# Redaktionelle Rangfolge, kleiner = frueher (ausdruecklich Reserve).
+preference: 90
+limits_scope: per_key
+daily_reset_timezone: UTC
+
+onboarding:
+  signup_url: https://openrouter.ai/settings/keys
+  summary_de: >-
+    Vision-Reserve hinter Google. Ohne einmalige 10-Dollar-Aufladung nur
+    50 Anfragen pro Tag — als echte Reserve zu wenig.
+  steps_de:
+    - Konto anlegen und anmelden
+    - '"Create Key" klicken, Limit leer lassen'
+    - Key kopieren und hier einfuegen
+  data_note_de: >-
+    Kein Training auf Inhalten, sofern in den Kontoeinstellungen nicht
+    ausdruecklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.
+  credit_card_required: false
+
+models:
+  - id: qwen/qwen2.5-vl-72b-instruct:free
+    label: Qwen2.5-VL 72B (free)
+    profiles: [vision]
+    latency_class: langsam
+    capabilities:
+      vision: true
+      tools: false
+      structured_output: true
+      context_tokens: 32768
+    limits:
+      rpm: 20
+      rpd: 50
+
+  - id: google/gemma-4-31b-it:free
+    label: Gemma 4 31B (free)
+    profiles: [vision, schnell]
+    latency_class: normal
+    capabilities:
+      vision: true
+      tools: false
+      structured_output: true
+      context_tokens: 262144
+    limits:
+      rpm: 20
+      rpd: 50
