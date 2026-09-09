@@ -132,7 +132,8 @@ response_variable: befund
    (`preference` in der Anbieterdatei), zuletzt nach freiem Restkontingent.
 2. Ist nur das **Minutenfenster** zu, reiht sich die Anfrage bis zu 20 Sekunden
    ein — fünf gleichzeitig auslösende Bewegungsmelder reißen 15 RPM lange vor
-   1.500 RPD.
+   500 RPD. Dasselbe gilt fürs **Tokenfenster**: bei Gemma sind 16k Token/Minute
+   nach rund 13 Bildanalysen erreicht, das Tagesbudget von 14.400 dagegen kaum.
 3. Gegen ein **Tagesfenster** hilft kein Warten: der Router wechselt sofort auf
    den nächsten Kanal.
 4. Jeder Wechsel steht im Log (`Reserve gegriffen: …`) und im Attribut
