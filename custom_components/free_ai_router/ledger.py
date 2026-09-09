@@ -240,7 +240,11 @@ class Ledger:
         tokens: int = 0,
         now: float | None = None,
     ) -> None:
-        """Eine abgeschickte Anfrage verbuchen — vor der Antwort."""
+        """Eine abgeschickte Anfrage verbuchen — vor der Antwort.
+
+        ``tokens`` ist die Schaetzung, nicht der Messwert; sie wird von
+        :meth:`record_success` berichtigt.
+        """
         now = time.time() if now is None else now
         state = self.bucket(bucket_key(provider, model))
         self._roll(state, provider.daily_reset_timezone, now)
@@ -275,18 +279,27 @@ class Ledger:
         model: Model,
         *,
         tokens: int = 0,
+        estimated_tokens: int = 0,
         info: RateLimitInfo | None = None,
         now: float | None = None,
     ) -> None:
+        """Erfolg verbuchen und die Token-Schaetzung berichtigen.
+
+        ``record_request`` bucht vorab eine Schaetzung, damit ein enges
+        Tokenfenster (Gemma: 16k/Minute) schon *vor* dem Absenden bremst und
+        nicht erst, nachdem der Anbieter mit 429 geantwortet hat. Hier kommt
+        die Differenz zum tatsaechlichen Verbrauch dazu — oder wieder weg.
+        """
         now = time.time() if now is None else now
         state = self.bucket(bucket_key(provider, model))
         state.consecutive_failures = 0
         state.blocked_until = 0.0
         state.block_reason = ""
-        if tokens:
+        delta = tokens - estimated_tokens
+        if delta:
             self._roll(state, provider.daily_reset_timezone, now)
-            state.minute_tokens += tokens
-            state.day_tokens += tokens
+            state.minute_tokens = max(0, state.minute_tokens + delta)
+            state.day_tokens = max(0, state.day_tokens + delta)
         if info is not None:
             self.absorb_headers(provider, model, info, now=now)
         self._dirty = True

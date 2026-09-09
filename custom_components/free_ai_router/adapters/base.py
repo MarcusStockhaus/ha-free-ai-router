@@ -125,6 +125,14 @@ class ChatRequest:
     tools: tuple[ToolSpec, ...] = ()
     max_output_tokens: int = 1024
     temperature: float | None = None
+    thinking_budget: int | None = None
+    """Denkbudget in Token. ``None`` = Voreinstellung des Anbieters, ``0`` = aus.
+
+    Neuere Modelle verbrauchen einen Teil des Ausgabebudgets fuers Nachdenken.
+    Bei einer kurzen, strukturierten Antwort (Kamerabild, Klassifikation) ist
+    das reine Verschwendung: das Nachdenken frisst das Budget, und uebrig
+    bleibt eine leere Antwort.
+    """
 
     @property
     def turns(self) -> tuple[Message, ...]:

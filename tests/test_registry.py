@@ -180,7 +180,10 @@ def test_leeres_verzeichnis_ist_ein_fehler(tmp_path: Path) -> None:
 
 def test_mitgelieferte_registry_laedt() -> None:
     registry = load_registry()
-    assert len(registry) >= 4
+    # Drei Anbieter: OpenCode Zen ist am 09.09.2026 rausgeflogen, weil die
+    # kostenlose Stufe laut Anbieter "only be used in OpenCode" kann und ueber
+    # die API mit MissingSessionID abweist.
+    assert len(registry) >= 3
     assert registry.get("google_ai_studio") is not None
     assert registry.get("gibtsnicht") is None
 

@@ -13,7 +13,9 @@ daily_reset_timezone: America/Los_Angeles
 
 onboarding:
   signup_url: https://aistudio.google.com/apikey
-  summary_de: Traegt die Bildanalyse. Grosse Kontingente, gute Vision-Qualitaet.
+  summary_de: >-
+    Traegt die Bildanalyse. Achtung: nur die Flash-Lite-Modelle haben ein
+    brauchbares Tagesbudget, die grossen Flash-Modelle nur 20 Anfragen/Tag.
   steps_de:
     - Mit Google-Konto anmelden
     - '"Create API key" klicken'
@@ -23,9 +25,14 @@ onboarding:
     Kamerabilder verlassen damit die EU.
   credit_card_required: false
 
+# Alle Limits am 09.09.2026 aus dem AI-Studio-Dashboard eines echten Kontos
+# abgelesen, nicht aus der Dokumentation. Google nennt dort selbst keine
+# Zahlen mehr. Die Werte koennen nach Kontoalter und Region abweichen — was
+# das Capability-Modul misst und ein eigener 429 sagen, gewinnt.
 models:
-  - id: gemini-2.5-flash-lite
-    label: Gemini 2.5 Flash-Lite
+  # --- Die beiden Arbeitspferde: 500 Anfragen/Tag, 15/Minute -------------
+  - id: gemini-3.5-flash-lite
+    label: Gemini 3.5 Flash-Lite
     profiles: [schnell, vision]
     latency_class: schnell
     capabilities:
@@ -35,15 +42,61 @@ models:
       context_tokens: 1000000
     limits:
       rpm: 15
-      rpd: 1000
+      rpd: 500
       tpm: 250000
-    pricing:
-      input_per_mtok: 0.10
-      output_per_mtok: 0.40
 
-  - id: gemini-2.5-flash
-    label: Gemini 2.5 Flash
-    profiles: [vision, reasoning]
+  - id: gemini-3.1-flash-lite
+    label: Gemini 3.1 Flash-Lite
+    profiles: [schnell, vision]
+    latency_class: schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 1000000
+    limits:
+      rpm: 15
+      rpd: 500
+      tpm: 250000
+
+  # --- Tiefenpuffer: 14.400 Anfragen/Tag, dafuer nur 16k Token/Minute ----
+  # Ob Gemma hier Bilder annimmt, ist unbestaetigt — das misst der Probe.
+  # Wenn ja, ist das der Ausweg aus "Bildanalyse haengt an einem duennen
+  # Kanal"; wenn nein, schaltet die Messung das Modell fuer Vision ab.
+  - id: gemma-4-31b-it
+    label: Gemma 4 31B
+    profiles: [vision, schnell]
+    latency_class: normal
+    capabilities:
+      vision: true
+      tools: false
+      structured_output: true
+      context_tokens: 262144
+    limits:
+      rpm: 30
+      rpd: 14400
+      tpm: 16000
+
+  - id: gemma-4-26b-a4b-it
+    label: Gemma 4 26B
+    profiles: [vision, schnell]
+    latency_class: schnell
+    capabilities:
+      vision: true
+      tools: false
+      structured_output: true
+      context_tokens: 262144
+    limits:
+      rpm: 30
+      rpd: 14400
+      tpm: 16000
+
+  # --- Qualitaetsstufe mit winzigem Budget: 20 Anfragen/Tag -------------
+  # Fuer seltene Aufgaben (Automationsvorschlag, schwierige Szene), nicht
+  # fuer Kameraauswertung im Minutentakt.
+  - id: gemini-3.5-flash
+    label: Gemini 3.5 Flash
+    profiles: [reasoning, vision]
     latency_class: normal
     capabilities:
       vision: true
@@ -51,9 +104,20 @@ models:
       structured_output: true
       context_tokens: 1000000
     limits:
-      rpm: 10
-      rpd: 250
+      rpm: 5
+      rpd: 20
       tpm: 250000
-    pricing:
-      input_per_mtok: 0.30
-      output_per_mtok: 2.50
+
+  - id: gemini-3.8-flash
+    label: Gemini 3.8 Flash
+    profiles: [reasoning]
+    latency_class: normal
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 1000000
+    limits:
+      rpm: 5
+      rpd: 20
+      tpm: 250000

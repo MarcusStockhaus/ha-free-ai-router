@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FreeAIRouterConfigEntry
 from .client import NoChannelAvailable
-from .const import PROFILES
+from .const import PROFILE_REASONING, PROFILES
 from .entity import RouterEntity
 from .router import Requirements
 from .task_adapter import (
@@ -86,6 +86,10 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
                 system=SYSTEM_PROMPT,
                 json_schema=json_schema,
                 images=images,
+                # Beim Reasoning-Profil ist Nachdenken der Zweck. Bei einer
+                # Kameraszene oder einer Klassifikation frisst es nur das
+                # Ausgabebudget — gemessen kam dann eine leere Antwort zurueck.
+                thinking_budget=None if self._profile == PROFILE_REASONING else 0,
             )
         except NoChannelAvailable as err:
             _LOGGER.warning("%s: %s", self.entity_id, err.report())

@@ -8,7 +8,7 @@ extra_headers:
   HTTP-Referer: https://github.com/home-assistant-free-ai-router
   X-Title: Home Assistant Free AI Router
 
-# Redaktionelle Rangfolge, kleiner = frueher (ausdruecklich Reserve).
+# Ausdruecklich Reserve, nicht erste Wahl.
 preference: 90
 limits_scope: per_key
 daily_reset_timezone: UTC
@@ -16,8 +16,9 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://openrouter.ai/settings/keys
   summary_de: >-
-    Vision-Reserve hinter Google. Ohne einmalige 10-Dollar-Aufladung nur
-    50 Anfragen pro Tag — als echte Reserve zu wenig.
+    Vision-Reserve ausserhalb von Google. Ohne einmalige 10-Dollar-Aufladung
+    nur 50 Anfragen pro Tag — als tragende Saeule zu wenig, als Ausweichkanal
+    brauchbar.
   steps_de:
     - Konto anlegen und anmelden
     - '"Create Key" klicken, Limit leer lassen'
@@ -27,29 +28,38 @@ onboarding:
     ausdruecklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.
   credit_card_required: false
 
+# Modellbestand am 09.09.2026 ueber /models abgeglichen: von 430 Modellen
+# tragen 18 den Zusatz :free. Die Limits gelten je Schluessel ueber alle
+# Modelle hinweg, nicht je Modell.
+#
+# Am 09.09.2026 gemessen und deshalb *nicht* eingetragen:
+#   thinkingmachines/inkling:free  -> 403, nur mit Agent-Tarif
+#   google/gemma-4-*:free          -> 429 beim Upstream; direkt bei Google
+#                                     ist dasselbe Modell ohnehin besser
+#                                     erreichbar
 models:
-  - id: qwen/qwen2.5-vl-72b-instruct:free
-    label: Qwen2.5-VL 72B (free)
+  - id: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+    label: Nemotron 3 Nano Omni (free)
     profiles: [vision]
     latency_class: langsam
     capabilities:
       vision: true
       tools: false
       structured_output: true
-      context_tokens: 32768
+      context_tokens: 131072
     limits:
       rpm: 20
       rpd: 50
 
-  - id: google/gemma-4-31b-it:free
-    label: Gemma 4 31B (free)
-    profiles: [vision, schnell]
-    latency_class: normal
+  - id: nvidia/nemotron-3.5-lightning:free
+    label: Nemotron 3.5 Lightning (free)
+    profiles: [schnell]
+    latency_class: schnell
     capabilities:
-      vision: true
-      tools: false
+      vision: false
+      tools: true
       structured_output: true
-      context_tokens: 262144
+      context_tokens: 131072
     limits:
       rpm: 20
       rpd: 50

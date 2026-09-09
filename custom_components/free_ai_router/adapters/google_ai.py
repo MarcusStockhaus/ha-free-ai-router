@@ -69,11 +69,15 @@ class GoogleAdapter(ProviderAdapter):
             )
         return contents
 
-    def _payload(self, request: ChatRequest) -> dict[str, Any]:
+    def _payload(self, request: ChatRequest, *, thinking: bool = True) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "contents": self._contents(request),
             "generationConfig": {"maxOutputTokens": request.max_output_tokens},
         }
+        if thinking and request.thinking_budget is not None:
+            payload["generationConfig"]["thinkingConfig"] = {
+                "thinkingBudget": request.thinking_budget
+            }
         system_text = request.system_text
         if system_text:
             payload["systemInstruction"] = {"parts": [{"text": system_text}]}
@@ -100,6 +104,20 @@ class GoogleAdapter(ProviderAdapter):
 
         return payload
 
+    @staticmethod
+    def _attempts(request: ChatRequest) -> tuple[bool, ...]:
+        """Mit und ohne ``thinkingConfig`` — in dieser Reihenfolge.
+
+        Gemma und einige Flash-Varianten kennen das Feld nicht und quittieren
+        es mit 400, teils mit einer nichtssagenden Meldung ("Request contains
+        an invalid argument"). Deshalb wird bei *jedem* 400 einmal ohne
+        wiederholt, statt auf den Wortlaut zu hoffen. Eine Fahnenliste je
+        Modell zu pflegen waere beim naechsten Modellwechsel wieder veraltet.
+        """
+        if request.thinking_budget is None:
+            return (False,)
+        return (True, False)
+
     # -------------------------------------------------------------- Aufruf
     async def chat(
         self,
@@ -112,15 +130,22 @@ class GoogleAdapter(ProviderAdapter):
     ) -> ChatResponse:
         watch = Stopwatch()
         url = f"{provider.base_url}/models/{request.model}:generateContent"
-        async with session.post(
-            url,
-            json=self._payload(request),
-            headers=self.auth_headers(provider, api_key),
-            params=self.auth_params(provider, api_key),
-            timeout=aiohttp.ClientTimeout(total=timeout),
-        ) as response:
-            status, body = await self._read(response)
-            headers = dict(response.headers)
+
+        for thinking in self._attempts(request):
+            async with session.post(
+                url,
+                json=self._payload(request, thinking=thinking),
+                headers=self.auth_headers(provider, api_key),
+                params=self.auth_params(provider, api_key),
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as response:
+                status, body = await self._read(response)
+                headers = dict(response.headers)
+
+            if thinking and status == 400:
+                continue
+            break
+
         self._raise_for_status(status, body, headers, self.api_style)
 
         result = self._parse(body, headers, status, request)
@@ -145,13 +170,24 @@ class GoogleAdapter(ProviderAdapter):
         usage: dict[str, Any] = {}
         tool_calls: list[ToolCall] = []
 
-        async with session.post(
-            url,
-            json=self._payload(request),
-            headers=self.auth_headers(provider, api_key),
-            params=params,
-            timeout=aiohttp.ClientTimeout(total=timeout),
-        ) as response:
+        # Derselbe Rueckfall wie in chat(): sonst faellt ein Modell ohne
+        # thinkingConfig schon bei der Lebendpruefung durch und alle weiteren
+        # Messungen unterbleiben.
+        attempts = self._attempts(request)
+        for index, thinking in enumerate(attempts):
+            probe = await session.post(
+                url,
+                json=self._payload(request, thinking=thinking),
+                headers=self.auth_headers(provider, api_key),
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            )
+            if probe.status == 400 and index + 1 < len(attempts):
+                probe.release()
+                continue
+            break
+
+        async with probe as response:
             if response.status >= 400:
                 body = await response.text()
                 self._raise_for_status(response.status, body, response.headers, self.api_style)

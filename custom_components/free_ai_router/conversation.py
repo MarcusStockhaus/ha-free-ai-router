@@ -113,14 +113,18 @@ class FreeAIRouterConversationEntity(
         runtime = self.runtime
         tools = _tool_specs(chat_log)
 
+        messages = _to_messages(chat_log)
         requirements = Requirements.for_profile(
             PROFILE_SCHNELL,
             needs_tools=bool(tools),
+            # Vier Zeichen je Token, wie ueberall — reicht, um ein zu kleines
+            # Kontextfenster und ein enges Tokenfenster zu erkennen.
+            approx_input_tokens=sum(len(turn.text) for turn in messages) // 4 + 1,
         )
         execution = await runtime.client.run(
             requirements,
             runtime.all_channels(),
-            messages=_to_messages(chat_log),
+            messages=messages,
             tools=tools,
         )
 

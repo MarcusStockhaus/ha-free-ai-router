@@ -211,6 +211,42 @@ def print_profile_coverage(results: Iterable[ProviderProbe], registry: Registry)
 # --------------------------------------------------------------------------
 
 
+async def list_models(selected: list[tuple[Provider, str]]) -> int:
+    """Nur nachsehen, welche Modelle der Anbieter fuehrt.
+
+    Ein einziger Request je Anbieter. Wichtig, weil das Vermessen vier Aufrufe
+    je Modell kostet — bei einem Modell mit 20 Anfragen pro Tag ist das ein
+    Fuenftel des Tagesbudgets.
+    """
+    from custom_components.free_ai_router.adapters import get_adapter
+
+    async with aiohttp.ClientSession() as session:
+        for provider, api_key in selected:
+            adapter = get_adapter(provider.api_style)
+            print()
+            print(paint(provider.name, BOLD))
+            try:
+                verfuegbar = await adapter.list_models(
+                    session, provider, api_key, timeout=30.0
+                )
+            except Exception as err:  # noqa: BLE001 - Diagnoseausgabe
+                print(f"  {paint(repr(err)[:200], RED)}")
+                continue
+
+            eingetragen = {model.id for model in provider.models}
+            for name in sorted(verfuegbar):
+                marke = paint(" [in Registry]", GREEN) if name in eingetragen else ""
+                print(f"  {name}{marke}")
+
+            fehlend = sorted(eingetragen - set(verfuegbar))
+            if fehlend:
+                print(
+                    "  "
+                    + paint(f"Registry nennt, Anbieter nicht: {', '.join(fehlend)}", YELLOW)
+                )
+    return 0
+
+
 async def run(args: argparse.Namespace) -> int:
     registry = load_registry()
     env = load_env(REPO_ROOT / args.env)
@@ -236,6 +272,9 @@ async def run(args: argparse.Namespace) -> int:
     if not selected:
         print(paint("Kein einziger Schluessel gefunden. .env.example kopieren.", RED))
         return 2
+
+    if args.models:
+        return await list_models(selected)
 
     checks = CHEAP_CHECKS if args.cheap else ALL_CHECKS
     results: list[ProviderProbe] = []
@@ -294,6 +333,11 @@ def main() -> int:
         help="Modell-Liste des Anbieters gegen die Registry halten",
     )
     parser.add_argument("--concurrency", type=int, default=2, help="parallele Anfragen je Anbieter")
+    parser.add_argument(
+        "--models",
+        action="store_true",
+        help="nur die Modell-Liste des Anbieters holen (ein Request, kein Kontingent)",
+    )
     parser.add_argument("--json", help="Rohbefunde als JSON wegschreiben")
     args = parser.parse_args()
 

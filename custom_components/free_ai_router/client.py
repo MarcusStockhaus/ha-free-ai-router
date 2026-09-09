@@ -88,6 +88,7 @@ class RouterClient:
         images: tuple[ImageAttachment, ...] = (),
         tools: tuple[ToolSpec, ...] = (),
         max_output_tokens: int = 2048,
+        thinking_budget: int | None = None,
     ) -> Execution:
         """Arbeite die Rangfolge ab, bis einer liefert.
 
@@ -148,9 +149,13 @@ class RouterClient:
                 json_schema=json_schema,
                 tools=tools,
                 max_output_tokens=max_output_tokens,
+                thinking_budget=thinking_budget,
             )
 
-            self.ledger.record_request(provider, model)
+            # Schaetzung vorbuchen: bei engen Tokenfenstern soll der naechste
+            # Aufruf bremsen, bevor der Anbieter 429 sagt.
+            geschaetzt = requirements.approx_input_tokens + max_output_tokens
+            self.ledger.record_request(provider, model, tokens=geschaetzt)
             try:
                 response = await adapter.chat(
                     self.session, provider, api_key, request, timeout=self.request_timeout_s
@@ -173,6 +178,7 @@ class RouterClient:
                 provider,
                 model,
                 tokens=(response.input_tokens or 0) + (response.output_tokens or 0),
+                estimated_tokens=geschaetzt,
                 info=response.rate_limit,
             )
             attempts.append(f"{candidate.key}: ok")

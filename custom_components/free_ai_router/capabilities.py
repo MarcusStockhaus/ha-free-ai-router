@@ -74,6 +74,11 @@ _VISION_PROMPT = (
     "Welche Farbe hat dieses Bild? Antworte mit einem einzigen deutschen Wort."
 )
 
+#: Ausgabebudget je Pruefaufruf. Grosszuegig, weil viele Modelle erst
+#: nachdenken und dann antworten: mit 32 Token kommt bei ihnen eine leere
+#: Antwort zurueck, und die Messung meldet faelschlich "kann es nicht".
+PROBE_OUTPUT_TOKENS = 768
+
 ProgressCallback = Callable[[int, int, str], None]
 
 
@@ -242,7 +247,8 @@ async def probe_model(
                 ChatRequest(
                     model=model.id,
                     instructions="Antworte mit genau einem Wort: bereit.",
-                    max_output_tokens=16,
+                    max_output_tokens=PROBE_OUTPUT_TOKENS,
+                    thinking_budget=0,
                 ),
                 timeout=timeout,
             )
@@ -309,7 +315,8 @@ async def _check_structured(
                 model=model.id,
                 instructions=_STRUCT_PROMPT,
                 json_schema=_STRUCT_SCHEMA,
-                max_output_tokens=128,
+                max_output_tokens=PROBE_OUTPUT_TOKENS,
+                thinking_budget=0,
             ),
             timeout=timeout,
         )
@@ -362,7 +369,8 @@ async def _check_vision(
                 model=model.id,
                 instructions=_VISION_PROMPT,
                 images=(image,),
-                max_output_tokens=32,
+                max_output_tokens=PROBE_OUTPUT_TOKENS,
+                thinking_budget=0,
             ),
             timeout=timeout,
         )
@@ -399,7 +407,8 @@ async def _check_tools(
                 model=model.id,
                 instructions=_TOOL_PROMPT,
                 tools=(_TOOL,),
-                max_output_tokens=256,
+                max_output_tokens=PROBE_OUTPUT_TOKENS,
+                thinking_budget=0,
             ),
             timeout=timeout,
         )

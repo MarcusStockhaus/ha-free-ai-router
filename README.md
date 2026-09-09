@@ -147,6 +147,51 @@ Googles kostenlose Stufe setzt um Mitternacht Pacific zurück.
 
 ---
 
+## Anbieterlage, am 09.09.2026 gemessen
+
+Alle Zahlen aus dem eigenen Konto bzw. den Antwortheadern, nicht aus
+Dokumentation. Sie sind Momentaufnahmen — das Probe-CLI hält sie aktuell.
+
+| Kanal | Profile | RPM | RPD | TPM |
+|---|---|---:|---:|---:|
+| `gemini-3.5-flash-lite` | schnell, vision | 15 | 500 | 250k |
+| `gemini-3.1-flash-lite` | schnell, vision | 15 | 500 | 250k |
+| `gemma-4-31b-it` | vision, schnell | 30 | 14.400 | 16k |
+| `gemma-4-26b-a4b-it` | vision, schnell | 30 | 14.400 | 16k |
+| `gemini-3.5-flash` | reasoning, vision | 5 | **20** | 250k |
+| `gemini-3.8-flash` | reasoning | 5 | **20** | 250k |
+| `groq/openai/gpt-oss-20b` | schnell | 30 | 1.000 | 8k |
+| `groq/qwen/qwen3.8-27b` | schnell, reasoning, **vision** | 30 | 1.000 | 8k |
+| `groq/openai/gpt-oss-120b` | reasoning | 30 | 1.000 | 8k |
+| `openrouter/nemotron-3-nano-omni…:free` | vision | 20 | 50 | — |
+| `openrouter/nemotron-3.5-lightning:free` | schnell | 20 | 50 | — |
+
+Drei Befunde, die die ursprüngliche Planung umwerfen:
+
+**Die großen Flash-Modelle haben 20 Anfragen pro Tag.** Nicht 250, nicht 1.500.
+Wer „Gemini Flash" als Kamera-Arbeitspferd einplant, bekommt zwanzig Analysen
+und danach 429. Tragend sind allein die **Flash-Lite**-Modelle mit je 500/Tag.
+
+**Gemma 4 nimmt Bilder an — bei 14.400 Anfragen pro Tag.** Zwei Modelle,
+zusammen 28.800/Tag. Dafür nur 16.000 Token/Minute: bei rund 1.200 Token je
+Bildanalyse sind das ~13 Anfragen/Minute, das Tokenfenster bindet also vor dem
+Anfragenfenster. Der Ledger bucht die Schätzung deshalb *vor* dem Absenden.
+
+**Groqs Qwen3.8 kann Bilder** und erkennt sie korrekt. Damit hängt die
+Bildanalyse nicht mehr an einem einzigen Anbieter — der härteste Punkt des
+ursprünglichen Entwurfs ist entschärft.
+
+Realistisch: **~1.000 Analysen/Tag in Flash-Lite-Qualität**, dahinter ein
+Gemma-Puffer, der praktisch nicht ausgeht. Reasoning ist die dünnste Stelle:
+zwei Google-Modelle mit je 20/Tag, plus Groq mit 1.000/Tag bei 8k Token/Minute.
+
+**Nicht enthalten:** OpenCode Zen. Die kostenlose Stufe antwortet über die API
+mit `MissingSessionID` — *„OpenCode's free tier can only be used in OpenCode"*.
+Ein Anbieter, der Zahlungsdaten verlangt und dann nicht nutzbar ist, gehört
+nicht in die Anbieterauswahl.
+
+---
+
 ## Grundsatz
 
 Keine Affiliate-Links, keine bezahlten Empfehlungen, keine Telemetrie.

@@ -12,7 +12,9 @@ daily_reset_timezone: UTC
 
 onboarding:
   signup_url: https://console.groq.com/keys
-  summary_de: Latenz-Koenig. Erste Wahl fuer Assist-Sprachbefehle, kann keine Bilder.
+  summary_de: >-
+    Latenz-Koenig, erste Wahl fuer Assist. Qwen3.8 kann entgegen der
+    verbreiteten Annahme auch Bilder.
   steps_de:
     - Mit GitHub- oder Google-Konto anmelden
     - '"Create API Key" klicken und einen Namen vergeben'
@@ -21,23 +23,13 @@ onboarding:
     Kein Training auf Inhalten der kostenlosen Stufe.
   credit_card_required: false
 
+# Modellbestand am 09.09.2026 ueber /models abgeglichen. Die Llama-Modelle
+# fuehrt Groq nicht mehr. Limits aus den gemessenen x-ratelimit-*-Headern:
+# 1.000 Anfragen/Tag, aber nur 8.000 Token/Minute — bei rund 1.200 Token je
+# Anfrage bindet das Tokenfenster lange vor dem Anfragenfenster.
 models:
-  - id: llama-3.3-70b-versatile
-    label: Llama 3.3 70B
-    profiles: [schnell, reasoning]
-    latency_class: sehr_schnell
-    capabilities:
-      vision: false
-      tools: true
-      structured_output: true
-      context_tokens: 131072
-    limits:
-      rpm: 30
-      rpd: 1000
-      tpm: 12000
-
-  - id: llama-3.1-8b-instant
-    label: Llama 3.1 8B Instant
+  - id: openai/gpt-oss-20b
+    label: GPT-OSS 20B
     profiles: [schnell]
     latency_class: sehr_schnell
     capabilities:
@@ -47,11 +39,28 @@ models:
       context_tokens: 131072
     limits:
       rpm: 30
-      rpd: 14400
-      tpm: 6000
+      rpd: 1000
+      tpm: 8000
 
-  - id: openai/gpt-oss-20b
-    label: GPT-OSS 20B
+  # Gemessen am 09.09.2026: nimmt Bilder an *und* erkennt sie richtig.
+  # Damit haengt die Bildanalyse nicht mehr allein an Google — der haerteste
+  # Punkt des urspruenglichen Entwurfs.
+  - id: qwen/qwen3.8-27b
+    label: Qwen3.8 27B
+    profiles: [schnell, reasoning, vision]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 30
+      rpd: 1000
+      tpm: 8000
+
+  - id: openai/gpt-oss-120b
+    label: GPT-OSS 120B
     profiles: [reasoning]
     latency_class: schnell
     capabilities:

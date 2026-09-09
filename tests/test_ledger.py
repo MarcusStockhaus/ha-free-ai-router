@@ -284,3 +284,47 @@ def test_unbekannte_zeitzone_faellt_auf_utc_zurueck() -> None:
     ledger = Ledger()
     # Darf nicht werfen.
     assert ledger.availability(provider, model).ok
+
+
+# --------------------------------------------------------------------------
+# Tokenfenster
+# --------------------------------------------------------------------------
+
+
+def test_geschaetzte_token_bremsen_vor_dem_absenden() -> None:
+    """Gemma hat 16k Token/Minute bei 30 Anfragen/Minute — das Tokenfenster
+    bindet also zuerst. Es muss vor dem Absenden greifen, nicht erst nach
+    einem 429."""
+    model = make_model("gemma", "google", tpm=16000, rpm=30)
+    provider = make_provider("google", (model,))
+    ledger = Ledger()
+    now = 1000.0
+
+    for _ in range(13):
+        ledger.record_request(provider, model, tokens=1250, now=now)
+
+    availability = ledger.availability(provider, model, now=now)
+    assert not availability.ok
+    assert "Token-Minutenlimit" in availability.reason
+    assert availability.queueable
+
+
+def test_echter_verbrauch_berichtigt_die_schaetzung() -> None:
+    model = make_model("gemma", "google", tpm=16000)
+    provider = make_provider("google", (model,))
+    ledger = Ledger()
+    now = 1000.0
+
+    ledger.record_request(provider, model, tokens=2000, now=now)
+    # Tatsaechlich waren es nur 400 — die Differenz muss zurueck.
+    ledger.record_success(provider, model, tokens=400, estimated_tokens=2000, now=now)
+
+    assert ledger.bucket(bucket_key(provider, model)).minute_tokens == 400
+
+
+def test_verbrauch_faellt_nie_unter_null() -> None:
+    model = make_model("gemma", "google", tpm=16000)
+    provider = make_provider("google", (model,))
+    ledger = Ledger()
+    ledger.record_success(provider, model, tokens=10, estimated_tokens=9999)
+    assert ledger.bucket(bucket_key(provider, model)).minute_tokens == 0
