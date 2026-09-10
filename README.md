@@ -166,6 +166,7 @@ Dokumentation. Sie sind Momentaufnahmen — das Probe-CLI hält sie aktuell.
 | `groq/openai/gpt-oss-120b` | reasoning | 30 | 1.000 | 8k |
 | `openrouter/nemotron-3-nano-omni…:free` | vision | 20 | 50 | — |
 | `openrouter/nemotron-3.5-lightning:free` | schnell | 20 | 50 | — |
+| `mistral/codestral-latest` | reasoning | 60 | ? | — |
 
 Drei Befunde, die die ursprüngliche Planung umwerfen:
 
@@ -186,10 +187,20 @@ Realistisch: **~1.000 Analysen/Tag in Flash-Lite-Qualität**, dahinter ein
 Gemma-Puffer, der praktisch nicht ausgeht. Reasoning ist die dünnste Stelle:
 zwei Google-Modelle mit je 20/Tag, plus Groq mit 1.000/Tag bei 8k Token/Minute.
 
-**Nicht enthalten:** OpenCode Zen. Die kostenlose Stufe antwortet über die API
-mit `MissingSessionID` — *„OpenCode's free tier can only be used in OpenCode"*.
-Ein Anbieter, der Zahlungsdaten verlangt und dann nicht nutzbar ist, gehört
-nicht in die Anbieterauswahl.
+### Anbieter, die es nicht in die Auswahl geschafft haben
+
+Alle drei aus demselben Grund: eine kostenlose Stufe, die beworben wird, aber
+über die API nicht erreichbar ist. Das ist kein Randfall, sondern der
+Normalfall — deshalb misst diese Integration, statt Dokumentation abzuschreiben.
+
+- **OpenCode Zen** — `MissingSessionID`: *„OpenCode's free tier can only be
+  used in OpenCode"*. Verlangt vorher Zahlungsdaten.
+- **Cerebras** — `402 Payment required`. Die Limits-Seite des Kontos weist
+  großzügige Kontingente aus (450 Anfragen/Minute auf `qwen-3.8-27b`, mit
+  Bildern), die API gibt sie ohne bezahlten Tarif nicht heraus.
+- **Mistral**, teilweise — nur `codestral-latest` antwortet. `mistral-small`,
+  `mistral-medium` und `magistral-small` melden
+  `x-ratelimit-limit-req-minute: 0`. Kein Limit, sondern kein Zugang.
 
 ---
 

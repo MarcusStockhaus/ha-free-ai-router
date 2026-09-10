@@ -75,9 +75,30 @@ Nach der Messung ist Reasoning die schwächste Stelle: zwei Google-Modelle mit j
 Automationsvorschläge (selten, großer Kontext) reicht das; für alles Häufigere
 nicht.
 
-`api.cerebras.ai` und `api.mistral.ai` stehen bereits in der Host-Allowlist —
-ein vierter Anbieter wäre eine reine YAML-Datei plus ein Key. Erst messen, dann
-eintragen.
+Beide Kandidaten sind am 09./10.09.2026 durchgemessen worden:
+
+- **Cerebras ist raus.** `402 Payment required` auf allen Modellen; die
+  kostenlose Stufe ist keine. Die Datei wurde wieder entfernt, der Host bleibt
+  in der Allowlist.
+- **Mistral liefert einen Kanal:** `codestral-latest` (Structured Output,
+  Werkzeuge, 0,17 s, keine Bilder). Die interessanten Modelle
+  — `magistral-small-latest` für Reasoning und `mistral-small-latest` als
+  vierter Vision-Kanal — melden `limit-req-minute: 0`.
+
+Offen bei Mistral: den **Experiment-Tarif** unter *Billing* auswählen (die
+Labs-Funktion allein genügt nicht) und danach **einen neuen API-Key erzeugen** —
+bestehende Schlüssel übernehmen eine Tarifänderung erfahrungsgemäß nicht immer.
+Dann:
+
+```bash
+python tools/probe_cli.py --provider mistral --discover
+```
+
+Bleibt es bei Limit 0, ist Reasoning dauerhaft dünn: zwei Google-Modelle mit je
+20/Tag, Groq mit 1.000/Tag bei 8k Token/Minute, Mistral-Codestral. Für
+Automationsvorschläge reicht das; für Häufigeres wäre der nächste Kandidat ein
+Anbieter außerhalb der bisherigen Allowlist — und das ist dann eine
+Code-Änderung in `allowlist.py`, kein Datenupdate.
 
 ## 6. Erst danach Phase 2
 
