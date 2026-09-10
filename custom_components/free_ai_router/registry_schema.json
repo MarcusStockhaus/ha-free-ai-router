@@ -235,6 +235,11 @@
       "maximum": 100,
       "default": 50,
       "description": "Redaktionelle Rangfolge, kleiner = frueher. 10 = erste Wahl, 90 = Reserve."
+    },
+    "monthly_budget_usd": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Ausgabendeckel der kostenlosen Stufe in US-Dollar je Monat. Anders als rpm/rpd/tpm kein Zeitfenster — erst mit den pricing-Feldern auswertbar (Phase 4, Kostenwahrheit). Fehlt = kein Deckel bekannt."
     }
   }
 }

@@ -6,6 +6,7 @@ auth:
   type: bearer
 
 preference: 50
+monthly_budget_usd: 10
 limits_scope: per_model
 daily_reset_timezone: UTC
 
@@ -30,12 +31,22 @@ onboarding:
 # nur Minuten- und Monatsfenster — rpd bleibt deshalb leer, also unbekannt.
 #
 # ACHTUNG, andere Art von Grenze: die kostenlose Stufe ist zusaetzlich auf
-# **10 Dollar API-Nutzung im Monat** gedeckelt. Das ist kein Zeitfenster,
-# sondern ein Ausgabendeckel — der Ledger kann ihn mit Anfragen- und
-# Tokenzaehlern nicht sehen. Bis die Preise je Modell in `pricing` stehen
-# (Phase 4, Kostenwahrheit), ist die Minutenrate hier grosszuegiger als die
-# tatsaechliche Belastbarkeit. Deshalb bleibt preference 50: erst die
-# ungedeckelten Kanaele, dann dieser.
+# 10 Dollar API-Nutzung im Monat gedeckelt (monthly_budget_usd). Das ist kein
+# Zeitfenster, sondern ein Ausgabendeckel — der Ledger kann ihn mit Anfragen-
+# und Tokenzaehlern nicht fuehren; das loest erst Phase 4.
+#
+# Preise am 10.09.2026 von mistral.ai/pricing/api, zugeordnet ueber den
+# Modellnamen, nicht ueber die gepinnte Version. Was das praktisch heisst, bei
+# rund 1.300 Token je Kameraanalyse:
+#
+#   ministral-3b    0,00013 $  ->  rund 2.560 Analysen am Tag im Deckel
+#   ministral-8b    0,00020 $  ->  rund 1.710 am Tag
+#   mistral-small   0,00024 $  ->  rund 1.390 am Tag
+#   codestral       0,00045 $  ->  rund   740 am Tag
+#
+# Der Deckel ist damit kein Papiertiger, aber auch keine Mauer: er verdoppelt
+# die Kapazitaet der ungedeckelten Kanaele etwa, statt sie zu ersetzen.
+# Deshalb bleibt preference 50: erst die ungedeckelten, dann dieser.
 #
 # WICHTIG: hier stehen *gepinnte* Versionen, keine -latest-Aliase. Die Aliase
 # zeigen auf Versionen, fuer die die Organisation keine Zuteilung hat; sie
@@ -64,6 +75,9 @@ models:
     limits:
       rpm: 750
       tpm: 1300000
+    pricing:
+      input_per_mtok: 0.10
+      output_per_mtok: 0.10
 
   - id: ministral-8b-2512
     label: Ministral 8B
@@ -77,6 +91,9 @@ models:
     limits:
       rpm: 188
       tpm: 625000
+    pricing:
+      input_per_mtok: 0.15
+      output_per_mtok: 0.15
 
   # Steht in der Limit-Tabelle des Kontos, antwortet aber mit 429 und
   # x-ratelimit-limit-req-minute: 0 — die Zuteilung fehlt trotzdem. Bleibt
@@ -97,6 +114,9 @@ models:
     limits:
       rpm: 60
       tpm: 20000
+    pricing:
+      input_per_mtok: 0.15
+      output_per_mtok: 0.60
 
   - id: codestral-2508
     label: Codestral
@@ -110,3 +130,6 @@ models:
     limits:
       rpm: 125
       tpm: 625000
+    pricing:
+      input_per_mtok: 0.30
+      output_per_mtok: 0.90

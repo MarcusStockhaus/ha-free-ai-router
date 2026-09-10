@@ -208,8 +208,18 @@ Drei Vorbehalte, alle drei wesentlich:
 
 1. **Gedeckelt auf 10 $ API-Nutzung im Monat.** Das ist keine Zeitfenster-,
    sondern eine Ausgabengrenze — der Ledger sieht sie mit Anfragen- und
-   Tokenzählern nicht. Solange die Preise je Modell nicht in `pricing` stehen
-   (Phase 4), ist die Minutenrate optimistischer als die Belastbarkeit.
+   Tokenzählern nicht, das löst erst Phase 4. Was der Deckel praktisch trägt,
+   bei rund 1.300 Token je Kameraanalyse:
+
+   | Modell | je Analyse | im Deckel |
+   |---|---:|---:|
+   | `ministral-3b-2512` | 0,013 ct | ~2.560/Tag |
+   | `ministral-8b-2512` | 0,020 ct | ~1.710/Tag |
+   | `mistral-small-2603` | 0,024 ct | ~1.390/Tag |
+   | `codestral-2508` | 0,045 ct | ~740/Tag |
+
+   Kein Papiertiger, aber auch keine Mauer: Mistral verdoppelt die Kapazität
+   der ungedeckelten Kanäle etwa, statt sie zu ersetzen.
 2. Die kostenlose Stufe verlangt die **Zustimmung zum Training**. Bei
    Kamerabildern ist das eine eigene Abwägung.
 3. Ein 3B-Modell liest eine Szene nicht so gut wie Gemini. Der Test beweist,
@@ -224,7 +234,7 @@ Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 |---|---|
 | Gemini Flash-Lite (2 Modelle) | 1.000/Tag |
 | Groq Qwen3.8 | 1.000/Tag, aber 8k Token/Minute ≈ 6/min |
-| Mistral Ministral 3B + 8B | 938/Minute, aber Monatsdeckel 10 $ |
+| Mistral Ministral 3B + 8B | 938/Minute, Monatsdeckel ≈ 2.560/Tag |
 | Gemini 3.5 Flash | 20/Tag |
 | OpenRouter Nemotron Omni | 50/Tag, unzuverlässig |
 

@@ -118,11 +118,15 @@ Mistrals kostenlose Stufe ist auf **10 $ API-Nutzung im Monat** gedeckelt. Das
 Registry-Schema kennt nur Zeitfenster (`rpm`, `rpd`, `tpm`, `tpd`) — einen
 Ausgabendeckel kann der Ledger damit nicht führen.
 
-Gehört zusammen mit der Kostenwahrheit in Phase 4 gelöst: die `pricing`-Felder
-sind im Schema schon vorgesehen, der Ledger zählt bereits Token je Modell.
-Nötig wären ein Feld `monthly_budget_usd` je Anbieter und eine
-Verbrauchsschätzung aus Token × Preis. Erst dann kann der Router „noch 3 $ im
-Monat" als Rangkriterium behandeln.
+Die Daten liegen seit dem 10.09.2026 vollständig vor: `monthly_budget_usd: 10`
+am Anbieter, `pricing` je Modell (von mistral.ai/pricing/api). Der Ledger zählt
+Token bereits je Modell. Was fehlt, ist nur noch die Multiplikation und ein
+Monatsfenster im Ledger — dann kann der Router „noch 3 $ im Monat" als
+Rangkriterium behandeln.
+
+Rechnerisch trägt der Deckel rund 2.560 Kameraanalysen am Tag auf
+`ministral-3b-2512`. Der Ledger merkt davon heute nichts; bis Phase 4 schützt
+allein die Rangfolge.
 
 Bis dahin gilt die Behelfslösung: `preference: 50` sorgt dafür, dass die
 ungedeckelten Kanäle zuerst drankommen.

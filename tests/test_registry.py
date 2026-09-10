@@ -263,3 +263,37 @@ def test_kameraanalyse_mit_schema_hat_mehr_als_einen_kanal() -> None:
     assert len({key.split("/")[0] for key in kanaele}) >= 2, (
         f"alle Schema-faehigen Vision-Kanaele beim selben Anbieter: {kanaele}"
     )
+
+
+def test_monatsdeckel_wird_gelesen() -> None:
+    """Ausgabendeckel sind kein Zeitfenster — sie werden nur mitgefuehrt,
+    bis Phase 4 sie zusammen mit den Preisen auswerten kann."""
+    provider = Provider.parse(variant(monthly_budget_usd=10), "test")
+    assert provider.monthly_budget_usd == 10.0
+    assert Provider.parse(MINIMAL, "test").monthly_budget_usd is None
+
+
+def test_negativer_monatsdeckel_wird_abgelehnt() -> None:
+    with pytest.raises(RegistryError, match="monthly_budget_usd"):
+        Provider.parse(variant(monthly_budget_usd=-1), "test")
+
+
+def test_gedeckelte_anbieter_stehen_hinten() -> None:
+    """Ein Anbieter mit Ausgabendeckel darf nicht vor den ungedeckelten
+    stehen — sonst wird Geld verbraucht, solange freies Kontingent da ist."""
+    registry = load_registry()
+    gedeckelt = [p for p in registry if p.monthly_budget_usd is not None]
+    frei = [p for p in registry if p.monthly_budget_usd is None]
+    assert gedeckelt, "Testfall haette keine Aussagekraft"
+    assert min(p.preference for p in gedeckelt) > min(p.preference for p in frei)
+
+
+def test_gedeckelte_anbieter_fuehren_preise() -> None:
+    """Ohne Preise laesst sich ein Ausgabendeckel nicht ausrechnen."""
+    registry = load_registry()
+    for provider in registry:
+        if provider.monthly_budget_usd is None:
+            continue
+        for model in provider.models:
+            assert model.pricing.input_per_mtok is not None, model.key
+            assert model.pricing.output_per_mtok is not None, model.key

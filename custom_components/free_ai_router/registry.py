@@ -282,6 +282,13 @@ class Provider:
     extra_headers: tuple[tuple[str, str], ...] = ()
     limits_scope: str = "per_model"
     daily_reset_timezone: str = "UTC"
+    monthly_budget_usd: float | None = None
+    """Ausgabendeckel der kostenlosen Stufe, in US-Dollar je Monat.
+
+    Kein Zeitfenster, sondern eine Geldgrenze — der Ledger kann sie mit
+    Anfragen- und Tokenzaehlern nicht fuehren. Wird erst in Phase 4 zusammen
+    mit ``pricing`` ausgewertet; bis dahin nur mitgefuehrt.
+    """
     preference: int = 50
     """Redaktionelle Rangfolge, kleiner = frueher.
 
@@ -314,6 +321,7 @@ class Provider:
                 "limits_scope",
                 "daily_reset_timezone",
                 "preference",
+                "monthly_budget_usd",
                 "onboarding",
                 "models",
             },
@@ -371,6 +379,12 @@ class Provider:
         if "onboarding" not in data:
             raise RegistryError(f"{where}: Pflichtfeld 'onboarding' fehlt")
 
+        budget = data.get("monthly_budget_usd")
+        if budget is not None and (
+            not isinstance(budget, (int, float)) or isinstance(budget, bool) or budget < 0
+        ):
+            raise RegistryError(f"{where}.monthly_budget_usd: Zahl >= 0 oder leer erwartet")
+
         preference = data.get("preference", 50)
         if not isinstance(preference, int) or isinstance(preference, bool):
             raise RegistryError(f"{where}.preference: ganze Zahl von 0 bis 100 erwartet")
@@ -390,6 +404,7 @@ class Provider:
             limits_scope=limits_scope,
             daily_reset_timezone=str(data.get("daily_reset_timezone", "UTC")),
             preference=preference,
+            monthly_budget_usd=float(budget) if budget is not None else None,
         )
 
 
