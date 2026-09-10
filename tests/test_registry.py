@@ -244,3 +244,22 @@ def test_gemessene_limits_gewinnen() -> None:
     provider = Provider.parse(MINIMAL, "test")
     gemessen = apply_measured_limits(provider.models[0], {"rpm": 7})
     assert gemessen.limits.rpm == 7
+
+
+def test_kameraanalyse_mit_schema_hat_mehr_als_einen_kanal() -> None:
+    """Der eigentliche Anwendungsfall braucht Vision *und* Structured Output.
+
+    Googles Gemma kann Bilder, aber kein responseSchema — gemessen am
+    09. und 10.09.2026. Ein Registry-Update, das die uebrigen Kanaele
+    wegnimmt, faellt hier auf, statt erst beim ersten Kamerabild.
+    """
+    registry = load_registry()
+    kanaele = [
+        model.key
+        for model in registry.models()
+        if model.capabilities.vision and model.capabilities.structured_output
+    ]
+    assert len(kanaele) >= 2, f"Kameraanalyse mit Schema haengt nur noch an {kanaele}"
+    assert len({key.split("/")[0] for key in kanaele}) >= 2, (
+        f"alle Schema-faehigen Vision-Kanaele beim selben Anbieter: {kanaele}"
+    )

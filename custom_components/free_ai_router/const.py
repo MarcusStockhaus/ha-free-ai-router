@@ -23,10 +23,15 @@ PROFILE_LABELS_DE: Final = {
 }
 
 # Was ein Profil vom Modell mindestens verlangt. Der Router filtert danach.
+#
+# Structured Output steht hier bewusst *nicht*: es wird nur verlangt, wenn der
+# Aufruf tatsaechlich ein Schema mitbringt. Sonst fielen Modelle heraus, die
+# fuer freie Antworten gut sind — Googles Gemma etwa nimmt Bilder an, kann aber
+# kein responseSchema.
 PROFILE_REQUIREMENTS: Final = {
-    PROFILE_SCHNELL: {"vision": False, "tools": False, "structured_output": True},
-    PROFILE_VISION: {"vision": True, "tools": False, "structured_output": True},
-    PROFILE_REASONING: {"vision": False, "tools": False, "structured_output": True},
+    PROFILE_SCHNELL: {"vision": False, "tools": False},
+    PROFILE_VISION: {"vision": True, "tools": False},
+    PROFILE_REASONING: {"vision": False, "tools": False},
 }
 
 # Unterstuetzte API-Dialekte.

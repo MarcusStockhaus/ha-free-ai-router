@@ -54,19 +54,17 @@ die Skalierung auf 768 px gehört vor den Versand in `task_adapter.py`.
 `estimate_input_tokens()` schätzt aktuell aus der Dateigröße — nach der
 Skalierung wird die Schätzung genauer und die Vorbuchung im Ledger schärfer.
 
-## 4. Nachmessen, was beim ersten Durchlauf an Fremdfehlern hing
+## 4. ~~Nachmessen~~ — erledigt am 10.09.2026
 
-```bash
-python tools/probe_cli.py --provider google_ai_studio --provider openrouter --json befund.json
-```
-
-- `gemini-3.8-flash`: Structured Output scheiterte an einem 503
-  („experiencing high demand"), nicht am Modell.
-- `openrouter/nemotron-3-nano-omni`: Schema und Werkzeuge scheiterten an
-  `ResourceExhausted` beim Upstream, nicht am Modell. Vision funktionierte.
-
-Beides sind vermutlich falsche Negativbefunde. Solange sie so in der Registry
-stehen, schaltet der Config Flow diese Fähigkeiten unnötig ab.
+- `gemini-3.8-flash`: war ein transienter 503, jetzt 4/4. ✓
+- `openrouter/nemotron-3-nano-omni`: kann Schema, die Ausfälle sind
+  Kapazitätsgrenzen beim Upstream (`ResourceExhausted`, 16/16 Worker) und
+  treffen bei jedem Lauf andere Prüfungen. Als verlässliche Reserve
+  ungeeignet — nicht wegen des Modells, sondern wegen des Endpunkts.
+- **Neu und wichtiger:** Googles Gemma kann *kein* `responseSchema`. Zweimal
+  gemessen. Damit fällt der große Gemma-Puffer für die übliche Kameraanalyse
+  mit Schema aus. Registry und README sind entsprechend korrigiert; der Router
+  filtert korrekt.
 
 ## 5. Offene Entwurfsfrage: Reasoning ist zu dünn
 

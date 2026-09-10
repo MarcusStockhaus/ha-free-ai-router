@@ -157,8 +157,8 @@ Dokumentation. Sie sind Momentaufnahmen — das Probe-CLI hält sie aktuell.
 |---|---|---:|---:|---:|
 | `gemini-3.5-flash-lite` | schnell, vision | 15 | 500 | 250k |
 | `gemini-3.1-flash-lite` | schnell, vision | 15 | 500 | 250k |
-| `gemma-4-31b-it` | vision, schnell | 30 | 14.400 | 16k |
-| `gemma-4-26b-a4b-it` | vision, schnell | 30 | 14.400 | 16k |
+| `gemma-4-31b-it` | vision, schnell — **kein Schema** | 30 | 14.400 | 16k |
+| `gemma-4-26b-a4b-it` | vision, schnell — **kein Schema** | 30 | 14.400 | 16k |
 | `gemini-3.5-flash` | reasoning, vision | 5 | **20** | 250k |
 | `gemini-3.8-flash` | reasoning | 5 | **20** | 250k |
 | `groq/openai/gpt-oss-20b` | schnell | 30 | 1.000 | 8k |
@@ -179,13 +179,40 @@ zusammen 28.800/Tag. Dafür nur 16.000 Token/Minute: bei rund 1.200 Token je
 Bildanalyse sind das ~13 Anfragen/Minute, das Tokenfenster bindet also vor dem
 Anfragenfenster. Der Ledger bucht die Schätzung deshalb *vor* dem Absenden.
 
+**Aber Gemma kann kein `responseSchema`** — zweimal gemessen, jeweils leere
+Antwort statt JSON. Für die übliche Kameraanalyse („Person? Paket?" als
+strukturierte Felder) fällt es damit aus; der Router filtert es korrekt heraus.
+Als Reserve taugt es für freie Bildbeschreibung. Das halbiert den scheinbaren
+Puffer nicht — es trennt ihn in zwei Töpfe.
+
 **Groqs Qwen3.8 kann Bilder** und erkennt sie korrekt. Damit hängt die
 Bildanalyse nicht mehr an einem einzigen Anbieter — der härteste Punkt des
 ursprünglichen Entwurfs ist entschärft.
 
-Realistisch: **~1.000 Analysen/Tag in Flash-Lite-Qualität**, dahinter ein
-Gemma-Puffer, der praktisch nicht ausgeht. Reasoning ist die dünnste Stelle:
-zwei Google-Modelle mit je 20/Tag, plus Groq mit 1.000/Tag bei 8k Token/Minute.
+Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
+
+| | Analysen/Tag |
+|---|---:|
+| Gemini Flash-Lite (2 Modelle) | 1.000 |
+| Groq Qwen3.8 | 1.000 (aber 8k Token/Minute ≈ 6/min) |
+| Gemini 3.5 Flash | 20 |
+| OpenRouter Nemotron Omni | 50, unzuverlässig |
+| **zusammen** | **~2.000** |
+
+Für **freie Bildbeschreibung ohne Schema** kommen Gemmas 28.800/Tag dazu.
+
+Gegen das Nutzungsmuster des Konzepts gehalten (50–300 Analysen/Tag bei drei
+bis vier Außenkameras mit Bewegungsauslöser): reichlich Luft. Erst „jede
+Frigate-Detektion ungefiltert" käme in die Nähe.
+
+Reasoning bleibt die dünnste Stelle: zwei Google-Modelle mit je 20/Tag, Groq
+mit 1.000/Tag bei 8k Token/Minute, dazu Mistrals Codestral.
+
+**OpenRouters kostenlose Endpunkte sind kapazitätsbegrenzt, nicht nur
+kontingentbegrenzt.** In zwei Durchläufen scheiterten jeweils andere Prüfungen
+an `ResourceExhausted: Worker local total request limit reached (16/16)` beim
+Upstream, und ein Modell lief in eine Zeitüberschreitung. Als Reserve, auf die
+man sich verlässt, taugt das nicht.
 
 ### Anbieter, die es nicht in die Auswahl geschafft haben
 

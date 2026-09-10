@@ -60,9 +60,11 @@ models:
       tpm: 250000
 
   # --- Tiefenpuffer: 14.400 Anfragen/Tag, dafuer nur 16k Token/Minute ----
-  # Ob Gemma hier Bilder annimmt, ist unbestaetigt — das misst der Probe.
-  # Wenn ja, ist das der Ausweg aus "Bildanalyse haengt an einem duennen
-  # Kanal"; wenn nein, schaltet die Messung das Modell fuer Vision ab.
+  # Gemma nimmt Bilder an und erkennt sie richtig — aber es kann *kein*
+  # responseSchema. Zweimal gemessen, am 09. und 10.09.2026, jeweils leere
+  # Antwort statt JSON. Damit taugt Gemma als Reserve fuer freie
+  # Bildbeschreibung, nicht fuer die uebliche Kameraanalyse mit Schema:
+  # dort filtert der Router es korrekt heraus.
   - id: gemma-4-31b-it
     label: Gemma 4 31B
     profiles: [vision, schnell]
@@ -70,7 +72,7 @@ models:
     capabilities:
       vision: true
       tools: false
-      structured_output: true
+      structured_output: false
       context_tokens: 262144
     limits:
       rpm: 30
@@ -84,7 +86,7 @@ models:
     capabilities:
       vision: true
       tools: false
-      structured_output: true
+      structured_output: false
       context_tokens: 262144
     limits:
       rpm: 30
