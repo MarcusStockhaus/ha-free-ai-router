@@ -40,9 +40,18 @@ Weitere Schalter:
 .venv/Scripts/python tools/probe_cli.py --json befund.json      # Rohbefunde sichern
 ```
 
-Das Vision-Testbild ist eine 64×64-Fläche in Rot. Geprüft wird nicht nur, ob
-das Bild angenommen wird, sondern ob das Modell die Farbe nennt — ein Modell,
-das das Bild annimmt und dann rät, taugt als Vision-Kanal nichts.
+Das Vision-Testbild besteht aus **zwei zufällig gewählten Farbflächen** aus
+einer Palette von sieben. Geprüft wird nicht, ob das Bild angenommen wird,
+sondern ob das Modell **beide** Farben nennt.
+
+Der Grund: manche OpenAI-kompatiblen Endpunkte verwerfen den Bildteil
+stillschweigend und antworten trotzdem. Eine einzelne rote Fläche war als Test
+zu schwach — „rot" ist genau die Farbe, die ein blindes Textmodell rät. Bei
+zwei Farben aus sieben liegt die Ratequote unter fünf Prozent, und sie
+wechseln bei jedem Lauf.
+
+Was der Test *nicht* beweist: dass ein Modell eine Kameraszene versteht. Er
+beweist, dass das Bild ankommt und ausgewertet wird.
 
 ---
 
@@ -166,7 +175,9 @@ Dokumentation. Sie sind Momentaufnahmen — das Probe-CLI hält sie aktuell.
 | `groq/openai/gpt-oss-120b` | reasoning | 30 | 1.000 | 8k |
 | `openrouter/nemotron-3-nano-omni…:free` | vision | 20 | 50 | — |
 | `openrouter/nemotron-3.5-lightning:free` | schnell | 20 | 50 | — |
-| `mistral/codestral-latest` | reasoning | 60 | ? | — |
+| `mistral/ministral-3b-2512` | schnell, **vision** | 750 | — | 1.300k |
+| `mistral/ministral-8b-2512` | schnell, **vision** | 188 | — | 625k |
+| `mistral/codestral-2508` | reasoning | 125 | — | 625k |
 
 Drei Befunde, die die ursprüngliche Planung umwerfen:
 
@@ -189,17 +200,27 @@ Puffer nicht — es trennt ihn in zwei Töpfe.
 Bildanalyse nicht mehr an einem einzigen Anbieter — der härteste Punkt des
 ursprünglichen Entwurfs ist entschärft.
 
+**Mistrals Ministral-Modelle können Bilder** — und anders als Gemma auch
+Structured Output. Mit 750 Anfragen pro Minute und ohne veröffentlichtes
+Tageslimit ist `ministral-3b-2512` damit der eigentliche Tiefenpuffer für die
+Kameraanalyse. Preis: Mistrals kostenlose Stufe verlangt die Zustimmung zum
+Training, und ein 3B-Modell sieht eine Szene nicht so gut wie Gemini — deshalb
+steht es in der Rangfolge dahinter.
+
 Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 
-| | Analysen/Tag |
-|---|---:|
-| Gemini Flash-Lite (2 Modelle) | 1.000 |
-| Groq Qwen3.8 | 1.000 (aber 8k Token/Minute ≈ 6/min) |
-| Gemini 3.5 Flash | 20 |
-| OpenRouter Nemotron Omni | 50, unzuverlässig |
-| **zusammen** | **~2.000** |
+| | Kapazität |
+|---|---|
+| Gemini Flash-Lite (2 Modelle) | 1.000/Tag |
+| Groq Qwen3.8 | 1.000/Tag, aber 8k Token/Minute ≈ 6/min |
+| Mistral Ministral 3B + 8B | 938/Minute, kein Tageslimit veröffentlicht |
+| Gemini 3.5 Flash | 20/Tag |
+| OpenRouter Nemotron Omni | 50/Tag, unzuverlässig |
 
 Für **freie Bildbeschreibung ohne Schema** kommen Gemmas 28.800/Tag dazu.
+
+Das Kontingent ist damit kein Engpass mehr, sondern Buchhaltung — genau wie im
+Konzept angenommen, nur über andere Kanäle als dort vermutet.
 
 Gegen das Nutzungsmuster des Konzepts gehalten (50–300 Analysen/Tag bei drei
 bis vier Außenkameras mit Bewegungsauslöser): reichlich Luft. Erst „jede

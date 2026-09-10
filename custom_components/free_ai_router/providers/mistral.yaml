@@ -6,13 +6,13 @@ auth:
   type: bearer
 
 preference: 50
-limits_scope: per_key
+limits_scope: per_model
 daily_reset_timezone: UTC
 
 onboarding:
   signup_url: https://console.mistral.ai/api-keys
   summary_de: >-
-    Sehr grosses Monatskontingent gegen Datenfreigabe. Kraeftig beim
+    Sehr grosses Minutenkontingent gegen Datenfreigabe. Kraeftig beim
     Automationsbau, Mistral Small nimmt auch Bilder.
   steps_de:
     - Auf console.mistral.ai anmelden
@@ -24,19 +24,59 @@ onboarding:
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
   credit_card_required: false
 
-# Am 09. und 10.09.2026 gemessen, mit zwei verschiedenen Schluesseln: nur
-# codestral-latest war erreichbar. Die uebrigen Modelle antworteten mit 429
-# und x-ratelimit-limit-req-minute: 0.
+# Limits am 10.09.2026 aus admin.mistral.ai/plateforme/limits abgelesen,
+# Anfragen je Sekunde in RPM umgerechnet. Mistral nennt dort kein Tageslimit,
+# nur Minuten- und Monatsfenster — rpd bleibt deshalb leer, also unbekannt.
 #
-# Mistrals OpenAPI-Spec erklaert das: drei getrennte Produktlinien mit je
-# eigenem Abonnement — APIPlan (FREE | PAY_AS_YOU_GO), ChatPlan (Le Chat)
-# und CodePlan. Ohne API-Abonnement sind es null Anfragen je Minute auf den
-# Chat-Modellen; Codestral laeuft ueber die Code-Linie. Ein neuer Schluessel
-# aendert daran nichts — geprueft.
-#
-# Die -latest-Aliase sind stabil und veralten nicht mit jedem Modellwechsel.
+# WICHTIG: hier stehen *gepinnte* Versionen, keine -latest-Aliase. Die Aliase
+# zeigen auf Versionen, fuer die die Organisation keine Zuteilung hat; sie
+# antworteten mit 429 und x-ratelimit-limit-req-minute: 0, waehrend dieselben
+# Modelle unter der gepinnten Version in der Limit-Tabelle stehen. Das ist der
+# Preis der Stabilitaet: ein Alias veraltet nicht, aber er zeigt auch dorthin,
+# wo man nichts darf.
 models:
-  - id: mistral-small-latest
+  # 12,5 Anfragen je Sekunde und 1,3 Mio. Token je Minute — das mit Abstand
+  # groesste Minutenfenster im ganzen Feld, und es kann Bilder *und* Schema.
+  #
+  # Gemessen heisst hier: es hat zwei zufaellig gewaehlte Farbflaechen richtig
+  # benannt. Das beweist, dass das Bild ankommt und ausgewertet wird — nicht,
+  # dass es eine Kameraszene so gut versteht wie Gemini. Deshalb steht Mistral
+  # in der Rangfolge (preference 50) hinter Google und Groq: als Tiefenpuffer,
+  # nicht als erste Wahl.
+  - id: ministral-3b-2512
+    label: Ministral 3B
+    profiles: [schnell, vision]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 750
+      tpm: 1300000
+
+  - id: ministral-8b-2512
+    label: Ministral 8B
+    profiles: [schnell, vision]
+    latency_class: sehr_schnell
+    capabilities:
+      vision: true
+      tools: true
+      structured_output: true
+      context_tokens: 131072
+    limits:
+      rpm: 188
+      tpm: 625000
+
+  # Steht in der Limit-Tabelle des Kontos, antwortet aber mit 429 und
+  # x-ratelimit-limit-req-minute: 0 — die Zuteilung fehlt trotzdem. Bleibt
+  # drin, weil es mit aktivem API-Abonnement der Vision-Kanal der Mistral-Linie
+  # waere; die Faehigkeitsmessung schaltet es sonst ab.
+  #
+  # Nicht mehr eingetragen: mistral-large-2512 — "This model is not available
+  # in your subscription", und /models fuehrt es gar nicht.
+  - id: mistral-small-2603
     label: Mistral Small
     profiles: [schnell, vision]
     latency_class: schnell
@@ -47,33 +87,9 @@ models:
       context_tokens: 131072
     limits:
       rpm: 60
+      tpm: 20000
 
-  - id: mistral-medium-latest
-    label: Mistral Medium
-    profiles: [reasoning]
-    latency_class: normal
-    capabilities:
-      vision: true
-      tools: true
-      structured_output: true
-      context_tokens: 131072
-    limits:
-      rpm: 60
-
-  # Mistrals eigene Reasoning-Linie — die duennste Stelle im Routing.
-  - id: magistral-small-latest
-    label: Magistral Small
-    profiles: [reasoning]
-    latency_class: normal
-    capabilities:
-      vision: false
-      tools: true
-      structured_output: true
-      context_tokens: 131072
-    limits:
-      rpm: 60
-
-  - id: codestral-latest
+  - id: codestral-2508
     label: Codestral
     profiles: [reasoning]
     latency_class: schnell
@@ -83,4 +99,5 @@ models:
       structured_output: true
       context_tokens: 262144
     limits:
-      rpm: 60
+      rpm: 125
+      tpm: 625000

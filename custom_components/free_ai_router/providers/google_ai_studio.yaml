@@ -65,6 +65,8 @@ models:
   # Antwort statt JSON. Damit taugt Gemma als Reserve fuer freie
   # Bildbeschreibung, nicht fuer die uebliche Kameraanalyse mit Schema:
   # dort filtert der Router es korrekt heraus.
+  # Unzuverlaessig: in drei Messlaeufen zweimal HTTP 500 bzw. eine
+  # Zeitueberschreitung. Die 26B-Variante lief jedes Mal.
   - id: gemma-4-31b-it
     label: Gemma 4 31B
     profiles: [vision, schnell]

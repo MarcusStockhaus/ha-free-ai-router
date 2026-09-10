@@ -3,12 +3,19 @@
 Das Modul aus Schritt 0 — dieselbe Messung laeuft spaeter im Config Flow und
 in Phase 3 unter Cron. Geprueft wird vor allem, dass ein Fehlschlag ein
 Messergebnis bleibt und nicht als Ausnahme nach oben durchschlaegt.
+
+Der Testendpunkt *dekodiert das PNG wirklich* und antwortet mit den Farben,
+die darin stehen. Damit prueft der Test nicht nur den Ablauf, sondern auch,
+dass das Bild unbeschaedigt beim Anbieter ankommt.
 """
 
 from __future__ import annotations
 
+import base64
 import json
+import random
 import struct
+import zlib
 from typing import Any
 
 import aiohttp
@@ -25,10 +32,59 @@ from custom_components.free_ai_router.capabilities import (
     quick_key_check,
 )
 from custom_components.free_ai_router.testimage import (
-    TEST_COLOR_NAME_DE,
-    looks_like_test_color,
-    solid_png,
+    PALETTE,
+    TEST_IMAGE_SIZE,
+    make_challenge,
+    two_tone_png,
 )
+
+# --------------------------------------------------------------------------
+# PNG zurueckuebersetzen — die Gegenprobe zum Encoder
+# --------------------------------------------------------------------------
+
+
+def png_farben(daten: bytes) -> tuple[str, str]:
+    """Lies die beiden Farbnamen aus einem two_tone_png zurueck."""
+    assert daten[:8] == b"\x89PNG\r\n\x1a\n", "kein PNG"
+
+    breite = hoehe = 0
+    idat = b""
+    pos = 8
+    while pos < len(daten):
+        (laenge,) = struct.unpack(">I", daten[pos : pos + 4])
+        tag = daten[pos + 4 : pos + 8]
+        payload = daten[pos + 8 : pos + 8 + laenge]
+        if tag == b"IHDR":
+            breite, hoehe = struct.unpack(">II", payload[:8])
+        elif tag == b"IDAT":
+            idat += payload
+        pos += 12 + laenge
+
+    roh = zlib.decompress(idat)
+    zeilenlaenge = 1 + breite * 3  # ein Filter-Byte je Zeile
+
+    def pixel(zeile: int) -> tuple[int, int, int]:
+        start = zeile * zeilenlaenge + 1
+        return tuple(roh[start : start + 3])  # type: ignore[return-value]
+
+    def name(rgb: tuple[int, int, int]) -> str:
+        for farbname, (farbwert, _woerter) in PALETTE.items():
+            if farbwert == rgb:
+                return farbname
+        raise AssertionError(f"unbekannte Farbe {rgb}")
+
+    return name(pixel(0)), name(pixel(hoehe - 1))
+
+
+def test_decoder_findet_zurueck() -> None:
+    """Erst die Gegenprobe selbst pruefen, sonst testet sie nichts."""
+    bild = two_tone_png(PALETTE["lila"][0], PALETTE["gelb"][0])
+    assert png_farben(bild) == ("lila", "gelb")
+
+
+# --------------------------------------------------------------------------
+# Testendpunkt
+# --------------------------------------------------------------------------
 
 
 class Endpunkt:
@@ -40,7 +96,7 @@ class Endpunkt:
         self.sieht_richtig = True
         self.kann_schema = True
         self.kann_werkzeuge = True
-        self.gesehene_bilder: list[int] = []
+        self.gesehene_bilder: list[tuple[str, str]] = []
 
     async def chat(self, request: web.Request) -> web.Response:
         payload = await request.json()
@@ -50,12 +106,15 @@ class Endpunkt:
         text = "bereit"
         message: dict[str, Any] = {"role": "assistant"}
 
-        if self._hat_bild(payload):
+        bild = self._bild(payload)
+        if bild is not None:
             if not self.kann_bilder:
                 return web.json_response(
                     {"error": {"message": "model does not support image input"}}, status=400
                 )
-            text = TEST_COLOR_NAME_DE if self.sieht_richtig else "blau"
+            # Ein blindes Modell raet: dann steht hier eine feste
+            # Verlegenheitsantwort, die praktisch nie zufaellig passt.
+            text = f"{bild[0]}, {bild[1]}" if self.sieht_richtig else "rot, blau"
 
         elif payload.get("response_format"):
             if not self.kann_schema:
@@ -94,15 +153,21 @@ class Endpunkt:
             },
         )
 
-    def _hat_bild(self, payload: dict[str, Any]) -> bool:
+    def _bild(self, payload: dict[str, Any]) -> tuple[str, str] | None:
+        """Finde das Bild und lies seine Farben — wie ein sehendes Modell."""
         for message in payload.get("messages", []):
             content = message.get("content")
-            if isinstance(content, list):
-                for part in content:
-                    if part.get("type") == "image_url":
-                        self.gesehene_bilder.append(len(part["image_url"]["url"]))
-                        return True
-        return False
+            if not isinstance(content, list):
+                continue
+            for part in content:
+                if part.get("type") != "image_url":
+                    continue
+                url = part["image_url"]["url"]
+                assert url.startswith("data:image/png;base64,"), url[:40]
+                farben = png_farben(base64.b64decode(url.split(",", 1)[1]))
+                self.gesehene_bilder.append(farben)
+                return farben
+        return None
 
     async def models(self, _request: web.Request) -> web.Response:
         return web.json_response({"data": [{"id": "modell-a"}]})
@@ -129,21 +194,46 @@ async def umgebung():
 
 
 # --------------------------------------------------------------------------
-# Testbild
+# Die Vision-Aufgabe
 # --------------------------------------------------------------------------
 
 
 def test_testbild_ist_ein_gueltiges_png() -> None:
-    png = solid_png()
-    assert png[:8] == b"\x89PNG\r\n\x1a\n"
-    breite, hoehe = struct.unpack(">II", png[16:24])
-    assert breite == hoehe == 64
+    challenge = make_challenge()
+    assert challenge.image[:8] == b"\x89PNG\r\n\x1a\n"
+    breite, hoehe = struct.unpack(">II", challenge.image[16:24])
+    assert breite == hoehe == TEST_IMAGE_SIZE
+    assert png_farben(challenge.image) == challenge.expected
 
 
-def test_farberkennung_ist_nachsichtig_mit_der_sprache() -> None:
-    assert looks_like_test_color("Das Bild ist rot.")
-    assert looks_like_test_color("RED")
-    assert not looks_like_test_color("blau")
+def test_zwei_verschiedene_farben() -> None:
+    for seed in range(50):
+        challenge = make_challenge(random.Random(seed))
+        assert challenge.expected[0] != challenge.expected[1]
+
+
+def test_beide_farben_noetig_eine_genuegt_nicht() -> None:
+    """Der Kern der Haertung: eine Farbe zu treffen ist Zufall, beide nicht."""
+    challenge = make_challenge(random.Random(1))
+    oben, unten = challenge.expected
+
+    assert challenge.solved(f"{oben}, {unten}")
+    assert challenge.solved(f"Oben {oben} und unten {unten}.")
+    assert not challenge.solved(oben)
+    assert not challenge.solved(unten)
+    assert not challenge.solved("keine Ahnung")
+
+
+def test_sprachvarianten_werden_akzeptiert() -> None:
+    challenge = make_challenge(random.Random(7))
+    englisch = ", ".join(PALETTE[name][1][1] for name in challenge.expected)
+    assert challenge.solved(englisch)
+
+
+def test_falsch_genannte_farben_werden_benannt() -> None:
+    challenge = make_challenge(random.Random(3))
+    falsche = next(name for name in PALETTE if name not in challenge.expected)
+    assert challenge.wrong_colors(falsche) == [falsche]
 
 
 # --------------------------------------------------------------------------
@@ -169,7 +259,7 @@ async def test_vollstaendige_messung(umgebung) -> None:
     }
 
 
-async def test_bild_wird_wirklich_mitgeschickt(umgebung) -> None:
+async def test_bild_kommt_unbeschaedigt_an(umgebung) -> None:
     await probe_model(umgebung["session"], umgebung["provider"], "key", umgebung["model"])
     assert umgebung["endpunkt"].gesehene_bilder, "kein Bild im Request angekommen"
 
@@ -185,7 +275,7 @@ async def test_angenommen_aber_nicht_angesehen_gilt_als_fehlschlag(umgebung) -> 
     assert probe.alive
     assert probe.vision.ok is False
     assert probe.vision_looked is False
-    assert "Farbe falsch" in probe.vision.detail
+    assert "erwartet" in probe.vision.detail
 
 
 async def test_abgelehntes_bild(umgebung) -> None:
@@ -216,7 +306,7 @@ async def test_toter_endpunkt_ist_ein_messergebnis_keine_ausnahme(umgebung) -> N
     assert probe.status == 500
     assert probe.liveness.ok is False
     # Nach einem toten Endpunkt werden die teuren Tests gar nicht erst
-    # gefahren — sie blieben unbekannt statt drei weitere Fehlschlaege zu
+    # gefahren — sie bleiben unbekannt statt drei weitere Fehlschlaege zu
     # produzieren. Unbekannt heisst nicht "kann es nicht".
     assert probe.vision.ok is None
     assert probe.measured_capabilities() == {}
@@ -240,7 +330,7 @@ async def test_limits_aus_den_headern(umgebung) -> None:
     probe = await probe_model(
         umgebung["session"], umgebung["provider"], "key", umgebung["model"]
     )
-    # Reset bei 120 s: als Tagesfenster gewertet, nicht als Minutenfenster.
+    # Reset bei 120 s: als Minutenfenster gewertet.
     assert probe.measured_limits() == {"rpm": 1000}
 
 
@@ -260,16 +350,12 @@ async def test_anbieter_messung_und_modellabgleich(umgebung) -> None:
 
 
 async def test_schnelltest_fuer_die_key_eingabe(umgebung) -> None:
-    ok, meldung = await quick_key_check(
-        umgebung["session"], umgebung["provider"], "key"
-    )
+    ok, meldung = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
     assert ok
     assert "antwortet" in meldung
 
     umgebung["endpunkt"].status = 401
-    ok, meldung = await quick_key_check(
-        umgebung["session"], umgebung["provider"], "key"
-    )
+    ok, meldung = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
     assert not ok
     assert "401" in meldung
 

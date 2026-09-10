@@ -29,7 +29,7 @@ from .adapters import ChatRequest, ImageAttachment, ProviderError, ToolSpec, get
 from .const import PROBE_TIMEOUT_S
 from .ratelimit import RateLimitInfo
 from .registry import Model, Provider
-from .testimage import TEST_IMAGE_MIME, looks_like_test_color, solid_png
+from .testimage import make_challenge
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,10 +69,6 @@ _TOOL = ToolSpec(
     },
 )
 _TOOL_PROMPT = "Schalte das Licht im Wohnzimmer ein. Nutze dafuer das Werkzeug."
-
-_VISION_PROMPT = (
-    "Welche Farbe hat dieses Bild? Antworte mit einem einzigen deutschen Wort."
-)
 
 #: Ausgabebudget je Pruefaufruf. Grosszuegig, weil viele Modelle erst
 #: nachdenken und dann antworten: mit 32 Token kommt bei ihnen eine leere
@@ -359,7 +355,8 @@ async def _check_vision(
     timeout: float,
 ) -> tuple[CheckResult, bool | None]:
     started = time.monotonic()
-    image = ImageAttachment(mime_type=TEST_IMAGE_MIME, data=solid_png())
+    challenge = make_challenge()
+    image = ImageAttachment(mime_type=challenge.mime_type, data=challenge.image)
     try:
         response = await adapter.chat(
             session,
@@ -367,7 +364,7 @@ async def _check_vision(
             api_key,
             ChatRequest(
                 model=model.id,
-                instructions=_VISION_PROMPT,
+                instructions=challenge.prompt,
                 images=(image,),
                 max_output_tokens=PROBE_OUTPUT_TOKENS,
                 thinking_budget=0,
@@ -377,16 +374,22 @@ async def _check_vision(
     except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
         return CheckResult(False, str(err), time.monotonic() - started), None
 
-    looked = looks_like_test_color(response.text)
     detail = (response.text or "").strip()[:60]
-    if not looked:
-        # Angenommen, aber nicht angesehen: das Bild wurde nicht abgelehnt,
-        # taugt als Vision-Kanal aber nichts. Als Fehlschlag werten.
+    if not challenge.solved(response.text):
+        # Angenommen, aber nicht angesehen: manche Endpunkte verwerfen den
+        # Bildteil stillschweigend und antworten trotzdem. Als Vision-Kanal
+        # taugt das nichts.
+        falsch = challenge.wrong_colors(response.text)
+        hinweis = f", genannt: {', '.join(falsch)}" if falsch else ""
         return (
-            CheckResult(False, f"Bild angenommen, Farbe falsch: {detail!r}", response.total_s),
+            CheckResult(
+                False,
+                f"erwartet {challenge.expected_text}{hinweis} — Antwort: {detail!r}",
+                response.total_s,
+            ),
             False,
         )
-    return CheckResult(True, detail, response.total_s), True
+    return CheckResult(True, f"{challenge.expected_text} erkannt", response.total_s), True
 
 
 async def _check_tools(
