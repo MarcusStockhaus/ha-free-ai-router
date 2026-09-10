@@ -12,8 +12,8 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://console.mistral.ai/api-keys
   summary_de: >-
-    Sehr grosses Minutenkontingent gegen Datenfreigabe. Kraeftig beim
-    Automationsbau, Mistral Small nimmt auch Bilder.
+    Sehr grosses Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar
+    API-Nutzung im Monat. Ministral nimmt Bilder an und haelt sich an Schemata.
   steps_de:
     - Auf console.mistral.ai anmelden
     - Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu
@@ -22,11 +22,20 @@ onboarding:
   data_note_de: >-
     Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
+    Die Nutzung ist ausserdem auf 10 Dollar im Monat gedeckelt.
   credit_card_required: false
 
 # Limits am 10.09.2026 aus admin.mistral.ai/plateforme/limits abgelesen,
 # Anfragen je Sekunde in RPM umgerechnet. Mistral nennt dort kein Tageslimit,
 # nur Minuten- und Monatsfenster — rpd bleibt deshalb leer, also unbekannt.
+#
+# ACHTUNG, andere Art von Grenze: die kostenlose Stufe ist zusaetzlich auf
+# **10 Dollar API-Nutzung im Monat** gedeckelt. Das ist kein Zeitfenster,
+# sondern ein Ausgabendeckel — der Ledger kann ihn mit Anfragen- und
+# Tokenzaehlern nicht sehen. Bis die Preise je Modell in `pricing` stehen
+# (Phase 4, Kostenwahrheit), ist die Minutenrate hier grosszuegiger als die
+# tatsaechliche Belastbarkeit. Deshalb bleibt preference 50: erst die
+# ungedeckelten Kanaele, dann dieser.
 #
 # WICHTIG: hier stehen *gepinnte* Versionen, keine -latest-Aliase. Die Aliase
 # zeigen auf Versionen, fuer die die Organisation keine Zuteilung hat; sie

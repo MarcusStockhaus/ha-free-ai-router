@@ -201,11 +201,22 @@ Bildanalyse nicht mehr an einem einzigen Anbieter — der härteste Punkt des
 ursprünglichen Entwurfs ist entschärft.
 
 **Mistrals Ministral-Modelle können Bilder** — und anders als Gemma auch
-Structured Output. Mit 750 Anfragen pro Minute und ohne veröffentlichtes
-Tageslimit ist `ministral-3b-2512` damit der eigentliche Tiefenpuffer für die
-Kameraanalyse. Preis: Mistrals kostenlose Stufe verlangt die Zustimmung zum
-Training, und ein 3B-Modell sieht eine Szene nicht so gut wie Gemini — deshalb
-steht es in der Rangfolge dahinter.
+Structured Output. Mit 750 Anfragen pro Minute ist `ministral-3b-2512` der
+kapazitätsstärkste Kanal im Feld.
+
+Drei Vorbehalte, alle drei wesentlich:
+
+1. **Gedeckelt auf 10 $ API-Nutzung im Monat.** Das ist keine Zeitfenster-,
+   sondern eine Ausgabengrenze — der Ledger sieht sie mit Anfragen- und
+   Tokenzählern nicht. Solange die Preise je Modell nicht in `pricing` stehen
+   (Phase 4), ist die Minutenrate optimistischer als die Belastbarkeit.
+2. Die kostenlose Stufe verlangt die **Zustimmung zum Training**. Bei
+   Kamerabildern ist das eine eigene Abwägung.
+3. Ein 3B-Modell liest eine Szene nicht so gut wie Gemini. Der Test beweist,
+   dass das Bild ankommt und ausgewertet wird — nicht die Analysequalität.
+
+Deshalb steht Mistral mit `preference: 50` hinter Google und Groq: erst die
+ungedeckelten Kanäle, dann dieser.
 
 Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 
@@ -213,14 +224,16 @@ Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 |---|---|
 | Gemini Flash-Lite (2 Modelle) | 1.000/Tag |
 | Groq Qwen3.8 | 1.000/Tag, aber 8k Token/Minute ≈ 6/min |
-| Mistral Ministral 3B + 8B | 938/Minute, kein Tageslimit veröffentlicht |
+| Mistral Ministral 3B + 8B | 938/Minute, aber Monatsdeckel 10 $ |
 | Gemini 3.5 Flash | 20/Tag |
 | OpenRouter Nemotron Omni | 50/Tag, unzuverlässig |
 
 Für **freie Bildbeschreibung ohne Schema** kommen Gemmas 28.800/Tag dazu.
 
 Das Kontingent ist damit kein Engpass mehr, sondern Buchhaltung — genau wie im
-Konzept angenommen, nur über andere Kanäle als dort vermutet.
+Konzept angenommen, nur über andere Kanäle als dort vermutet. Die ungedeckelten
+Kanäle allein (Google, Groq) tragen rund 2.000 Analysen/Tag; Mistral kommt als
+gedeckelter Puffer dahinter.
 
 Gegen das Nutzungsmuster des Konzepts gehalten (50–300 Analysen/Tag bei drei
 bis vier Außenkameras mit Bewegungsauslöser): reichlich Luft. Erst „jede

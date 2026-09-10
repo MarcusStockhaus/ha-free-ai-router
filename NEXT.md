@@ -112,6 +112,21 @@ Automationsvorschläge reicht das; für Häufigeres wäre der nächste Kandidat 
 Anbieter außerhalb der bisherigen Allowlist — und das ist dann eine
 Code-Änderung in `allowlist.py`, kein Datenupdate.
 
+## 5b. Für Phase 4 vorgemerkt: Ausgabendeckel als eigener Limit-Typ
+
+Mistrals kostenlose Stufe ist auf **10 $ API-Nutzung im Monat** gedeckelt. Das
+Registry-Schema kennt nur Zeitfenster (`rpm`, `rpd`, `tpm`, `tpd`) — einen
+Ausgabendeckel kann der Ledger damit nicht führen.
+
+Gehört zusammen mit der Kostenwahrheit in Phase 4 gelöst: die `pricing`-Felder
+sind im Schema schon vorgesehen, der Ledger zählt bereits Token je Modell.
+Nötig wären ein Feld `monthly_budget_usd` je Anbieter und eine
+Verbrauchsschätzung aus Token × Preis. Erst dann kann der Router „noch 3 $ im
+Monat" als Rangkriterium behandeln.
+
+Bis dahin gilt die Behelfslösung: `preference: 50` sorgt dafür, dass die
+ungedeckelten Kanäle zuerst drankommen.
+
 ## 6. Erst danach Phase 2
 
 Blueprints, Verbrauchssensoren, öffentliche README, `CONTRIBUTING.md`,
