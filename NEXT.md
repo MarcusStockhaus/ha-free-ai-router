@@ -83,10 +83,24 @@ Beide Kandidaten sind am 09./10.09.2026 durchgemessen worden:
   — `magistral-small-latest` für Reasoning und `mistral-small-latest` als
   vierter Vision-Kanal — melden `limit-req-minute: 0`.
 
-Offen bei Mistral: den **Experiment-Tarif** unter *Billing* auswählen (die
-Labs-Funktion allein genügt nicht) und danach **einen neuen API-Key erzeugen** —
-bestehende Schlüssel übernehmen eine Tarifänderung erfahrungsgemäß nicht immer.
-Dann:
+**Aus Mistrals OpenAPI-Spec (10.09.2026) geklärt, warum:** Mistral führt drei
+getrennte Produktlinien mit je eigenem Abonnement — `APIPlan` (`FREE` |
+`PAY_AS_YOU_GO`), `ChatPlan` (Le Chat: `INDIVIDUAL` | `EDU` | `TEAM`) und
+`CodePlan`. Ein neuer Schlüssel hilft nicht: nötig ist das **API-Abonnement mit
+Plan `FREE`**, und das ist etwas anderes als Labs oder Le Chat. Codestral läuft,
+weil es über die Code-Linie abgedeckt ist.
+
+`x-ratelimit-limit-req-minute: 0` ist also kein Limit, sondern schlicht kein
+API-Abonnement.
+
+Nachsehen lässt sich das über `GET /v1/admin/rate-limit` (liefert
+`requests_per_second` und `tokens_limits_by_model`). Das verlangt allerdings
+einen **admin-scoped** Schlüssel — laut Spec werden normale Inferenz-Keys
+abgewiesen. Für eine reine Diagnose ist das der falsche Aufwand: ein Admin-Key
+darf Nutzer, Workspaces und Ausgabengrenzen verwalten. Die Konsole zeigt
+dasselbe.
+
+Wenn das API-Abonnement steht:
 
 ```bash
 python tools/probe_cli.py --provider mistral --discover

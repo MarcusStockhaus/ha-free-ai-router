@@ -17,18 +17,22 @@ onboarding:
   steps_de:
     - Auf console.mistral.ai anmelden
     - Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu
-    - 'Unter "Billing" den Tarif "Experiment" ausdruecklich auswaehlen (keine Kreditkarte noetig, aber ohne diese Auswahl bleibt der Key wirkungslos)'
+    - 'Das *API*-Abonnement mit Plan FREE aktivieren. Nicht zu verwechseln mit Le Chat oder Labs: Mistral fuehrt drei getrennte Produktlinien, und nur das API-Abo schaltet die Chat-Modelle frei'
     - 'Unter "API Keys" auf "Create new key", Ablaufdatum setzen, Key kopieren'
   data_note_de: >-
     Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
   credit_card_required: false
 
-# Am 09.09.2026 gemessen: nur codestral-latest war erreichbar. Alle anderen
-# Modelle antworteten mit 429 und x-ratelimit-limit-req-minute: 0 — das ist
-# kein voruebergehendes Limit, sondern gar kein Kontingent. Fast sicher der
-# unter Billing nicht ausgewaehlte Experiment-Tarif; nach dem Aktivieren
-# neu vermessen.
+# Am 09. und 10.09.2026 gemessen, mit zwei verschiedenen Schluesseln: nur
+# codestral-latest war erreichbar. Die uebrigen Modelle antworteten mit 429
+# und x-ratelimit-limit-req-minute: 0.
+#
+# Mistrals OpenAPI-Spec erklaert das: drei getrennte Produktlinien mit je
+# eigenem Abonnement — APIPlan (FREE | PAY_AS_YOU_GO), ChatPlan (Le Chat)
+# und CodePlan. Ohne API-Abonnement sind es null Anfragen je Minute auf den
+# Chat-Modellen; Codestral laeuft ueber die Code-Linie. Ein neuer Schluessel
+# aendert daran nichts — geprueft.
 #
 # Die -latest-Aliase sind stabil und veralten nicht mit jedem Modellwechsel.
 models:
