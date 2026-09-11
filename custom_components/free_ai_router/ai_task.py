@@ -26,6 +26,7 @@ from .task_adapter import (
     estimate_input_tokens,
     normalize_result,
     structure_to_json_schema,
+    to_attachments,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,7 +66,8 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
     ) -> ai_task.GenDataTaskResult:
         runtime = self.runtime
 
-        images = await attachments_to_images(self.hass, task.attachments)
+        bilder = await attachments_to_images(self.hass, task.attachments)
+        images = to_attachments(bilder)
         json_schema = structure_to_json_schema(
             task.structure,
             custom_serializer=(
@@ -77,7 +79,7 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
             self._profile,
             has_attachments=bool(images),
             has_structure=json_schema is not None,
-            approx_input_tokens=estimate_input_tokens(task.instructions, images),
+            approx_input_tokens=estimate_input_tokens(task.instructions, bilder),
         )
 
         try:

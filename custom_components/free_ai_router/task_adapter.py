@@ -3,7 +3,7 @@
 Zwei Richtungen:
 
 * hinein — HA-Selector-Schema wird JSON Schema, ``ai_task``-Attachments werden
-  Bildanhaenge,
+  versandfertige Bildanhaenge,
 * hinaus — die Anbieterantwort wird das, was ``ai_task.generate_data``
   zurueckgeben soll: strukturierte Daten, wenn ein Schema verlangt war, sonst
   Text.
@@ -24,13 +24,9 @@ from homeassistant.helpers import llm
 from voluptuous_openapi import convert
 
 from .adapters import ChatResponse, ImageAttachment
+from .imaging import PreparedImage, estimate_text_tokens, prepare
 
 _LOGGER = logging.getLogger(__name__)
-
-#: Groesse, ab der ein Anhang verdaechtig ist. Ein skalierter Kamerasnapshot
-#: liegt bei 50-300 KB; alles daruber deutet auf ein unskaliertes Vollbild und
-#: kostet unnoetig Kontingent.
-LARGE_ATTACHMENT_BYTES = 4 * 1024 * 1024
 
 _IMAGE_MIME_PREFIXES = ("image/",)
 
@@ -67,18 +63,21 @@ def structure_to_json_schema(
 
 async def attachments_to_images(
     hass: HomeAssistant, attachments: list[Any] | None
-) -> tuple[ImageAttachment, ...]:
-    """``ai_task``-Anhaenge einlesen.
+) -> tuple[PreparedImage, ...]:
+    """``ai_task``-Anhaenge einlesen und auf Versandgroesse bringen.
 
     HA legt den Anhang als Datei ab und reicht Pfad und MIME-Typ herein. Nur
     Bilder werden weitergegeben — fuer alles andere gibt es in Phase 1 keinen
     Weg zum Anbieter, und stillschweigend wegzulassen waere schlimmer als eine
     klare Fehlermeldung.
+
+    Lesen und Skalieren laufen zusammen im Executor: beides ist blockierend,
+    und ein 1280x720-Bild zu verkleinern dauert laenger als es zu lesen.
     """
     if not attachments:
         return ()
 
-    images: list[ImageAttachment] = []
+    bilder: list[PreparedImage] = []
     for attachment in attachments:
         mime_type = str(getattr(attachment, "mime_type", "") or "")
         path = getattr(attachment, "path", None)
@@ -90,23 +89,28 @@ async def attachments_to_images(
         if path is None:
             raise HomeAssistantError("Anhang ohne Datei erhalten")
 
-        data = await hass.async_add_executor_job(_read_file, Path(path))
-        if len(data) > LARGE_ATTACHMENT_BYTES:
-            _LOGGER.warning(
-                "Anhang ist %.1f MB gross. Kamerabilder vor dem Versand skalieren "
-                "spart Kontingent und Zeit.",
-                len(data) / 1024 / 1024,
-            )
-        images.append(ImageAttachment(mime_type=mime_type, data=data))
+        bild = await hass.async_add_executor_job(
+            _lesen_und_vorbereiten, Path(path), mime_type
+        )
+        _LOGGER.debug("Anhang %s: %s", path, bild.describe())
+        bilder.append(bild)
 
-    return tuple(images)
+    return tuple(bilder)
 
 
-def _read_file(path: Path) -> bytes:
+def _lesen_und_vorbereiten(path: Path, mime_type: str) -> PreparedImage:
     try:
-        return path.read_bytes()
+        data = path.read_bytes()
     except OSError as err:
         raise HomeAssistantError(f"Anhang nicht lesbar: {err}") from err
+    return prepare(data, mime_type)
+
+
+def to_attachments(bilder: tuple[PreparedImage, ...]) -> tuple[ImageAttachment, ...]:
+    """Versandfertige Bilder ins Adapterformat."""
+    return tuple(
+        ImageAttachment(mime_type=bild.mime_type, data=bild.data) for bild in bilder
+    )
 
 
 def normalize_result(response: ChatResponse, *, has_structure: bool) -> Any:
@@ -123,16 +127,13 @@ def normalize_result(response: ChatResponse, *, has_structure: bool) -> Any:
     )
 
 
-def estimate_input_tokens(instructions: str, images: tuple[ImageAttachment, ...]) -> int:
-    """Grobe Schaetzung fuer den Kontextfilter des Routers.
+def estimate_input_tokens(instructions: str, bilder: tuple[PreparedImage, ...]) -> int:
+    """Schaetzung fuer Kontextfilter und Token-Vorbuchung des Ledgers.
 
-    Vier Zeichen je Token ist die uebliche Faustregel; ein Bild schlaegt mit
-    258 Token je 768x768-Kachel zu Buche. Die Schaetzung muss nur gut genug
-    sein, um ein zu kleines Kontextfenster zu erkennen.
+    Die Bildkosten kommen jetzt aus den tatsaechlichen Abmessungen statt aus
+    der Dateigroesse — nach dem Skalieren ist das eine Kachel je Bild, und der
+    Ledger bremst damit an der richtigen Stelle.
     """
-    text_tokens = max(1, len(instructions) // 4)
-    image_tokens = 0
-    for image in images:
-        tiles = max(1, len(image.data) // (200 * 1024))
-        image_tokens += 258 * min(tiles, 16)
-    return text_tokens + image_tokens
+    return estimate_text_tokens(instructions) + sum(
+        bild.estimated_tokens for bild in bilder
+    )

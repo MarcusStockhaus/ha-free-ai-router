@@ -60,15 +60,36 @@ danach noch mit 182 Sekunden Restlaufzeit in
 - Sicherung `.storage/core.config_entries.vor-ausfalltest` löschen, falls der
   Ausfalltest gelaufen ist.
 
-## 3. Danach: Bildskalierung nachziehen
+## 3. ~~Bildskalierung~~ — gemessen, Annahme widerlegt (11.09.2026)
 
-Im Konzept als Phase-2-Blueprint eingeordnet — durch die Messung ist es aber
-ein Phase-1-Thema geworden: Gemma hat **16.000 Token/Minute**. Ein unskaliertes
-1080p-Kamerabild frisst das Minutenfenster allein auf. HA bringt Pillow mit;
-die Skalierung auf 768 px gehört vor den Versand in `task_adapter.py`.
+Das Konzept sagt, Bilder vor dem Versand auf 768 Pixel zu skalieren spare
+Kontingent. **Das stimmt nicht.** Gemessen mit demselben Motiv gegen
+`gemini-3.5-flash-lite`:
 
-`estimate_input_tokens()` schätzt aktuell aus der Dateigröße — nach der
-Skalierung wird die Schätzung genauer und die Vorbuchung im Ledger schärfer.
+| Kante | Groesse | KB | Prompt-Token |
+|---:|---|---:|---:|
+| 256 | 256x144 | 9 | 1110 |
+| 768 | 768x432 | 67 | 1110 |
+| 1280 | 1280x720 | 116 | 1110 |
+| 2048 | 2048x1152 | 290 | 1110 |
+| 4096 | 4096x2304 | 749 | 1110 |
+
+Ueber 30-fache Pixelzahl und 80-fache Dateigroesse derselbe Preis; Google
+normalisiert das Bild vor der Abrechnung. Groqs `qwen3.8-27b` verhaelt sich
+genauso (792 Token, unabhaengig von der Groesse).
+
+Zwei Folgerungen, beide in `imaging.py` umgesetzt:
+
+1. Verkleinert wird nur noch, was **ueber 1,5 MB** liegt, und dann auf 2048 —
+   das spart Uploadzeit, sonst nichts. Ein Kamerabild mit 80 KB bleibt
+   unangetastet und behaelt seine Aufloesung.
+2. **Ein Bild kostet rund 1.100 Token, nicht 258.** Die Kachelrechnung des
+   Konzepts unterschaetzte um das Vierfache. Der Ledger bucht jetzt den
+   gemessenen Wert vor; bei Groqs 8.000 Token/Minute ist das der Unterschied
+   zwischen gedachten 30 und tatsaechlichen 10 Analysen pro Minute.
+
+Live gegengeprueft: eine Kameraanalyse verbraucht 1172 Token, die Vorbuchung
+liegt bei rund 1130.
 
 ## 4. ~~Nachmessen~~ — erledigt am 10.09.2026
 

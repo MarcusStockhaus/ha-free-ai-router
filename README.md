@@ -162,6 +162,24 @@ Googles kostenlose Stufe setzt um Mitternacht Pacific zurück.
 
 ---
 
+## Bilder werden nicht verkleinert — und warum
+
+Die naheliegende Sparmassnahme funktioniert nicht. Dasselbe Motiv kostet bei
+`gemini-3.5-flash-lite` **1110 Prompt-Token, ob 256x144 oder 4096x2304** —
+30-fache Pixelzahl, identischer Preis. Groq verhaelt sich genauso. Die Anbieter
+normalisieren das Bild vor der Abrechnung.
+
+Verkleinert wird deshalb nur, was ueber 1,5 MB liegt (ein Handyfoto, kein
+Kamerabild), und dann auf 2048 Pixel — das spart Uploadzeit, sonst nichts.
+Kamerabilder behalten ihre volle Aufloesung.
+
+Was dabei herauskam und wichtiger ist: **ein Bild kostet rund 1.100 Token.**
+Nicht 258, wie die Kachelrechnung nahelegt. Der Ledger bucht den gemessenen
+Wert vor dem Absenden vor — sonst rennt er bei engen Tokenfenstern in den 429,
+statt vorher zu bremsen.
+
+---
+
 ## Anbieterlage, am 09.09.2026 gemessen
 
 Alle Zahlen aus dem eigenen Konto bzw. den Antwortheadern, nicht aus
