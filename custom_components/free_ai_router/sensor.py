@@ -105,11 +105,11 @@ async def async_setup_entry(
     # Der Anbietersensor gehoert zu seiner Zeile auf der Integrationsseite,
     # nicht zur Integration als Ganzes. Dann steht der Verbrauch dort, wo auch
     # der Schluessel steht — und verschwindet mit, wenn der Anbieter geht.
-    namen = {channel.provider.id: channel.provider.name for channel in runtime.channels}
-    for provider_id in sorted(namen):
+    anbieter = {channel.provider.id: channel.provider for channel in runtime.channels}
+    for provider_id in sorted(anbieter):
         subentry = subentry_of(entry, provider_id)
         async_add_entities(
-            [RouterAnbieterSensor(entry, provider_id, namen[provider_id])],
+            [RouterAnbieterSensor(entry, anbieter[provider_id])],
             config_subentry_id=subentry.subentry_id if subentry else None,
         )
 
@@ -156,14 +156,14 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
     _attr_native_unit_of_measurement = "Anfragen"
     _attr_icon = "mdi:api"
 
-    def __init__(
-        self, entry: FreeAIRouterConfigEntry, provider_id: str, anzeigename: str
-    ) -> None:
+    def __init__(self, entry: FreeAIRouterConfigEntry, provider: Any) -> None:
         RouterEntity.__init__(self, entry)
-        self._provider_id = provider_id
-        self._attr_unique_id = f"{entry.entry_id}_{provider_id}_anfragen"
+        self._provider_id = provider.id
+        self._attr_unique_id = f"{entry.entry_id}_{provider.id}_anfragen"
+        # Der Anbietername steht schon am Geraet. Ihn hier zu wiederholen
+        # ergaebe "Google AI Studio Google AI Studio Anfragen heute" — Home
+        # Assistant setzt den Geraetenamen selbst davor.
         self._attr_translation_key = "anbieter_anfragen"
-        self._attr_translation_placeholders = {"anbieter": provider_id}
         # Eigenes Geraet je Anbieter. Ein Geraet gehoert zu genau einem
         # Subentry — haengt man die Anbietersensoren an das gemeinsame Geraet
         # der Integration, schiebt Home Assistant es bei jedem Hinzufuegen in
@@ -171,21 +171,19 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
         # das treffendere Geraet: er hat einen Schluessel, Kontingente und
         # verschwindet als Ganzes.
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{provider_id}")},
-            name=anzeigename,
+            identifiers={(DOMAIN, f"{entry.entry_id}_{provider.id}")},
+            name=provider.name,
             manufacturer=MANUFACTURER,
+            model=f"{len(provider.models)} Modelle",
             entry_type=DeviceEntryType.SERVICE,
             via_device=(DOMAIN, entry.entry_id),
+            # Der Deep-Link auf die Key-Seite, derselbe wie im Assistenten.
+            # Dort fuehrt der Weg hin, wenn ein Schluessel erneuert gehoert.
+            configuration_url=provider.onboarding.signup_url,
         )
 
     def _kanaele(self) -> list[Any]:
         return [c for c in self.runtime.channels if c.provider.id == self._provider_id]
-
-    @property
-    def name(self) -> str:
-        kanaele = self._kanaele()
-        anbieter = kanaele[0].provider.name if kanaele else self._provider_id
-        return f"{anbieter} Anfragen heute"
 
     @property
     def native_value(self) -> int:

@@ -74,7 +74,7 @@
         "name": "Verworfen heute"
       },
       "anbieter_anfragen": {
-        "name": "{anbieter} Anfragen heute"
+        "name": "Requests today"
       }
     }
   },
