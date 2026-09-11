@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-from .client import RouterClient
 from .const import (
     CONF_API_KEY,
     CONF_MODELS,
@@ -45,6 +44,8 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.storage import Store
+
+    from .client import RouterClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,6 +147,12 @@ async def async_setup_entry(
     from homeassistant.exceptions import ConfigEntryNotReady
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
     from homeassistant.helpers.storage import Store
+
+    # Erst hier, nicht auf Modulebene: ``client`` braucht aiohttp. Sonst
+    # laesst sich kein einziges Modul dieses Pakets ohne HTTP-Bibliothek
+    # importieren — und die Registry-Pruefung fuer Contributor soll mit
+    # PyYAML und jsonschema auskommen.
+    from .client import RouterClient
 
     try:
         registry = await hass.async_add_executor_job(load_registry)
