@@ -1,0 +1,86 @@
+name: CI
+
+# Der Schemacheck ist der eigentliche Zweck: ein fehlerhafter Anbieter-PR soll
+# sich selbst erklaeren, statt auf eine Antwort zu warten. Das Projekt hat
+# keine Supportzusage — dann muss die CI die Arbeit machen.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  registry:
+    name: Anbieterdateien
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install PyYAML jsonschema
+      - name: Registry pruefen
+        run: python tools/validate_registry.py
+
+  tests:
+    name: Tests und Linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements-dev.txt ruff
+      - name: Linter
+        run: ruff check custom_components tools tests
+      - name: Tests
+        run: pytest -q
+
+  manifest:
+    name: Manifest und Uebersetzungen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: JSON-Dateien pruefen
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          wurzel = Path("custom_components/free_ai_router")
+          fehler = []
+
+          for pfad in sorted(wurzel.rglob("*.json")):
+              try:
+                  json.loads(pfad.read_text(encoding="utf-8"))
+              except json.JSONDecodeError as err:
+                  fehler.append(f"{pfad}: {err}")
+
+          manifest = json.loads((wurzel / "manifest.json").read_text(encoding="utf-8"))
+          for feld in ("domain", "name", "version", "documentation", "codeowners"):
+              if feld not in manifest:
+                  fehler.append(f"manifest.json: Pflichtfeld {feld!r} fehlt")
+
+          # Jede Uebersetzung muss dieselben Schluessel fuehren wie strings.json,
+          # sonst faellt im Frontend still ein Text weg.
+          def schluessel(d, praefix=""):
+              for k, v in d.items():
+                  yield f"{praefix}{k}"
+                  if isinstance(v, dict):
+                      yield from schluessel(v, f"{praefix}{k}.")
+
+          quelle = set(schluessel(json.loads((wurzel / "strings.json").read_text(encoding="utf-8"))))
+          for pfad in sorted((wurzel / "translations").glob("*.json")):
+              ziel = set(schluessel(json.loads(pfad.read_text(encoding="utf-8"))))
+              for fehlend in sorted(quelle - ziel):
+                  fehler.append(f"{pfad.name}: {fehlend} fehlt")
+
+          if fehler:
+              print("\n".join(fehler))
+              sys.exit(1)
+          print("alles in Ordnung")
+          PY

@@ -178,11 +178,25 @@ ungedeckelten Kanäle zuerst drankommen.
 - [x] **Blueprint Türklingel** — erkennt `event`- und `binary_sensor`-Klingeln,
       kurze Sperrzeit gegen doppeltes Drücken. Die Auslöse-Bedingung ist über
       die Template-API gegen sieben Fälle geprüft, ohne etwas in HA anzulegen.
-- [ ] Fehlerbehandlung für fremde Setups (Reparatur-Hinweise über die
-      `issue_registry`: Profil ohne Abdeckung, Schlüssel abgelehnt)
-- [ ] Öffentliche README mit Grundsatz und Erwartungsrahmen
-- [ ] `CONTRIBUTING.md` mit genau einem Beispiel-Diff
-- [ ] CI-Schemacheck (`tools/validate_registry.py` ist dafür schon fertig)
+- [x] **Reparatur-Hinweise** über die `issue_registry` — kein Anbieter,
+      Schlüssel abgelehnt (mit Deep-Link), Profil ohne Abdeckung. Setzen und
+      Löschen live durchgespielt.
+- [x] **Öffentliche README** mit Erwartungsrahmen in der Kopfzeile, dem
+      Grundsatz und den gemessenen Anbieterzahlen. Die Arbeitsfassung ist
+      nach `ENTWICKLUNG.md` gewandert.
+- [x] **`CONTRIBUTING.md`** mit dem vollständigen Diff für einen neuen
+      Anbieter (Cerebras, so wie er wirklich entstanden ist).
+- [x] **CI** — Schemacheck, Linter, Tests, Manifest- und
+      Übersetzungsprüfung. Alle Schritte lokal nachgefahren.
+
+**Damit ist Phase 2 inhaltlich durch.** Was zur Veröffentlichung noch fehlt,
+ist keine Programmierarbeit mehr:
+
+- [ ] Das Repo öffentlich machen und `documentation`/`issue_tracker` im
+      Manifest sowie die `source_url` der Blueprints auf die echte Adresse
+      setzen (stehen derzeit auf einem Platzhalter)
+- [ ] Jemanden ohne Vorwissen die Türklingel-Analyse einrichten lassen —
+      das ist das Abnahmekriterium des Konzepts für Phase 2
 
 Nicht vorziehen: der Feed-Dienst (Phase 3) ist der technisch reizvollste Teil
 und der einzige, den du für dich nicht brauchst.
