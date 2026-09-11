@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from .client import RouterClient
@@ -52,6 +53,10 @@ PLATFORMS: list[str] = ["ai_task", "conversation", "sensor"]
 
 #: Ledger nicht bei jeder Anfrage auf die SD-Karte schreiben.
 LEDGER_SAVE_DELAY_S = 30
+
+#: Takt, in dem die Reparatur-Hinweise neu erhoben werden. Die Befunde aendern
+#: sich nur, wenn Anfragen laufen; oefter nachzusehen brauchte niemand.
+ISSUE_CHECK_INTERVAL = timedelta(minutes=10)
 
 
 @dataclass
@@ -176,7 +181,22 @@ async def async_setup_entry(
         entry, [Platform(name) for name in PLATFORMS]
     )
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    entry.async_on_unload(_start_issue_check(hass, runtime))
     return True
+
+
+def _start_issue_check(hass: HomeAssistant, runtime: RouterRuntime):
+    """Reparatur-Hinweise sofort und dann im Takt erheben."""
+    from homeassistant.helpers.event import async_track_time_interval
+
+    from .issues import async_pruefen
+
+    async_pruefen(hass, runtime)
+
+    def _tick(_now) -> None:
+        async_pruefen(hass, runtime)
+
+    return async_track_time_interval(hass, _tick, ISSUE_CHECK_INTERVAL)
 
 
 def _log_coverage(runtime: RouterRuntime) -> None:

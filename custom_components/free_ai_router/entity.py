@@ -52,3 +52,11 @@ class RouterEntity(Entity):
     def _note_channel(self, key: str, used_reserve: bool) -> None:
         self._last_channel = key
         self._last_reserve_used = used_reserve
+        # Reparatur-Hinweise gleich mitnehmen. Der Zehn-Minuten-Takt allein
+        # wuerde einen abgelehnten Schluessel bis zu zehn Minuten verschweigen
+        # — und das ist genau die Zeit, in der still ueber die Reserve
+        # weitergelaufen wird. Die Pruefung ist ein paar Wortvergleiche, das
+        # kostet neben einem HTTP-Aufruf an einen KI-Anbieter nichts.
+        from .issues import async_pruefen
+
+        async_pruefen(self.hass, self.runtime)

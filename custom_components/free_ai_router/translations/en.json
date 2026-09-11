@@ -82,5 +82,19 @@
     "no_channel": {
       "message": "Kein Anbieter konnte die Anfrage übernehmen: {detail}"
     }
+  },
+  "issues": {
+    "kein_anbieter": {
+      "title": "Kein KI-Anbieter eingerichtet",
+      "description": "Free AI Router hat keinen einzigen Anbieter, über den er Anfragen schicken könnte. Die Entities existieren, aber jeder Aufruf scheitert.\n\nUnter Einstellungen → Geräte & Dienste → Free AI Router → Konfigurieren lässt sich ein Anbieter hinzufügen."
+    },
+    "schluessel_abgelehnt": {
+      "title": "{anbieter} lehnt den Schlüssel ab",
+      "description": "{anbieter} hat den hinterlegten API-Schlüssel zurückgewiesen. Anfragen laufen zurzeit über die Reserve weiter — das fällt im Betrieb nicht auf, bis auch die Reserve wegbricht.\n\nEin neuer Schlüssel lässt sich hier erzeugen: {signup_url}\n\nDanach unter Einstellungen → Geräte & Dienste → Free AI Router → Konfigurieren eintragen. Der Hinweis verschwindet von selbst, sobald wieder ein Aufruf durchgeht."
+    },
+    "profil_ohne_abdeckung": {
+      "title": "Profil „{profil}“ hat keinen Kanal",
+      "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Fähigkeitserkennung beim Einrichten, und was sie misst, gewinnt über die Registry."
+    }
   }
 }

@@ -81,6 +81,14 @@ class BucketState:
     """Vom Anbieter gemeldeter Rest — schlaegt die eigene Zaehlung."""
     remaining_at: float = 0.0
     consecutive_failures: int = 0
+    auth_failed: bool = False
+    """Der Anbieter hat den Schluessel abgelehnt.
+
+    Anders als ``blocked_until`` laeuft das nicht von selbst ab: ein
+    abgelehnter Schluessel wird nicht nach fuenf Minuten wieder gut. Geloescht
+    wird das Kennzeichen erst durch einen erfolgreichen Aufruf — daran haengt
+    der Reparatur-Hinweis.
+    """
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -95,6 +103,7 @@ class BucketState:
             "remaining_requests": self.remaining_requests,
             "remaining_at": self.remaining_at,
             "consecutive_failures": self.consecutive_failures,
+            "auth_failed": self.auth_failed,
         }
 
     @classmethod
@@ -357,6 +366,10 @@ class Ledger:
         state.consecutive_failures = 0
         state.blocked_until = 0.0
         state.block_reason = ""
+        # Ein erfolgreicher Aufruf beweist den Schluessel — und der gilt fuer
+        # *alle* Modelle des Anbieters. Nur den benutzten Topf freizugeben
+        # liesse den Reparatur-Hinweis stehen, obwohl er erledigt ist.
+        self._clear_auth_failure(provider)
         delta = tokens - estimated_tokens
         if delta:
             self._roll(state, provider.daily_reset_timezone, now)
@@ -400,6 +413,7 @@ class Ledger:
         model: Model,
         *,
         fatal: bool = False,
+        auth: bool = False,
         reason: str = "",
         now: float | None = None,
     ) -> None:
@@ -411,6 +425,8 @@ class Ledger:
         now = time.time() if now is None else now
         state = self.bucket(bucket_key(provider, model))
         state.consecutive_failures += 1
+        if auth:
+            state.auth_failed = True
         if fatal or state.consecutive_failures >= 3:
             state.blocked_until = max(state.blocked_until, now + DEAD_COOLDOWN_S)
             state.block_reason = reason or "wiederholt fehlgeschlagen"
@@ -480,6 +496,26 @@ class Ledger:
         self._dirty = False
 
     # ------------------------------------------------------------- Auskunft
+    def _clear_auth_failure(self, provider: Provider) -> None:
+        """Kennzeichen 'Schluessel abgelehnt' bei allen Toepfen des Anbieters."""
+        for key, state in self.buckets.items():
+            if key == provider.id or key.startswith(f"{provider.id}/"):
+                state.auth_failed = False
+
+    def key_rejected(self, provider: Provider) -> bool:
+        """Hat der Anbieter den Schluessel abgelehnt?
+
+        Wahr, sobald *irgendein* Kanal dieses Anbieters abgelehnt wurde und
+        seither keiner mehr erfolgreich war. Ein Schluessel gilt fuer alle
+        Modelle eines Anbieters; ein einzelner reicht als Befund.
+        """
+        eigene = [
+            state
+            for key, state in self.buckets.items()
+            if key == provider.id or key.startswith(f"{provider.id}/")
+        ]
+        return bool(eigene) and any(state.auth_failed for state in eigene)
+
     def usage(self, provider: Provider, model: Model) -> dict[str, Any]:
         """Zaehlerstand fuer Diagnose und (Phase 2) Verbrauchssensoren."""
         state = self.bucket(bucket_key(provider, model))

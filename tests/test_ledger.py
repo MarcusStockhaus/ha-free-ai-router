@@ -424,3 +424,82 @@ def test_tageszaehler_faellt_nie_unter_null() -> None:
     ledger = Ledger()
     ledger.record_success(provider, model, tokens=10, estimated_tokens=9999)
     assert ledger.stats.tokens == 0
+
+
+# --------------------------------------------------------------------------
+# Abgelehnte Schluessel
+# --------------------------------------------------------------------------
+
+
+def test_abgelehnter_schluessel_laeuft_nicht_von_selbst_ab() -> None:
+    """Die 429-Sperre verfaellt nach fuenf Minuten — ein abgelehnter
+    Schluessel wird dadurch nicht wieder gueltig. Daran haengt der
+    Reparatur-Hinweis, der sonst im Takt auf- und zuginge."""
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 1_000_000.0
+
+    assert not ledger.key_rejected(provider)
+    ledger.record_failure(provider, model, fatal=True, auth=True, now=now)
+    assert ledger.key_rejected(provider)
+
+    # Sperre abgelaufen, Befund bleibt.
+    assert ledger.availability(provider, model, now=now + 1000).ok
+    assert ledger.key_rejected(provider)
+
+
+def test_erfolgreicher_aufruf_loescht_den_befund() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    ledger.record_failure(provider, model, fatal=True, auth=True)
+    ledger.record_success(provider, model)
+    assert not ledger.key_rejected(provider)
+
+
+def test_ein_kanal_genuegt_als_befund() -> None:
+    """Ein Schluessel gilt fuer alle Modelle eines Anbieters."""
+    provider, model_a, model_b = build()
+    ledger = Ledger()
+    ledger.record_failure(provider, model_a, fatal=True, auth=True)
+    assert ledger.key_rejected(provider)
+
+
+def test_gewoehnlicher_fehlschlag_ist_kein_schluesselproblem() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    for _ in range(5):
+        ledger.record_failure(provider, model, reason="Netzhaenger")
+    assert not ledger.key_rejected(provider)
+
+
+async def test_befund_ueberlebt_den_neustart() -> None:
+    provider, model, _ = build()
+    gespeichert: dict = {}
+
+    async def save(data):
+        gespeichert.clear()
+        gespeichert.update(data)
+
+    ledger = Ledger(save=save)
+    ledger.record_failure(provider, model, fatal=True, auth=True)
+    await ledger.async_save()
+
+    wieder = Ledger()
+    wieder.restore(gespeichert)
+    assert wieder.key_rejected(provider)
+
+
+def test_ein_erfolg_entlastet_den_ganzen_anbieter() -> None:
+    """Ein Schluessel gilt fuer alle Modelle. Nur den benutzten Topf
+    freizugeben liesse den Reparatur-Hinweis stehen, obwohl er erledigt ist —
+    live am 11.09.2026 genau so aufgetreten."""
+    provider, model_a, model_b = build()
+    ledger = Ledger()
+
+    ledger.record_failure(provider, model_a, fatal=True, auth=True)
+    ledger.record_failure(provider, model_b, fatal=True, auth=True)
+    assert ledger.key_rejected(provider)
+
+    # Ein einziges Modell antwortet wieder.
+    ledger.record_success(provider, model_a)
+    assert not ledger.key_rejected(provider), "der andere Topf blieb als abgelehnt stehen"

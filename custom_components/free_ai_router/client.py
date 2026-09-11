@@ -237,7 +237,7 @@ class RouterClient:
             return
         if err.is_auth:
             self.ledger.record_failure(
-                provider, model, fatal=True, reason="Schluessel abgelehnt"
+                provider, model, fatal=True, auth=True, reason="Schluessel abgelehnt"
             )
             attempts.append(f"{candidate.key}: Schluessel abgelehnt")
             _LOGGER.warning(
