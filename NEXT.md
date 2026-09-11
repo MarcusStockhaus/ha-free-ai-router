@@ -34,14 +34,23 @@ Diese Stelle ist lokal nicht testbar — sie braucht HAs Selector-Klassen.
 - [x] Ein Anbieter über den Config Flow einrichten, ohne nachzuschlagen
 - [x] Zweiten Anbieter hinzufügen, Abschlussübersicht korrekt
 - [x] `ai_task.generate_data` mit echtem Kamerabild-Anhang
-- [ ] **Offen:** Key von Google ungültig machen → Wechsel auf Groq im Log
+- [x] Key von Google ungültig machen → Wechsel auf Groq, Meldung im Log
 
-Der letzte Punkt braucht einen Eingriff in `.storage/core.config_entries`
-(Key verstümmeln, Neustart, testen, Sicherung zurückspielen). Offline ist der
-Fall abgedeckt (`tests/test_client.py`), live noch nicht.
+**Alle sieben Akzeptanzkriterien aus dem Brief sind erfüllt.**
 
-Die anderen drei Kriterien sind offline abgedeckt (`tests/test_router.py`,
-`tests/test_client.py`).
+Der Ausfalltest hat einen zweiten echten Fehler gefunden: Google meldet einen
+ungültigen Schlüssel mit **HTTP 400 und `API_KEY_INVALID`**, nicht mit 401.
+Die Auth-Erkennung griff deshalb nicht, und ein toter Google-Kanal wurde bei
+jeder Anfrage neu angeklopft. Nach dem Fix:
+
+| | Dauer | Reserve gegriffen |
+|---|---:|---|
+| Lauf 1 | 1,6 s | ja — Google abgelehnt, Wechsel auf Groq |
+| Lauf 2 | 0,4 s | nein — Google im Ledger gesperrt, direkt zu Groq |
+
+Nebenbei bestätigt: der Ledger überlebt den HA-Neustart. Die Sperren standen
+danach noch mit 182 Sekunden Restlaufzeit in
+`.storage/free_ai_router.ledger`.
 
 ## 2b. Aufräumen, wenn Phase 1 abgenommen ist
 

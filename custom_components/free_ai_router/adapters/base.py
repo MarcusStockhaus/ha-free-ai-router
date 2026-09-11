@@ -18,6 +18,26 @@ import aiohttp
 
 from ..ratelimit import RateLimitInfo, parse_headers
 
+#: Textmarken, an denen ein abgelehnter Schluessel zu erkennen ist, auch wenn
+#: der Statuscode etwas anderes behauptet. Google antwortet auf einen
+#: ungueltigen Key mit HTTP 400 und API_KEY_INVALID — ohne diese Liste gilt das
+#: als voruebergehender Fehler und der tote Kanal wird bei jeder Anfrage neu
+#: angeklopft, statt sofort auszuscheiden.
+_KEY_REJECTED_MARKERS = (
+    "api_key_invalid",
+    "api key not valid",
+    "invalid api key",
+    "invalid_api_key",
+    "invalid authentication",
+    "incorrect api key",
+)
+
+
+def looks_like_rejected_key(body: str) -> bool:
+    """Nennt dieser Fehlertext einen abgelehnten Schluessel?"""
+    lowered = (body or "").lower()
+    return any(marker in lowered for marker in _KEY_REJECTED_MARKERS)
+
 
 class ProviderError(Exception):
     """Ein Aufruf ist fehlgeschlagen.
@@ -250,10 +270,11 @@ class ProviderAdapter(abc.ABC):
                 rate_limit=info,
                 body=body,
             )
-        if status in (401, 402, 403):
+        if status in (401, 402, 403) or (status == 400 and looks_like_rejected_key(body)):
             # 402 heisst bei Cerebras und anderen: Key gueltig, aber kein
-            # aktiver Tarif. Wie ein abgelehnter Schluessel zu behandeln —
-            # Wiederholen hilft nie, der Kanal muss sofort ausfallen.
+            # aktiver Tarif. Google meldet einen ungueltigen Key mit 400.
+            # Beides wie einen abgelehnten Schluessel behandeln — Wiederholen
+            # hilft nie, der Kanal muss sofort ausfallen.
             raise ProviderError(
                 f"Schluessel abgelehnt — {snippet}",
                 status=status,

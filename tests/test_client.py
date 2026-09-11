@@ -34,6 +34,7 @@ class FakeProvider:
         self.reject_json_schema = False
         self.text = "bereit"
         self.tool_call: dict[str, Any] | None = None
+        self.fehlertext = ""
 
     async def handle(self, request: web.Request) -> web.Response:
         payload = await request.json()
@@ -41,7 +42,7 @@ class FakeProvider:
 
         if self.status >= 400:
             return web.json_response(
-                {"error": {"message": f"{self.name} faellt aus"}},
+                {"error": {"message": self.fehlertext or f"{self.name} faellt aus"}},
                 status=self.status,
                 headers=self.headers,
             )
@@ -364,3 +365,35 @@ async def test_402_gilt_als_abgelehnter_schluessel(welt) -> None:
     gesperrt = welt["ledger"].availability(welt["provider_a"], welt["model_a"])
     assert not gesperrt.ok
     assert "Schluessel" in gesperrt.reason
+
+
+async def test_googles_400_bei_ungueltigem_key_gilt_als_abgelehnt(welt) -> None:
+    """Google meldet einen ungueltigen Schluessel mit HTTP 400 und
+    API_KEY_INVALID, nicht mit 401. Ohne Sondererkennung gilt das als
+    voruebergehender Fehler und der tote Kanal wird bei jeder Anfrage neu
+    angeklopft — live am 11.09.2026 aufgefallen."""
+    welt["erst"].status = 400
+    welt["erst"].fehlertext = (
+        "API key not valid. Please pass a valid API key. reason: API_KEY_INVALID"
+    )
+
+    execution = await welt["client"].run(
+        Requirements.for_profile("schnell"), welt["channels"], instructions="Hallo"
+    )
+
+    assert execution.candidate.key == "reserve/modell-b"
+    gesperrt = welt["ledger"].availability(welt["provider_a"], welt["model_a"])
+    assert not gesperrt.ok, "ein abgelehnter Schluessel muss sofort ausscheiden"
+    assert "Schluessel" in gesperrt.reason
+
+
+async def test_gewoehnlicher_400_bleibt_ein_normaler_fehlschlag(welt) -> None:
+    """Nicht jeder 400 ist ein toter Schluessel — ein einzelner darf den Kanal
+    nicht abschalten."""
+    welt["erst"].status = 400
+    welt["erst"].fehlertext = "unsupported parameter foo"
+
+    await welt["client"].run(
+        Requirements.for_profile("schnell"), welt["channels"], instructions="Hallo"
+    )
+    assert welt["ledger"].availability(welt["provider_a"], welt["model_a"]).ok

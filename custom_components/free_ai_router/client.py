@@ -36,6 +36,16 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_QUEUE_WAIT_S = 20.0
 
 
+def _kurz(err: Exception, laenge: int = 160) -> str:
+    """Fehlertext auf Logzeilen-Laenge bringen.
+
+    Anbieter antworten mit mehrzeiligem JSON; ungekuerzt macht eine einzige
+    Reserve-Meldung das Log unlesbar.
+    """
+    text = " ".join(str(err).split())
+    return text if len(text) <= laenge else text[: laenge - 1] + "…"
+
+
 class NoChannelAvailable(RuntimeError):
     """Kein Kanal konnte die Anfrage uebernehmen.
 
@@ -219,9 +229,11 @@ class RouterClient:
             )
             attempts.append(f"{candidate.key}: Schluessel abgelehnt")
             _LOGGER.warning(
-                "%s: Schluessel abgelehnt (%s), wechsle auf Reserve", candidate.key, err
+                "%s: Schluessel abgelehnt (%s), wechsle auf Reserve",
+                candidate.key,
+                _kurz(err),
             )
             return
-        self.ledger.record_failure(provider, model, reason=str(err))
-        attempts.append(f"{candidate.key}: {err}")
-        _LOGGER.warning("%s: %s, wechsle auf Reserve", candidate.key, err)
+        self.ledger.record_failure(provider, model, reason=_kurz(err))
+        attempts.append(f"{candidate.key}: {_kurz(err)}")
+        _LOGGER.warning("%s: %s, wechsle auf Reserve", candidate.key, _kurz(err))

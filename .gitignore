@@ -7,3 +7,6 @@ venv/
 .ruff_cache/
 probe-report-*.json
 befund.json
+
+# Claude-Code-Einstellungen dieser Maschine (HA-Zugriff, Token-Pfade)
+.claude/settings.local.json
