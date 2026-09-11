@@ -66,7 +66,12 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
         runtime = self.runtime
 
         images = await attachments_to_images(self.hass, task.attachments)
-        json_schema = structure_to_json_schema(task.structure)
+        json_schema = structure_to_json_schema(
+            task.structure,
+            custom_serializer=(
+                chat_log.llm_api.custom_serializer if chat_log.llm_api else None
+            ),
+        )
 
         requirements = Requirements.for_profile(
             self._profile,

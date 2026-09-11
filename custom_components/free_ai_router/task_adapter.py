@@ -20,6 +20,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import llm
 from voluptuous_openapi import convert
 
 from .adapters import ChatResponse, ImageAttachment
@@ -34,16 +35,28 @@ LARGE_ATTACHMENT_BYTES = 4 * 1024 * 1024
 _IMAGE_MIME_PREFIXES = ("image/",)
 
 
-def structure_to_json_schema(structure: vol.Schema | None) -> dict[str, Any] | None:
+def structure_to_json_schema(
+    structure: vol.Schema | None,
+    *,
+    custom_serializer: Any = None,
+) -> dict[str, Any] | None:
     """HA-Selector-Schema -> JSON Schema.
 
     ``voluptuous_openapi`` ist derselbe Weg, den HA-eigene KI-Integrationen
     gehen; damit verhaelt sich das Schema hier wie ueberall sonst in HA.
+
+    Der ``custom_serializer`` ist nicht optional in der Sache: ohne ihn stolpert
+    ``convert`` ueber die Selector-Objekte in ``structure`` und wirft
+    "cannot use 'BooleanSelector' as a dict key". HA bringt mit
+    ``llm.selector_serializer`` genau dafuer einen mit; liegt eine LLM-API vor,
+    hat deren eigener Serializer Vorrang.
     """
     if structure is None:
         return None
     try:
-        schema = convert(structure)
+        schema = convert(
+            structure, custom_serializer=custom_serializer or llm.selector_serializer
+        )
     except Exception as err:  # pragma: no cover - defensiv, Schema kommt von HA
         raise HomeAssistantError(f"Antwortschema nicht uebersetzbar: {err}") from err
     if not isinstance(schema, dict):

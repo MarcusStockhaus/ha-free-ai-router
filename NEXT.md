@@ -1,48 +1,56 @@
 # Wiedereinstieg
 
-Stand 09.09.2026. Phase 1 ist code-komplett, 110 Tests grün, drei Commits.
-Was fehlt, ist die Verifikation im Home-Assistant-Devcontainer — dort war bisher
-nichts lauffähig, weil HA in der Entwicklungsumgebung nicht installierbar war.
+Stand 11.09.2026. Phase 1 läuft in einem echten Home Assistant (2026.8.3).
+122 Tests grün.
 
 ---
 
-## 1. Zuerst: Devcontainer, sonst nichts
+## 1. ~~Devcontainer~~ — läuft produktiv, verifiziert
 
-Alles unter „HA-seitig" ist geschrieben und kompiliert, aber **nie ausgeführt**.
-Das ist die größte unverifizierte Fläche des Projekts, und jeder weitere Ausbau
-darauf wäre auf Sand gebaut.
+Gegen die Produktivinstallation gefahren (vom Autor ausdrücklich freigegeben,
+abweichend vom Brief). `\homeassistant.local\config\custom_componentsree_ai_router`,
+Steuerung über die REST- und WebSocket-API mit einem Long-Lived Token.
 
-```bash
-python -m pytest && python tools/validate_registry.py
-```
+Verifiziert und ohne einen einzigen Logeintrag von uns:
 
-Dann `custom_components/free_ai_router/` in `config/custom_components/` des
-Devcontainers verlinken, HA starten, Integration hinzufügen.
-
-**Konkrete Stellen, an denen es brechen wird** — dort zuerst hinsehen:
-
-| Datei | Risiko |
+| | |
 |---|---|
-| `config_flow.py` | `async_show_progress` + `progress_task`, Menü-Schritt `result`, `_get_reconfigure_entry()` |
-| `conversation.py` | `chat_log.async_provide_llm_data(...)`-Signatur, `llm.ToolInput`-Feldnamen, `chat_log.continue_conversation` |
-| `ai_task.py` | MRO von `FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity)`, `conversation.AssistantContent` |
-| `__init__.py` | `Platform("ai_task")` muss existieren, `single_config_entry` + Reconfigure |
-| `task_adapter.py` | Feldnamen des `ai_task`-Attachments (`mime_type`, `path`) |
+| Config Flow, Anbieterkarten, Key-Test | ✅ |
+| `async_show_progress` über 126 s Messung | ✅ |
+| Menü-Schritt, zweiter Anbieter, Abschlussübersicht | ✅ |
+| Entry anlegen, 4 Entities | ✅ |
+| `ai_task.generate_data`, Text | ✅ |
+| `ai_task.generate_data`, Kamerabild + Schema | ✅ |
+| Assist mit Werkzeugaufrufen | ✅ |
+| Entity-Attribute, Abdeckung, Ledger | ✅ |
 
-Diese fünf APIs habe ich einzeln gegen die HA-Quelle nachgeschlagen, aber nicht
-ausgeführt. Erwartungsgemäß sind ein bis drei Einzeiler zu korrigieren.
+**Ein echter Fehler gefunden und behoben:** `structure_to_json_schema` rief
+`voluptuous_openapi.convert()` ohne `custom_serializer` auf und scheiterte an
+`cannot use 'BooleanSelector' as a dict key`. Richtig ist
+`llm.selector_serializer`, bzw. der Serializer der LLM-API, wenn eine vorliegt.
+Diese Stelle ist lokal nicht testbar — sie braucht HAs Selector-Klassen.
 
-## 2. Die vier offenen Akzeptanzkriterien abhaken
+## 2. Akzeptanzkriterien
 
-- [ ] Ein Anbieter über den Config Flow einrichten, ohne in einer Anbieter-Doku
-      nachzuschlagen
-- [ ] Zweiten Anbieter hinzufügen, Abschlussübersicht prüfen
-- [ ] `ai_task.generate_data` mit echtem Kamerabild-Anhang
-- [ ] Key von Google ungültig machen → Anfrage geht über Groq durch, Wechsel
-      steht im Log (`Reserve gegriffen: …`)
+- [x] Ein Anbieter über den Config Flow einrichten, ohne nachzuschlagen
+- [x] Zweiten Anbieter hinzufügen, Abschlussübersicht korrekt
+- [x] `ai_task.generate_data` mit echtem Kamerabild-Anhang
+- [ ] **Offen:** Key von Google ungültig machen → Wechsel auf Groq im Log
+
+Der letzte Punkt braucht einen Eingriff in `.storage/core.config_entries`
+(Key verstümmeln, Neustart, testen, Sicherung zurückspielen). Offline ist der
+Fall abgedeckt (`tests/test_client.py`), live noch nicht.
 
 Die anderen drei Kriterien sind offline abgedeckt (`tests/test_router.py`,
 `tests/test_client.py`).
+
+## 2b. Aufräumen, wenn Phase 1 abgenommen ist
+
+- `configuration.yaml`: die Zeile `custom_components.free_ai_router: debug`
+  wieder entfernen. Sicherung liegt als `configuration.yaml.vor-free-ai-router`.
+- Long-Lived Token widerrufen (Profil → Sicherheit).
+- Sicherung `.storage/core.config_entries.vor-ausfalltest` löschen, falls der
+  Ausfalltest gelaufen ist.
 
 ## 3. Danach: Bildskalierung nachziehen
 
