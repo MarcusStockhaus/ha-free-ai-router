@@ -51,10 +51,19 @@ Bewusst **nicht über HACS**. Der Unterschied zwischen einem GitHub-Repo und
 einem HACS-Eintrag ist kein technischer, sondern ein Erwartungsanspruch. Die
 manuelle Installation filtert genau die Nutzer, die Betreuung erwarten.
 
-Den Ordner `custom_components/free_ai_router` nach `/config/custom_components/`
-kopieren, `blueprints/automation/free_ai_router` nach
-`/config/blueprints/automation/`. Home Assistant neu starten, dann
-**Einstellungen → Geräte & Dienste → Integration hinzufügen → Free AI Router**.
+Auf einem System mit Shell-Zugang (SSH-Add-on oder Terminal):
+
+```bash
+cd /tmp && git clone https://github.com/marcusstockhaus/ha-free-ai-router
+cp -r ha-free-ai-router/custom_components/free_ai_router /config/custom_components/
+cp -r ha-free-ai-router/blueprints/automation/free_ai_router /config/blueprints/automation/
+```
+
+Ohne Shell: das Repo als ZIP herunterladen und die beiden Ordner über das
+File-Editor- oder Samba-Add-on an dieselben Stellen legen.
+
+Danach Home Assistant neu starten, dann **Einstellungen → Geräte & Dienste →
+Integration hinzufügen → Free AI Router**.
 
 Der Assistent zeigt je Anbieter eine Karte: was er kann, was er mit den Daten
 macht, ob Zahlungsdaten verlangt werden — und einen Deep-Link direkt zur
