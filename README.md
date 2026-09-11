@@ -72,7 +72,29 @@ Testaufruf, danach die Fähigkeitsmessung. Die dauert ein bis zwei Minuten, weil
 sie je Modell mehrere echte Aufrufe macht. Am Ende steht, welches Profil von
 welchem Kanal bedient wird und wo eine Lücke bleibt.
 
-Weitere Anbieter später über das Dreipunktmenü der Integration → *Neu konfigurieren*. Einen separaten Optionen-Dialog gibt es nicht — es ist derselbe Assistent, nur mit den schon eingerichteten Anbietern im Gepäck.
+### Zugänge verwalten
+
+Dreipunktmenü der Integration → *Neu konfigurieren*. Einen separaten
+Optionen-Dialog gibt es nicht; es ist derselbe Assistent, der beim ersten Mal
+geführt hat — nur beginnt er jetzt mit einer Übersicht:
+
+```
+Eingerichtet:
+
+- **Google AI Studio** — Schlüssel …n63rA
+  5 von 6 Modellen erreichbar · zuletzt vermessen 11.09.2026 10:47
+- **Groq** — Schlüssel …ALgEQ
+  3 von 3 Modellen erreichbar · zuletzt vermessen 11.09.2026 10:47
+```
+
+Von dort: **Anbieter hinzufügen**, **Schlüssel ersetzen**, **Anbieter
+entfernen**.
+
+Der Schlüssel selbst wird nie angezeigt, nur seine letzten vier Zeichen —
+genug zum Wiedererkennen, zu wenig zum Benutzen. Zum Ersetzen braucht es
+ohnehin einen neuen; er wird sofort geprüft, und danach wird der Anbieter neu
+vermessen. Ein anderer Schlüssel kann ein anderes Konto sein, und was das
+Konto darf, ist damit offen.
 
 ---
 

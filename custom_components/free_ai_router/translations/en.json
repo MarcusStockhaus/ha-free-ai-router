@@ -23,19 +23,49 @@
         "description": "Gemessen, nicht abgeschrieben:\n\n{report}",
         "menu_options": {
           "add_another": "Weiteren Anbieter hinzufügen",
-          "summary": "Fertig, Übersicht anzeigen"
+          "summary": "Fertig, Übersicht anzeigen",
+          "verwalten": "Manage access"
         }
       },
       "summary": {
         "title": "Übersicht",
         "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht."
+      },
+      "verwalten": {
+        "title": "Manage access",
+        "description": "Configured:\n\n{zugaenge}\n\nNot configured yet: {offen}\n\nThe key itself is not shown — only its last four characters. To replace it you need a new one anyway.",
+        "menu_options": {
+          "hinzufuegen": "Add a provider",
+          "schluessel": "Replace key",
+          "entfernen": "Remove provider",
+          "summary": "Done, show overview"
+        }
+      },
+      "schluessel": {
+        "title": "Replace key",
+        "description": "{zugaenge}\n\nThe new key is checked immediately and the provider is measured again. A different key can be a different account, and what that account may do is an open question until measured.",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "entfernen": {
+        "title": "Remove provider",
+        "description": "{zugaenge}\n\nRemoves this provider's key and measurements. The entities stay; the router spreads requests over the remaining channels. If it was the last one, every call fails — the overview in the next step says so.",
+        "data": {
+          "provider": "Provider",
+          "bestaetigen": "Yes, remove"
+        },
+        "data_description": {
+          "bestaetigen": "Nothing happens without the checkbox."
+        }
       }
     },
     "progress": {
       "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
     },
     "error": {
-      "key_rejected": "Der Schlüssel wurde nicht angenommen."
+      "key_rejected": "Der Schlüssel wurde nicht angenommen.",
+      "nicht_bestaetigt": "Not confirmed — nothing is removed without the checkbox."
     },
     "abort": {
       "already_configured": "Free AI Router ist bereits eingerichtet.",
