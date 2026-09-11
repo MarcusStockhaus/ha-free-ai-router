@@ -12,14 +12,18 @@ name: Feed-Prober
 #   stuendlich  --cheap   ein Request je Modell: lebt es, welche Header kommen
 #   taeglich    --full    Bild, Schema, Werkzeuge — die teuren Pruefungen
 #
-# Laeuft ausschliesslich nach Zeitplan oder von Hand. Niemals bei einem Pull
-# Request: der hier verwendete Schluessel gehoert dem Proberkonto, und ein
-# fremder PR darf ihn nicht zu sehen bekommen.
+# Laeuft nur nach Zeitplan oder von Hand. Niemals bei einem Pull Request: der
+# hier verwendete Schluessel gehoert dem Proberkonto, und ein fremder PR darf
+# ihn nicht zu sehen bekommen.
 
+# Der Zeitplan steht absichtlich still, solange kein Proberkonto und kein
+# Signierschluessel eingerichtet sind: ein stuendlicher Lauf ohne Secrets waere
+# eine stuendlich rote Meldung und verbrauchte Actions-Minuten fuer nichts.
+# Zum Einschalten die beiden cron-Zeilen auskommentieren — siehe FEED.md.
 on:
-  schedule:
-    - cron: "17 * * * *"   # stuendlich, sparsam
-    - cron: "7 3 * * *"    # taeglich 03:07 UTC, alles
+  # schedule:
+  #   - cron: "17 * * * *"   # stuendlich, sparsam
+  #   - cron: "7 3 * * *"    # taeglich 03:07 UTC, alles
   workflow_dispatch:
     inputs:
       full:
@@ -42,6 +46,14 @@ jobs:
     name: Messen und veroeffentlichen
     runs-on: ubuntu-latest
     steps:
+      - name: Ist der Dienst ueberhaupt eingerichtet?
+        run: |
+          if [ -z "${{ secrets.FAR_FEED_PRIVATE_KEY }}" ]; then
+            echo "::error::Kein FAR_FEED_PRIVATE_KEY gesetzt — der Prober kann nichts signieren."
+            echo "Einrichtung: siehe FEED.md, Abschnitt 'Den Prober betreiben'."
+            exit 1
+          fi
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
