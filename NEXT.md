@@ -9,7 +9,6 @@ Stand 11.09.2026. Phase 1 läuft in einem echten Home Assistant (2026.8.3).
 
 Gegen die Produktivinstallation gefahren (vom Autor ausdrücklich freigegeben,
 abweichend vom Brief). Die Dateien liegen über die Samba-Freigabe unter `//homeassistant.local/config/custom_components/free_ai_router`, gesteuert wird über die REST- und WebSocket-API mit einem Long-Lived Token.
-Steuerung über die REST- und WebSocket-API mit einem Long-Lived Token.
 
 Verifiziert und ohne einen einzigen Logeintrag von uns:
 
