@@ -1,0 +1,602 @@
+{
+  "generated_at": "2026-09-11T08:30:10.359764+00:00",
+  "measurements": {
+    "google_ai_studio/gemini-3.1-flash-lite": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.547998621000005,
+      "limits": {},
+      "ttft_s": 0.5089529169999878
+    },
+    "google_ai_studio/gemini-3.5-flash": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 12.721860898999978,
+      "limits": {},
+      "ttft_s": 12.65938523699998
+    },
+    "google_ai_studio/gemini-3.5-flash-lite": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.8763597730000185,
+      "limits": {},
+      "ttft_s": 0.8733306970000001
+    },
+    "google_ai_studio/gemini-3.8-flash": {
+      "alive": false,
+      "capabilities": {},
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 1,
+      "latency_total_s": null,
+      "limits": {},
+      "ttft_s": null
+    },
+    "google_ai_studio/gemma-4-26b-a4b-it": {
+      "alive": true,
+      "capabilities": {},
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 2.5579175930000133,
+      "limits": {},
+      "ttft_s": 0.6928125390000162
+    },
+    "google_ai_studio/gemma-4-31b-it": {
+      "alive": true,
+      "capabilities": {},
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 18.109588731000002,
+      "limits": {},
+      "ttft_s": 16.546564512999993
+    },
+    "groq/openai/gpt-oss-120b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.31677989499999626,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.313934751000005
+    },
+    "groq/openai/gpt-oss-20b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.3119518839999955,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.31024861599999554
+    },
+    "groq/qwen/qwen3.8-27b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.14342039500002102,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.1416960650000192
+    },
+    "mistral/codestral-2508": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.30075602600001616,
+      "limits": {},
+      "ttft_s": 0.28856185800000844
+    },
+    "mistral/ministral-3b-2512": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.293080840999977,
+      "limits": {},
+      "ttft_s": 0.2742578959999946
+    },
+    "mistral/ministral-8b-2512": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 0.4029619249999996,
+      "limits": {},
+      "ttft_s": 0.3544684829999767
+    },
+    "mistral/mistral-small-2603": {
+      "alive": false,
+      "capabilities": {},
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": null,
+      "limits": {},
+      "ttft_s": null
+    },
+    "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 0,
+      "latency_total_s": 2.14517348199999,
+      "limits": {},
+      "ttft_s": 2.078672152999985
+    },
+    "openrouter/nvidia/nemotron-3.5-lightning:free": {
+      "alive": false,
+      "capabilities": {},
+      "checked_at": "2026-09-11T08:30:10.359764+00:00",
+      "consecutive_failures": 1,
+      "latency_total_s": null,
+      "limits": {},
+      "ttft_s": null
+    }
+  },
+  "notes_de": "",
+  "providers": [
+    {
+      "api_style": "google",
+      "auth": {
+        "name": "x-goog-api-key",
+        "type": "header"
+      },
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "daily_reset_timezone": "America/Los_Angeles",
+      "id": "google_ai_studio",
+      "limits_scope": "per_model",
+      "models": [
+        {
+          "capabilities": {
+            "context_tokens": 1000000,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "gemini-3.5-flash-lite",
+          "label": "Gemini 3.5 Flash-Lite",
+          "latency_class": "schnell",
+          "limits": {
+            "rpd": 500,
+            "rpm": 15,
+            "tpm": 250000
+          },
+          "profiles": [
+            "schnell",
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 1000000,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "gemini-3.1-flash-lite",
+          "label": "Gemini 3.1 Flash-Lite",
+          "latency_class": "schnell",
+          "limits": {
+            "rpd": 500,
+            "rpm": 15,
+            "tpm": 250000
+          },
+          "profiles": [
+            "schnell",
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 262144,
+            "structured_output": false,
+            "tools": false,
+            "vision": true
+          },
+          "id": "gemma-4-31b-it",
+          "label": "Gemma 4 31B",
+          "latency_class": "normal",
+          "limits": {
+            "rpd": 14400,
+            "rpm": 30,
+            "tpm": 16000
+          },
+          "profiles": [
+            "vision",
+            "schnell"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 262144,
+            "structured_output": false,
+            "tools": false,
+            "vision": true
+          },
+          "id": "gemma-4-26b-a4b-it",
+          "label": "Gemma 4 26B",
+          "latency_class": "schnell",
+          "limits": {
+            "rpd": 14400,
+            "rpm": 30,
+            "tpm": 16000
+          },
+          "profiles": [
+            "vision",
+            "schnell"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 1000000,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "gemini-3.5-flash",
+          "label": "Gemini 3.5 Flash",
+          "latency_class": "normal",
+          "limits": {
+            "rpd": 20,
+            "rpm": 5,
+            "tpm": 250000
+          },
+          "profiles": [
+            "reasoning",
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 1000000,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "gemini-3.8-flash",
+          "label": "Gemini 3.8 Flash",
+          "latency_class": "normal",
+          "limits": {
+            "rpd": 20,
+            "rpm": 5,
+            "tpm": 250000
+          },
+          "profiles": [
+            "reasoning"
+          ]
+        }
+      ],
+      "name": "Google AI Studio",
+      "onboarding": {
+        "credit_card_required": false,
+        "data_note_de": "Kostenlose Stufe: Inhalte werden zur Produktverbesserung genutzt. Kamerabilder verlassen damit die EU.",
+        "signup_url": "https://aistudio.google.com/apikey",
+        "steps_de": [
+          "Mit Google-Konto anmelden",
+          "\"Create API key\" klicken",
+          "Key kopieren und hier einfuegen"
+        ],
+        "summary_de": "Traegt die Bildanalyse. Achtung: nur die Flash-Lite-Modelle haben ein brauchbares Tagesbudget, die grossen Flash-Modelle nur 20 Anfragen/Tag."
+      },
+      "preference": 10
+    },
+    {
+      "api_style": "openai_compatible",
+      "auth": {
+        "type": "bearer"
+      },
+      "base_url": "https://api.groq.com/openai/v1",
+      "daily_reset_timezone": "UTC",
+      "id": "groq",
+      "limits_scope": "per_model",
+      "models": [
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "openai/gpt-oss-20b",
+          "label": "GPT-OSS 20B",
+          "latency_class": "sehr_schnell",
+          "limits": {
+            "rpd": 1000,
+            "rpm": 30,
+            "tpm": 8000
+          },
+          "profiles": [
+            "schnell"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "qwen/qwen3.8-27b",
+          "label": "Qwen3.8 27B",
+          "latency_class": "sehr_schnell",
+          "limits": {
+            "rpd": 1000,
+            "rpm": 30,
+            "tpm": 8000
+          },
+          "profiles": [
+            "schnell",
+            "reasoning",
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "openai/gpt-oss-120b",
+          "label": "GPT-OSS 120B",
+          "latency_class": "schnell",
+          "limits": {
+            "rpd": 1000,
+            "rpm": 30,
+            "tpm": 8000
+          },
+          "profiles": [
+            "reasoning"
+          ]
+        }
+      ],
+      "name": "Groq",
+      "onboarding": {
+        "credit_card_required": false,
+        "data_note_de": "Kein Training auf Inhalten der kostenlosen Stufe.",
+        "signup_url": "https://console.groq.com/keys",
+        "steps_de": [
+          "Mit GitHub- oder Google-Konto anmelden",
+          "\"Create API Key\" klicken und einen Namen vergeben",
+          "Key sofort kopieren, er wird nur einmal angezeigt"
+        ],
+        "summary_de": "Latenz-Koenig, erste Wahl fuer Assist. Qwen3.8 kann entgegen der verbreiteten Annahme auch Bilder."
+      },
+      "preference": 20
+    },
+    {
+      "api_style": "openai_compatible",
+      "auth": {
+        "type": "bearer"
+      },
+      "base_url": "https://api.mistral.ai/v1",
+      "daily_reset_timezone": "UTC",
+      "id": "mistral",
+      "limits_scope": "per_model",
+      "models": [
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "ministral-3b-2512",
+          "label": "Ministral 3B",
+          "latency_class": "sehr_schnell",
+          "limits": {
+            "rpm": 750,
+            "tpm": 1300000
+          },
+          "pricing": {
+            "input_per_mtok": 0.1,
+            "output_per_mtok": 0.1
+          },
+          "profiles": [
+            "schnell"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "ministral-8b-2512",
+          "label": "Ministral 8B",
+          "latency_class": "sehr_schnell",
+          "limits": {
+            "rpm": 188,
+            "tpm": 625000
+          },
+          "pricing": {
+            "input_per_mtok": 0.15,
+            "output_per_mtok": 0.15
+          },
+          "profiles": [
+            "schnell"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": true
+          },
+          "id": "mistral-small-2603",
+          "label": "Mistral Small",
+          "latency_class": "schnell",
+          "limits": {
+            "rpm": 60,
+            "tpm": 20000
+          },
+          "pricing": {
+            "input_per_mtok": 0.15,
+            "output_per_mtok": 0.6
+          },
+          "profiles": [
+            "schnell",
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 262144,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "codestral-2508",
+          "label": "Codestral",
+          "latency_class": "schnell",
+          "limits": {
+            "rpm": 125,
+            "tpm": 625000
+          },
+          "pricing": {
+            "input_per_mtok": 0.3,
+            "output_per_mtok": 0.9
+          },
+          "profiles": [
+            "reasoning"
+          ]
+        }
+      ],
+      "monthly_budget_usd": 10,
+      "name": "Mistral",
+      "onboarding": {
+        "credit_card_required": false,
+        "data_note_de": "Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein. Die Nutzung ist ausserdem auf 10 Dollar im Monat gedeckelt.",
+        "signup_url": "https://console.mistral.ai/api-keys",
+        "steps_de": [
+          "Auf console.mistral.ai anmelden",
+          "Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu",
+          "Das *API*-Abonnement mit Plan FREE aktivieren. Nicht zu verwechseln mit Le Chat oder Labs: Mistral fuehrt drei getrennte Produktlinien, und nur das API-Abo schaltet die Chat-Modelle frei",
+          "Unter \"API Keys\" auf \"Create new key\", Ablaufdatum setzen, Key kopieren"
+        ],
+        "summary_de": "Sehr grosses Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar API-Nutzung im Monat. Schnell und schemafest, aber keine Bildanalyse."
+      },
+      "preference": 50
+    },
+    {
+      "api_style": "openai_compatible",
+      "auth": {
+        "type": "bearer"
+      },
+      "base_url": "https://openrouter.ai/api/v1",
+      "daily_reset_timezone": "UTC",
+      "extra_headers": {
+        "HTTP-Referer": "https://github.com/home-assistant-free-ai-router",
+        "X-Title": "Home Assistant Free AI Router"
+      },
+      "id": "openrouter",
+      "limits_scope": "per_key",
+      "models": [
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": false,
+            "vision": true
+          },
+          "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+          "label": "Nemotron 3 Nano Omni (free)",
+          "latency_class": "langsam",
+          "limits": {
+            "rpd": 50,
+            "rpm": 20
+          },
+          "profiles": [
+            "vision"
+          ]
+        },
+        {
+          "capabilities": {
+            "context_tokens": 131072,
+            "structured_output": true,
+            "tools": true,
+            "vision": false
+          },
+          "id": "nvidia/nemotron-3.5-lightning:free",
+          "label": "Nemotron 3.5 Lightning (free)",
+          "latency_class": "schnell",
+          "limits": {
+            "rpd": 50,
+            "rpm": 20
+          },
+          "profiles": [
+            "schnell"
+          ]
+        }
+      ],
+      "name": "OpenRouter",
+      "onboarding": {
+        "credit_card_required": false,
+        "data_note_de": "Kein Training auf Inhalten, sofern in den Kontoeinstellungen nicht ausdruecklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.",
+        "signup_url": "https://openrouter.ai/settings/keys",
+        "steps_de": [
+          "Konto anlegen und anmelden",
+          "\"Create Key\" klicken, Limit leer lassen",
+          "Key kopieren und hier einfuegen"
+        ],
+        "summary_de": "Vision-Reserve ausserhalb von Google. Ohne einmalige 10-Dollar-Aufladung nur 50 Anfragen pro Tag — als tragende Saeule zu wenig, als Ausweichkanal brauchbar."
+      },
+      "preference": 90
+    }
+  ],
+  "schema_version": 1
+}
