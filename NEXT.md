@@ -350,6 +350,29 @@ Die Entscheidungslogik liegt in `capabilities.py`, nicht in `services.py`:
 letzteres importiert Home Assistant und ist hier nicht testbar. Acht Tests,
 beide Notbremsen gegen abgeschaltete Logik gegengeprüft.
 
+**Live gefahren am 11.09.2026**, 64,7 s für alle drei Anbieter:
+
+```
+google_ai_studio: 5 von 6 lebendig
+    gemini-3.8-flash: tools nein -> ja
+    gemma-4-26b-a4b-it: vision ja -> nein
+    gemma-4-31b-it: erreichbar ja -> nein
+groq: 3 von 3 lebendig — keine Änderung
+mistral: 3 von 4 lebendig
+    ministral-3b-2512: vision nein -> ja
+```
+
+Die letzte Zeile ist genau der Wert, der vorher unerreichbar war. Danach alle
+drei Profile weiter gedeckt, elf Kanäle aktiv, die beiden gemessen toten
+abgeschaltet.
+
+**Zu beobachten:** `gemma-4-26b-a4b-it` hat die Bildprüfung diesmal *nicht*
+bestanden. Ein Abbruch wäre inzwischen „unbekannt" und würde nichts
+überschreiben — hier ist die Prüfung also durchgelaufen und die Antwort war
+falsch. Gemma war den ganzen Tag instabil (500er, Zeitüberschreitungen, 31B
+gar nicht erreichbar). Ein zweiter Lauf an einem ruhigen Tag sollte das
+klären.
+
 ---
 
 ## Kleinkram, notiert damit er nicht verlorengeht
