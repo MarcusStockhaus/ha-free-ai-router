@@ -74,27 +74,25 @@ welchem Kanal bedient wird und wo eine Lücke bleibt.
 
 ### Zugänge verwalten
 
-Dreipunktmenü der Integration → *Neu konfigurieren*. Einen separaten
-Optionen-Dialog gibt es nicht; es ist derselbe Assistent, der beim ersten Mal
-geführt hat — nur beginnt er jetzt mit einer Übersicht:
+Jeder eingerichtete Anbieter ist eine eigene Zeile auf der Integrationsseite,
+mit eigenem Gerät und eigenem Verbrauchssensor:
 
 ```
-Eingerichtet:
-
-- **Google AI Studio** — Schlüssel …n63rA
-  5 von 6 Modellen erreichbar · zuletzt vermessen 11.09.2026 10:47
-- **Groq** — Schlüssel …ALgEQ
-  3 von 3 Modellen erreichbar · zuletzt vermessen 11.09.2026 10:47
+Free AI Router
+├─ Google AI Studio      1 Entität
+├─ Groq                  1 Entität
+└─ Mistral               1 Entität
+   Anbieter hinzufügen
 ```
 
-Von dort: **Anbieter hinzufügen**, **Schlüssel ersetzen**, **Anbieter
-entfernen**.
+**Anbieter hinzufügen**, **Schlüssel ersetzen** und **Entfernen** sind die
+Knöpfe, die Home Assistant dort selbst anbietet — die Integration baut keine
+eigene Verwaltungsoberfläche daneben.
 
-Der Schlüssel selbst wird nie angezeigt, nur seine letzten vier Zeichen —
-genug zum Wiedererkennen, zu wenig zum Benutzen. Zum Ersetzen braucht es
-ohnehin einen neuen; er wird sofort geprüft, und danach wird der Anbieter neu
-vermessen. Ein anderer Schlüssel kann ein anderes Konto sein, und was das
-Konto darf, ist damit offen.
+Ein Schlüsselwechsel läuft durch denselben Weg wie das Einrichten: Test,
+Messung, Ergebnis. Ein anderer Schlüssel kann ein anderes Konto sein, und was
+das Konto darf, ist damit offen. Der alte Schlüssel wird nirgends angezeigt;
+zum Ersetzen braucht es ohnehin einen neuen.
 
 ---
 

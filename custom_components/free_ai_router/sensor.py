@@ -30,10 +30,12 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FreeAIRouterConfigEntry, RouterRuntime
-from .entity import RouterEntity
+from .const import DOMAIN
+from .entity import MANUFACTURER, RouterEntity
 from .ledger import bucket_key
 
 _LOGGER = logging.getLogger(__name__)
@@ -103,10 +105,11 @@ async def async_setup_entry(
     # Der Anbietersensor gehoert zu seiner Zeile auf der Integrationsseite,
     # nicht zur Integration als Ganzes. Dann steht der Verbrauch dort, wo auch
     # der Schluessel steht — und verschwindet mit, wenn der Anbieter geht.
-    for provider_id in sorted({channel.provider.id for channel in runtime.channels}):
+    namen = {channel.provider.id: channel.provider.name for channel in runtime.channels}
+    for provider_id in sorted(namen):
         subentry = subentry_of(entry, provider_id)
         async_add_entities(
-            [RouterAnbieterSensor(entry, provider_id)],
+            [RouterAnbieterSensor(entry, provider_id, namen[provider_id])],
             config_subentry_id=subentry.subentry_id if subentry else None,
         )
 
@@ -153,12 +156,27 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
     _attr_native_unit_of_measurement = "Anfragen"
     _attr_icon = "mdi:api"
 
-    def __init__(self, entry: FreeAIRouterConfigEntry, provider_id: str) -> None:
+    def __init__(
+        self, entry: FreeAIRouterConfigEntry, provider_id: str, anzeigename: str
+    ) -> None:
         RouterEntity.__init__(self, entry)
         self._provider_id = provider_id
         self._attr_unique_id = f"{entry.entry_id}_{provider_id}_anfragen"
         self._attr_translation_key = "anbieter_anfragen"
         self._attr_translation_placeholders = {"anbieter": provider_id}
+        # Eigenes Geraet je Anbieter. Ein Geraet gehoert zu genau einem
+        # Subentry — haengt man die Anbietersensoren an das gemeinsame Geraet
+        # der Integration, schiebt Home Assistant es bei jedem Hinzufuegen in
+        # eine andere Zeile und warnt zu Recht davor. Der Anbieter ist ohnehin
+        # das treffendere Geraet: er hat einen Schluessel, Kontingente und
+        # verschwindet als Ganzes.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry.entry_id}_{provider_id}")},
+            name=anzeigename,
+            manufacturer=MANUFACTURER,
+            entry_type=DeviceEntryType.SERVICE,
+            via_device=(DOMAIN, entry.entry_id),
+        )
 
     def _kanaele(self) -> list[Any]:
         return [c for c in self.runtime.channels if c.provider.id == self._provider_id]
