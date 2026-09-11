@@ -301,9 +301,24 @@ Beides sind Entscheidungen, keine Programmierarbeit:
   wegen der die Prüfung überhaupt mehrfach läuft. Behoben am 11.09.2026: eine
   abgebrochene Runde ist jetzt in keiner Richtung ein Befund.
 
-  Die Gegenprobe ist eindeutig: drei vollständige Zwei-Runden-Läufe (Phase 1
-  und zweimal beim Einrichten in HA) sagen **nein**, mit Antworten wie
-  „Rot, Blau" statt orange und türkis. Die Anbieterdatei hatte recht.
+  **Und dann war auch das noch falsch.** Die Gegenprobe schien eindeutig —
+  drei Zwei-Runden-Läufe mit Antworten wie „Rot, Blau" statt orange und
+  türkis. Sechs *einzeln* protokollierte Runden zeigten dann das Muster:
+  vier richtig, und beide Fehlschläge betrafen Türkis, das Ministral
+  verlässlich „hellblau" nennt. Da „blau" darin steckt, zählte die Antwort
+  als falsch benannte Fremdfarbe.
+
+  Türkis liegt echt zwischen Blau und Grün und war damit ein schlechter
+  Testfarbton — die Prüfung soll feststellen, ob das Bild ankommt und
+  ausgewertet wird, nicht wie genau ein Modell Zwischentöne benennt. Seit es
+  durch Schwarz und Weiß ersetzt ist: **8B trifft 5 von 6, 3B 4 von 6.**
+  Ministral sieht. `capabilities.vision` steht jetzt auf `true`.
+
+  `profiles` bleibt trotzdem `[schnell]`, und das ist keine technische
+  Aussage: Mistrals kostenlose Stufe verlangt die Zustimmung zum Training auf
+  Inhalten. Wer diese Modelle für Kamerabilder freigibt, gibt die Bilder in
+  die Modellentwicklung. Das ist eine Entscheidung des Betreibers, kein
+  Messergebnis — wer sie treffen will, ergänzt `vision` in `profiles`.
 
 - **`openrouter/nemotron-3-nano-omni` kann Werkzeuge.** Bleibt stehen — die
   Werkzeugprüfung kennt keine Runden und war von dem Fehler nicht betroffen.

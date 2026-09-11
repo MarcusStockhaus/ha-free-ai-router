@@ -33,9 +33,20 @@ PALETTE: dict[str, tuple[tuple[int, int, int], tuple[str, ...]]] = {
     "gruen": ((32, 160, 64), ("grün", "gruen", "green", "vert", "verde")),
     "gelb": ((232, 208, 32), ("gelb", "yellow", "jaune", "amarillo")),
     "lila": ((136, 48, 176), ("lila", "violett", "purple", "violet", "morado", "magenta")),
-    "orange": ((232, 128, 32), ("orange", "naranja")),
-    "tuerkis": ((32, 176, 176), ("türkis", "tuerkis", "turquoise", "cyan", "teal")),
+    "orange": ((240, 132, 16), ("orange", "naranja")),
+    "schwarz": ((16, 16, 16), ("schwarz", "black", "noir", "negro")),
+    "weiss": ((245, 245, 245), ("weiß", "weiss", "white", "blanc", "blanco")),
 }
+# Tuerkis stand hier bis zum 11.09.2026 und war ein schlechter Testfarbton:
+# Mistrals Ministral 8B nannte ihn verlaesslich "hellblau" — und weil darin
+# "blau" steckt, galt die Runde als falsch benannte Fremdfarbe. Sechs
+# Einzelrunden zeigten das Muster: vier richtig, beide Fehlschlaege betrafen
+# Tuerkis. Das Modell hatte das Bild sehr wohl angesehen.
+#
+# Die Pruefung soll feststellen, ob das Bild ankommt und ausgewertet wird —
+# nicht, wie genau ein Modell Zwischentoene benennt. Tuerkis liegt echt
+# zwischen Blau und Gruen; Schwarz und Weiss sind dagegen in jeder Sprache
+# eindeutig und erhoehen nebenbei die Zahl der Paare von 21 auf 28.
 
 PROMPT_DE = (
     "Das Bild besteht aus zwei waagerechten Farbflaechen, oben und unten. "

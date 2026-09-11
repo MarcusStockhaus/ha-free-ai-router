@@ -14,7 +14,7 @@ onboarding:
   signup_url: https://console.mistral.ai/api-keys
   summary_de: >-
     Sehr grosses Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar
-    API-Nutzung im Monat. Schnell und schemafest, aber keine Bildanalyse.
+    API-Nutzung im Monat. Schnell und schemafest, sieht auch Bilder.
   steps_de:
     - Auf console.mistral.ai anmelden
     - Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu
@@ -58,18 +58,25 @@ models:
   # 12,5 Anfragen je Sekunde und 1,3 Mio. Token je Minute — das mit Abstand
   # groesste Minutenfenster im ganzen Feld.
   #
-  # KEIN Vision-Kanal, auch wenn ein erster Messlauf das nahelegte: mit nur
-  # einer Testrunde hatte Ministral bestanden, mit zwei Runden faellt es durch.
-  # Am 11.09.2026 nannte 3B "Gruen, Dunkelblau" statt gruen und orange, 8B
-  # "Violett, Blau" statt lila und tuerkis — je eine Farbe getroffen, die
-  # zweite geraten. Wer Tuerkis fuer Blau haelt, beschreibt auch eine
-  # Kameraszene entsprechend.
+  # Sieht Bilder — das war zwischenzeitlich anders eingetragen, und der Irrtum
+  # lag am Testbild, nicht am Modell. Ministral nannte Tuerkis verlaesslich
+  # "hellblau", und weil darin "blau" steckt, zaehlte die Runde als falsch
+  # benannte Fremdfarbe. Seit Tuerkis aus der Palette raus ist (11.09.2026),
+  # treffen 8B fuenf und 3B vier von sechs Runden; die Fehlschlaege sind
+  # Benennungen wie "Gelb" fuer Orange, keine Blindheit.
+  #
+  # Trotzdem steht `vision` **nicht** in den Profilen. Das ist keine technische
+  # Aussage, sondern eine ueber die Daten: Mistrals kostenlose Stufe verlangt
+  # die Zustimmung zum Training auf Inhalten. Wer diese Modelle fuer
+  # Kamerabilder freigibt, gibt die Bilder in die Modellentwicklung. Diese
+  # Entscheidung gehoert dem Betreiber der Installation, nicht dieser Datei —
+  # wer sie treffen will, ergaenzt `vision` in `profiles`.
   - id: ministral-3b-2512
     label: Ministral 3B
     profiles: [schnell]
     latency_class: sehr_schnell
     capabilities:
-      vision: false
+      vision: true
       tools: true
       structured_output: true
       context_tokens: 131072
@@ -85,7 +92,7 @@ models:
     profiles: [schnell]
     latency_class: sehr_schnell
     capabilities:
-      vision: false
+      vision: true
       tools: true
       structured_output: true
       context_tokens: 131072
