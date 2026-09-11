@@ -72,7 +72,7 @@ Testaufruf, danach die Fähigkeitsmessung. Die dauert ein bis zwei Minuten, weil
 sie je Modell mehrere echte Aufrufe macht. Am Ende steht, welches Profil von
 welchem Kanal bedient wird und wo eine Lücke bleibt.
 
-Weitere Anbieter später über *Konfigurieren* an der Integration.
+Weitere Anbieter später über das Dreipunktmenü der Integration → *Neu konfigurieren*. Einen separaten Optionen-Dialog gibt es nicht — es ist derselbe Assistent, nur mit den schon eingerichteten Anbietern im Gepäck.
 
 ---
 
