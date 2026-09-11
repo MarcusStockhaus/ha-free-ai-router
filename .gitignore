@@ -10,3 +10,8 @@ befund.json
 
 # Claude-Code-Einstellungen dieser Maschine (HA-Zugriff, Token-Pfade)
 .claude/settings.local.json
+
+# Feed-Dienst (Phase 3): privater Signierschluessel, Zustand, Ausgabe
+feed-private.pem
+feed-state.json
+site/
