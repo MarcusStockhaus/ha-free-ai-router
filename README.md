@@ -74,16 +74,28 @@ welchem Kanal bedient wird und wo eine Lücke bleibt.
 
 ### Zugänge verwalten
 
-Jeder eingerichtete Anbieter ist eine eigene Zeile auf der Integrationsseite,
-mit eigenem Gerät und eigenem Verbrauchssensor:
+Die Integrationsseite ist in Untereinträge gegliedert — der Router mit den
+Entities, die man benutzt, darunter je ein Eintrag pro Anbieter:
 
 ```
 Free AI Router
-├─ Google AI Studio      1 Entität
-├─ Groq                  1 Entität
-└─ Mistral               1 Entität
-   Anbieter hinzufügen
+├─ Profile und Assist · Router
+│    Free AI Router          8 Entitäten
+├─ Google AI Studio · Anbieter
+│    Google AI Studio        1 Entität
+├─ Groq · Anbieter
+│    Groq                    1 Entität
+└─ Mistral · Anbieter
+     Mistral                 1 Entität
+     + Anbieter hinzufügen
 ```
+
+Dass auch der Router ein Untereintrag ist, hat einen sichtbaren Grund: Home
+Assistant setzt über alle Geräte, die zu *keinem* Untereintrag gehören, die
+Überschrift „Geräte, die nicht zu einem Untereintrag gehören". Die täglich
+benutzten Entities sähen damit aus wie ein Rest. Angelegt wird dieser Eintrag
+von der Integration selbst — er steht deshalb nicht in der Auswahl zum
+Hinzufügen.
 
 **Anbieter hinzufügen**, **Schlüssel ersetzen** und **Entfernen** sind die
 Knöpfe, die Home Assistant dort selbst anbietet — die Integration baut keine

@@ -50,6 +50,21 @@ CONF_MODELS: Final = "models"
 #: Aendern und Entfernen, die wir nicht selbst bauen muessen.
 SUBENTRY_TYPE_ANBIETER: Final = "anbieter"
 
+#: Der Router selbst ist ebenfalls ein Subentry — nicht, weil es daran etwas
+#: einzustellen gaebe, sondern damit auf der Integrationsseite *jedes* Geraet
+#: zu einem Untereintrag gehoert. Home Assistant setzt sonst die Gruppe
+#: "Geraete, die nicht zu einem Untereintrag gehoeren" darueber, und die
+#: Entities, die man taeglich benutzt, saehen aus wie ein Rest.
+#:
+#: Er wird von der Integration angelegt, nicht vom Nutzer: der Typ steht
+#: deshalb nicht in ``async_get_supported_subentry_types``, und damit gibt es
+#: weder einen "hinzufuegen"- noch einen "neu konfigurieren"-Knopf dafuer.
+SUBENTRY_TYPE_ROUTER: Final = "router"
+
+#: Titel des Router-Subentry. Sagt, was darin liegt — der Geraetename daneben
+#: heisst ohnehin schon "Free AI Router".
+ROUTER_TITEL: Final = "Profile und Assist"
+
 STORAGE_KEY_LEDGER: Final = f"{DOMAIN}.ledger"
 STORAGE_VERSION_LEDGER: Final = 1
 

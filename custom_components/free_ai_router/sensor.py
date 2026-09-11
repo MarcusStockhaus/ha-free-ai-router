@@ -95,11 +95,13 @@ async def async_setup_entry(
     entry: FreeAIRouterConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    from . import subentry_of
+    from . import router_subentry, subentry_of
 
     runtime = entry.runtime_data
+    router = router_subentry(entry)
     async_add_entities(
-        RouterGesamtSensor(entry, beschreibung) for beschreibung in GESAMT_SENSOREN
+        (RouterGesamtSensor(entry, beschreibung) for beschreibung in GESAMT_SENSOREN),
+        config_subentry_id=router.subentry_id if router else None,
     )
 
     # Der Anbietersensor gehoert zu seiner Zeile auf der Integrationsseite,
