@@ -26,7 +26,9 @@ from .const import (
     CONF_PROVIDER,
     DOMAIN,
     PROFILES,
+    STORAGE_KEY_FEED,
     STORAGE_KEY_LEDGER,
+    STORAGE_VERSION_FEED,
     STORAGE_VERSION_LEDGER,
 )
 from .ledger import Ledger
@@ -69,6 +71,14 @@ class RouterRuntime:
     client: RouterClient
     channels: tuple[Channel, ...] = ()
     store: Store | None = None
+    base_registry: Registry | None = None
+    """Die mitgelieferte Registry ohne Feed.
+
+    Wird aufgehoben, weil der Feed jedesmal neu darueber gelegt wird und nicht
+    auf ein bereits angereichertes Ergebnis — sonst bliebe ein einmal
+    uebernommener Wert stehen, auch wenn der Feed ihn zuruecknimmt.
+    """
+    feed: Any = None
     _coverage: dict[str, CoverageEntry] = field(default_factory=dict, repr=False)
 
     def channels_for(self, profile: str) -> list[Channel]:
@@ -151,8 +161,9 @@ async def async_setup_entry(
     # Erst hier, nicht auf Modulebene: ``client`` braucht aiohttp. Sonst
     # laesst sich kein einziges Modul dieses Pakets ohne HTTP-Bibliothek
     # importieren — und die Registry-Pruefung fuer Contributor soll mit
-    # PyYAML und jsonschema auskommen.
+    # PyYAML und jsonschema auskommen. Dasselbe gilt fuer den Feed-Client.
     from .client import RouterClient
+    from .feed_client import FeedManager, feed_configured
 
     try:
         registry = await hass.async_add_executor_job(load_registry)
@@ -170,16 +181,28 @@ async def async_setup_entry(
     ledger = Ledger(save=save)
     ledger.restore(stored)
 
+    session = async_get_clientsession(hass)
+
+    # Der Feed wird aus dem Zwischenspeicher uebernommen, nicht geholt: der
+    # Start soll nicht an einem fremden Server haengen. Nachgesehen wird
+    # gleich danach im Hintergrund.
+    feed_store = Store(hass, STORAGE_VERSION_FEED, STORAGE_KEY_FEED)
+    feed = FeedManager(session, save=feed_store.async_save)
+    feed.restore(await feed_store.async_load())
+    wirksam = feed.apply(registry)
+
     runtime = RouterRuntime(
-        registry=registry,
+        registry=wirksam,
         ledger=ledger,
         client=RouterClient(
-            session=async_get_clientsession(hass),
+            session=session,
             ledger=ledger,
             keys=api_keys(entry.data),
         ),
-        channels=build_channels(registry, entry.data),
+        channels=build_channels(wirksam, entry.data),
         store=store,
+        base_registry=registry,
+        feed=feed,
     )
     entry.runtime_data = runtime
     _log_coverage(runtime)
@@ -189,7 +212,37 @@ async def async_setup_entry(
     )
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     entry.async_on_unload(_start_issue_check(hass, runtime))
+    if feed_configured():
+        entry.async_on_unload(_start_feed(hass, entry, runtime))
     return True
+
+
+def _start_feed(hass: HomeAssistant, entry: FreeAIRouterConfigEntry, runtime: RouterRuntime):
+    """Den Feed gleich einmal und danach im Takt nachsehen."""
+    from homeassistant.helpers.event import async_track_time_interval
+
+    from .feed_client import FEED_INTERVAL_HOURS
+
+    async def _nachsehen(_now: Any = None) -> None:
+        if await runtime.feed.async_update():
+            _uebernehmen(entry, runtime)
+
+    entry.async_create_background_task(hass, _nachsehen(), f"{DOMAIN} Feed")
+    return async_track_time_interval(
+        hass, _nachsehen, timedelta(hours=FEED_INTERVAL_HOURS)
+    )
+
+
+def _uebernehmen(entry: FreeAIRouterConfigEntry, runtime: RouterRuntime) -> None:
+    """Ein neues Feed-Dokument in Registry und Kanaele einrechnen.
+
+    Immer auf der mitgelieferten Registry aufsetzen, nie auf der zuletzt
+    angereicherten: sonst liesse sich eine Aenderung nie wieder zuruecknehmen.
+    """
+    basis = runtime.base_registry or runtime.registry
+    runtime.registry = runtime.feed.apply(basis)
+    runtime.channels = build_channels(runtime.registry, entry.data)
+    _log_coverage(runtime)
 
 
 def _start_issue_check(hass: HomeAssistant, runtime: RouterRuntime):
