@@ -119,7 +119,16 @@ class Endpunkt:
             richtig = self.sieht_richtig and not (
                 self.nur_erste_runde_richtig and len(self.gesehene_bilder) > 1
             )
-            text = f"{bild[0]}, {bild[1]}" if richtig else "rot, blau"
+            if richtig:
+                text = f"{bild[0]}, {bild[1]}"
+            else:
+                # Die Antwort eines blinden Modells wird gezielt aus Farben
+                # gebaut, die *nicht* im Bild sind. Eine feste Antwort wie
+                # "rot, blau" traf mit rund fuenf Prozent zufaellig zu und hat
+                # diesen Test sprunghaft gemacht — genau die Ratequote, wegen
+                # der die Pruefung ueberhaupt zwei Runden faehrt.
+                daneben = [name for name in PALETTE if name not in bild][:2]
+                text = f"{daneben[0]}, {daneben[1]}"
 
         elif payload.get("response_format"):
             if not self.kann_schema:
