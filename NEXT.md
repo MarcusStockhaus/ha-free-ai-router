@@ -1,8 +1,8 @@
 # Wiedereinstieg
 
 Stand 11.09.2026. Phase 1 läuft in einem echten Home Assistant (2026.8.3),
-Phase 2 ist inhaltlich durch, Phase 3 steht code-komplett und abgeschaltet.
-201 Tests grün.
+Phase 2 ist inhaltlich durch, Phase 3 läuft live.
+212 Tests grün.
 
 ---
 
@@ -224,7 +224,9 @@ Ausführlich in [FEED.md](FEED.md). Kurz:
       Prüfen beim Laden aus dem Zwischenspeicher, Ausfall ohne Folgen.
 - [x] **Workflow** (`.github/workflows/prober.yml`) — täglich 03:07 UTC der
       volle Lauf, Ergebnis auf den Zweig `feed`.
-- [x] **44 Tests** dazu, vier Liveläufe gegen die echten Anbieter.
+- [x] **52 Tests** dazu (49 für Feed, Client und Prober, 3 für die
+      Unterscheidung „gestört“ / „kann es nicht“), vier Liveläufe gegen die
+      echten Anbieter.
 - [x] **Im laufenden Home Assistant verifiziert** (11.09.2026, 08:54 UTC):
       die Integration holt den Feed, prüft die Signatur gegen den
       eincompilierten Schlüssel und legt ihn in
