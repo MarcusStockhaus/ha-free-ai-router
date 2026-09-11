@@ -72,7 +72,7 @@ DEAD_AFTER_FAILURES = 3
 #: Host-Allowlist ist eine Aenderung hier ein Code-Review-Vorgang und kein
 #: Datenupdate — der Schluessel darf nie aus einer Datei nachgeladen werden,
 #: sonst schuetzt die Signatur gegen nichts.
-FEED_PUBLIC_KEY_B64 = ""
+FEED_PUBLIC_KEY_B64 = "vylbJuOVikJEK6ufvlWvM5zoht/i7tNoKLDIcTrdpgY="
 
 #: Adresse des Feeds. Leer heisst: dieser Build holt keinen Feed.
 #:
