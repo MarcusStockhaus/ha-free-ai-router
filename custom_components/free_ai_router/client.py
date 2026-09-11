@@ -25,7 +25,7 @@ from .adapters import (
 )
 from .adapters.base import Message
 from .const import REQUEST_TIMEOUT_S
-from .ledger import Ledger
+from .ledger import Ledger, cost_usd
 from .router import Candidate, Channel, Requirements, RoutingPlan, plan
 
 _LOGGER = logging.getLogger(__name__)
@@ -171,11 +171,17 @@ class RouterClient:
             )
 
             # Schaetzung vorbuchen: bei engen Tokenfenstern soll der naechste
-            # Aufruf bremsen, bevor der Anbieter 429 sagt.
-            geschaetzt = requirements.approx_input_tokens + min(
-                max_output_tokens, ERWARTETE_AUSGABE_TOKEN
+            # Aufruf bremsen, bevor der Anbieter 429 sagt. Beim Ausgabendeckel
+            # gilt dasselbe eine Stufe strenger — gegen ein aufgebrauchtes
+            # Monatsbudget hilft kein Warten.
+            geschaetzte_ausgabe = min(max_output_tokens, ERWARTETE_AUSGABE_TOKEN)
+            geschaetzt = requirements.approx_input_tokens + geschaetzte_ausgabe
+            geschaetzte_kosten = cost_usd(
+                model, requirements.approx_input_tokens, geschaetzte_ausgabe
             )
-            self.ledger.record_request(provider, model, tokens=geschaetzt)
+            self.ledger.record_request(
+                provider, model, tokens=geschaetzt, cost=geschaetzte_kosten
+            )
             try:
                 response = await adapter.chat(
                     self.session, provider, api_key, request, timeout=self.request_timeout_s
@@ -199,6 +205,8 @@ class RouterClient:
                 model,
                 tokens=(response.input_tokens or 0) + (response.output_tokens or 0),
                 estimated_tokens=geschaetzt,
+                cost=cost_usd(model, response.input_tokens or 0, response.output_tokens or 0),
+                estimated_cost=geschaetzte_kosten,
                 info=response.rate_limit,
             )
             attempts.append(f"{candidate.key}: ok")

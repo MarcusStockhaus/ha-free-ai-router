@@ -64,6 +64,72 @@ def _day_key(tz_name: str, now: float) -> str:
     return datetime.fromtimestamp(now, tz=tzinfo).strftime("%Y-%m-%d")
 
 
+def _month_key(tz_name: str, now: float) -> str:
+    """Monatsschluessel in der Zeitzone des Anbieters."""
+    try:
+        tzinfo = ZoneInfo(tz_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        tzinfo = UTC
+    return datetime.fromtimestamp(now, tz=tzinfo).strftime("%Y-%m")
+
+
+def cost_usd(model: Model, input_tokens: int, output_tokens: int) -> float:
+    """Was dieser Aufruf laut Preisliste kostet.
+
+    ``0.0`` heisst: keine Preisangabe in der Registry, also nicht bezifferbar.
+    Das ist bei den meisten kostenlosen Stufen der Normalfall — dort gibt es
+    ein Zeitfenster und keinen Geldbetrag.
+
+    Ein- und Ausgabe werden getrennt gerechnet, weil sie getrennt bepreist
+    sind: bei Mistrals ``mistral-small`` kostet die Ausgabe das Vierfache der
+    Eingabe (0,60 gegen 0,15 je Million). Mit einem Mischpreis auf die
+    Gesamt-Token waere der Deckel bei langen Antworten deutlich zu spaet
+    erreicht.
+    """
+    pricing = model.pricing
+    if pricing.input_per_mtok is None and pricing.output_per_mtok is None:
+        return 0.0
+    eingabe = max(0, input_tokens) * (pricing.input_per_mtok or 0.0)
+    ausgabe = max(0, output_tokens) * (pricing.output_per_mtok or 0.0)
+    return (eingabe + ausgabe) / 1_000_000
+
+
+@dataclass(slots=True)
+class SpendState:
+    """Ausgaben eines Anbieters im laufenden Monat.
+
+    Eigener Zustand neben :class:`BucketState`, weil der Deckel an einer
+    anderen Stelle haengt: Kontingente gelten je Modell oder je Schluessel,
+    der Geldbetrag gilt fuer das Konto. Zwei Modelle desselben Anbieters
+    teilen sich ein Budget, auch wenn sie getrennte Tagesfenster haben.
+    """
+
+    month_key: str = ""
+    spent_usd: float = 0.0
+    """Vorgebucht beim Absenden, berichtigt nach der Antwort — wie bei Token.
+
+    Vorher zu buchen ist hier noch wichtiger als dort: gegen einen
+    aufgebrauchten Deckel hilft kein Warten, und eine Handvoll gleichzeitiger
+    Anfragen wuerde ihn sonst gemeinsam ueberziehen.
+    """
+    requests: int = 0
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "month_key": self.month_key,
+            "spent_usd": round(self.spent_usd, 6),
+            "requests": self.requests,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SpendState:
+        state = cls()
+        for name in cls.__slots__:
+            if name in data:
+                setattr(state, name, data[name])
+        return state
+
+
 @dataclass(slots=True)
 class BucketState:
     """Zaehlerstand eines Kontingent-Topfes."""
@@ -186,6 +252,8 @@ class Ledger:
 
     save: SaveCallback | None = None
     buckets: dict[str, BucketState] = field(default_factory=dict)
+    spend: dict[str, SpendState] = field(default_factory=dict)
+    """Ausgaben je Anbieter-ID. Nur gefuellt, wo es Preise gibt."""
     stats: DayStats = field(default_factory=DayStats)
     _locks: dict[str, asyncio.Lock] = field(default_factory=dict, repr=False)
     _dirty: bool = field(default=False, repr=False)
@@ -197,6 +265,27 @@ class Ledger:
             state = BucketState()
             self.buckets[key] = state
         return state
+
+    def spend_state(self, provider: Provider, *, now: float | None = None) -> SpendState:
+        """Monatszustand des Anbieters, auf den laufenden Monat gedreht."""
+        now = time.time() if now is None else now
+        state = self.spend.get(provider.id)
+        if state is None:
+            state = SpendState()
+            self.spend[provider.id] = state
+        monat = _month_key(provider.daily_reset_timezone, now)
+        if state.month_key != monat:
+            state.month_key = monat
+            state.spent_usd = 0.0
+            state.requests = 0
+        return state
+
+    def _book_cost(self, provider: Provider, cost: float, now: float) -> None:
+        if not cost:
+            return
+        state = self.spend_state(provider, now=now)
+        state.spent_usd = max(0.0, state.spent_usd + cost)
+        self._dirty = True
 
     def _roll_stats(self, now: float) -> None:
         """Tageszaehler zuruecksetzen, wenn lokal ein neuer Tag begonnen hat."""
@@ -248,6 +337,23 @@ class Ledger:
 
         limits = model.limits
         headroom = 1.0
+
+        # Der Ausgabendeckel steht vor allen Zeitfenstern. Er ist der einzige
+        # Grenzwert, der sich nicht aussitzen laesst: Kontingente fuellen sich
+        # zur naechsten Minute oder Mitternacht wieder auf, ein aufgebrauchtes
+        # Monatsbudget erst zum Monatsersten.
+        budget = provider.monthly_budget_usd
+        if budget:
+            ausgegeben = self.spend_state(provider, now=now).spent_usd
+            rest = budget - ausgegeben
+            if rest <= 0:
+                return Availability(
+                    ok=False,
+                    reason=f"Monatsbudget aufgebraucht ({ausgegeben:.2f} von {budget:.2f} USD)",
+                    wait_s=_seconds_to_month_end(provider.daily_reset_timezone, now),
+                    headroom=0.0,
+                )
+            headroom = min(headroom, rest / budget)
 
         # Tagesfenster zuerst: dagegen hilft kein Warten von Sekunden.
         if limits.rpd:
@@ -306,12 +412,13 @@ class Ledger:
         model: Model,
         *,
         tokens: int = 0,
+        cost: float = 0.0,
         now: float | None = None,
     ) -> None:
         """Eine abgeschickte Anfrage verbuchen — vor der Antwort.
 
-        ``tokens`` ist die Schaetzung, nicht der Messwert; sie wird von
-        :meth:`record_success` berichtigt.
+        ``tokens`` und ``cost`` sind Schaetzungen, nicht Messwerte; beide
+        werden von :meth:`record_success` berichtigt.
         """
         now = time.time() if now is None else now
         state = self.bucket(bucket_key(provider, model))
@@ -321,6 +428,10 @@ class Ledger:
         if tokens:
             state.minute_tokens += tokens
             state.day_tokens += tokens
+        if cost:
+            spend = self.spend_state(provider, now=now)
+            spend.spent_usd += cost
+            spend.requests += 1
         self._roll_stats(now)
         self.stats.requests += 1
         self.stats.tokens += tokens
@@ -351,6 +462,8 @@ class Ledger:
         *,
         tokens: int = 0,
         estimated_tokens: int = 0,
+        cost: float = 0.0,
+        estimated_cost: float = 0.0,
         info: RateLimitInfo | None = None,
         now: float | None = None,
     ) -> None:
@@ -380,6 +493,7 @@ class Ledger:
             # bei einer Kameraanalyse das Zweieinhalbfache.
             self._roll_stats(now)
             self.stats.tokens = max(0, self.stats.tokens + delta)
+        self._book_cost(provider, cost - estimated_cost, now)
         if info is not None:
             self.absorb_headers(provider, model, info, now=now)
         self._dirty = True
@@ -476,6 +590,7 @@ class Ledger:
         return {
             "version": 1,
             "buckets": {key: state.as_dict() for key, state in self.buckets.items()},
+            "spend": {key: state.as_dict() for key, state in self.spend.items()},
             "stats": self.stats.as_dict(),
         }
 
@@ -486,6 +601,9 @@ class Ledger:
         for key, raw in buckets.items():
             if isinstance(raw, dict):
                 self.buckets[key] = BucketState.from_dict(raw)
+        for key, raw in (data.get("spend") or {}).items():
+            if isinstance(raw, dict):
+                self.spend[key] = SpendState.from_dict(raw)
         if isinstance(data.get("stats"), dict):
             self.stats = DayStats.from_dict(data["stats"])
 
@@ -528,7 +646,27 @@ class Ledger:
             "block_reason": state.block_reason,
             "remaining_requests": state.remaining_requests,
             "limits": model.limits.as_dict(),
+            "monthly_budget_usd": provider.monthly_budget_usd,
+            "spent_usd": self.spend_state(provider).spent_usd,
         }
+
+
+def _seconds_to_month_end(tz_name: str, now: float) -> float:
+    """Sekunden bis zum Monatsersten in der Zeitzone des Anbieters."""
+    try:
+        tzinfo = ZoneInfo(tz_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        tzinfo = UTC
+    local = datetime.fromtimestamp(now, tz=tzinfo)
+    if local.month == 12:
+        naechster = local.replace(
+            year=local.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+    else:
+        naechster = local.replace(
+            month=local.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+    return max(naechster.timestamp() - now, 0.0)
 
 
 def _seconds_to_midnight(tz_name: str, now: float) -> float:

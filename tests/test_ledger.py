@@ -503,3 +503,127 @@ def test_ein_erfolg_entlastet_den_ganzen_anbieter() -> None:
     # Ein einziges Modell antwortet wieder.
     ledger.record_success(provider, model_a)
     assert not ledger.key_rejected(provider), "der andere Topf blieb als abgelehnt stehen"
+
+
+# --------------------------------------------------------------------------
+# Ausgabendeckel (Phase 4)
+# --------------------------------------------------------------------------
+
+
+def gedeckelt(budget: float = 10.0):
+    """Ein Anbieter mit Monatsdeckel und zwei bepreisten Modellen."""
+    from custom_components.free_ai_router.ledger import Ledger
+
+    schnell = make_model(
+        "klein", "mistral", input_per_mtok=0.10, output_per_mtok=0.10
+    )
+    gross = make_model(
+        "gross", "mistral", input_per_mtok=0.15, output_per_mtok=0.60
+    )
+    provider = make_provider(
+        "mistral", (schnell, gross), monthly_budget_usd=budget
+    )
+    return Ledger(), provider, schnell, gross
+
+
+def test_kosten_trennen_eingabe_und_ausgabe() -> None:
+    """Bei mistral-small kostet die Ausgabe das Vierfache — ein Mischpreis
+    wuerde den Deckel bei langen Antworten zu spaet erreichen."""
+    from custom_components.free_ai_router.ledger import cost_usd
+
+    _, _, _, gross = gedeckelt()
+    # 1 Mio Eingabe = 0.15, 1 Mio Ausgabe = 0.60
+    assert cost_usd(gross, 1_000_000, 0) == pytest.approx(0.15)
+    assert cost_usd(gross, 0, 1_000_000) == pytest.approx(0.60)
+    assert cost_usd(gross, 1_000_000, 1_000_000) == pytest.approx(0.75)
+
+
+def test_ohne_preisangabe_keine_kosten() -> None:
+    """Der Normalfall der kostenlosen Stufen: ein Zeitfenster, kein Betrag."""
+    from custom_components.free_ai_router.ledger import cost_usd
+
+    assert cost_usd(make_model("gratis", "groq"), 10_000, 10_000) == 0.0
+
+
+def test_vorbuchung_wird_nach_der_antwort_berichtigt() -> None:
+    ledger, provider, klein, _ = gedeckelt()
+    ledger.record_request(provider, klein, tokens=1000, cost=0.10)
+    assert ledger.spend_state(provider).spent_usd == pytest.approx(0.10)
+
+    # Tatsaechlich war es teurer als geschaetzt.
+    ledger.record_success(provider, klein, tokens=1500, estimated_tokens=1000,
+                          cost=0.13, estimated_cost=0.10)
+    assert ledger.spend_state(provider).spent_usd == pytest.approx(0.13)
+
+
+def test_billiger_als_geschaetzt_gibt_wieder_frei() -> None:
+    ledger, provider, klein, _ = gedeckelt()
+    ledger.record_request(provider, klein, tokens=1000, cost=0.10)
+    ledger.record_success(provider, klein, tokens=400, estimated_tokens=1000,
+                          cost=0.04, estimated_cost=0.10)
+    assert ledger.spend_state(provider).spent_usd == pytest.approx(0.04)
+
+
+def test_aufgebrauchtes_budget_sperrt_den_anbieter() -> None:
+    ledger, provider, klein, gross = gedeckelt(budget=1.0)
+    ledger.record_request(provider, klein, cost=1.0)
+
+    verfuegbar = ledger.availability(provider, klein)
+    assert verfuegbar.ok is False
+    assert "Monatsbudget" in verfuegbar.reason
+    assert verfuegbar.headroom == 0.0
+    # Warten hilft nicht: der Deckel faellt erst zum Monatsersten.
+    assert verfuegbar.queueable is False
+    assert verfuegbar.wait_s > 3600
+
+
+def test_das_budget_gilt_fuer_alle_modelle_des_anbieters() -> None:
+    """Der Deckel haengt am Konto, nicht am Modell — anders als die
+    Kontingente, die je Modell oder je Schluessel zaehlen."""
+    ledger, provider, klein, gross = gedeckelt(budget=1.0)
+    ledger.record_request(provider, klein, cost=1.0)
+    assert ledger.availability(provider, gross).ok is False
+
+
+def test_restbudget_bestimmt_den_headroom() -> None:
+    ledger, provider, klein, _ = gedeckelt(budget=10.0)
+    ledger.record_request(provider, klein, cost=2.5)
+    verfuegbar = ledger.availability(provider, klein)
+    assert verfuegbar.ok is True
+    assert verfuegbar.headroom == pytest.approx(0.75)
+
+
+def test_ohne_deckel_bleibt_alles_offen() -> None:
+    """Preise allein begrenzen nichts — nur ein gesetzter Deckel tut das."""
+    from custom_components.free_ai_router.ledger import Ledger
+
+    model = make_model("klein", "groq", input_per_mtok=0.1, output_per_mtok=0.1)
+    provider = make_provider("groq", (model,))
+    ledger = Ledger()
+    ledger.record_request(provider, model, cost=999.0)
+    assert ledger.availability(provider, model).ok is True
+
+
+def test_monatswechsel_setzt_zurueck() -> None:
+    ledger, provider, klein, _ = gedeckelt(budget=1.0)
+    januar = datetime(2026, 1, 20, 12, 0, tzinfo=UTC).timestamp()
+    februar = datetime(2026, 2, 1, 0, 30, tzinfo=UTC).timestamp()
+
+    ledger.record_request(provider, klein, cost=1.0, now=januar)
+    assert ledger.availability(provider, klein, now=januar).ok is False
+    assert ledger.availability(provider, klein, now=februar).ok is True
+    assert ledger.spend_state(provider, now=februar).spent_usd == 0.0
+
+
+def test_ausgaben_ueberleben_einen_neustart() -> None:
+    """Sonst waere der Deckel nach jedem HA-Neustart wieder voll."""
+    from custom_components.free_ai_router.ledger import Ledger
+
+    ledger, provider, klein, _ = gedeckelt(budget=1.0)
+    ledger.record_request(provider, klein, cost=0.9)
+
+    danach = Ledger()
+    danach.restore(ledger.snapshot())
+    assert danach.spend_state(provider).spent_usd == pytest.approx(0.9)
+    assert danach.availability(provider, klein).headroom == pytest.approx(0.1)
+

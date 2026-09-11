@@ -48,6 +48,8 @@ def make_model(
     rpd: int | None = None,
     tpm: int | None = None,
     latency_class: str = "normal",
+    input_per_mtok: float | None = None,
+    output_per_mtok: float | None = None,
 ) -> Model:
     return Model(
         id=model_id,
@@ -60,7 +62,7 @@ def make_model(
             context_tokens=context_tokens,
         ),
         limits=Limits(rpm=rpm, rpd=rpd, tpm=tpm),
-        pricing=Pricing(),
+        pricing=Pricing(input_per_mtok=input_per_mtok, output_per_mtok=output_per_mtok),
         latency_class=latency_class,
     )
 
@@ -76,6 +78,7 @@ def make_provider(
     limits_scope: str = "per_model",
     daily_reset_timezone: str = "UTC",
     preference: int = 50,
+    monthly_budget_usd: float | None = None,
 ) -> Provider:
     return Provider(
         id=provider_id,
@@ -89,6 +92,7 @@ def make_provider(
         limits_scope=limits_scope,
         daily_reset_timezone=daily_reset_timezone,
         preference=preference,
+        monthly_budget_usd=monthly_budget_usd,
     )
 
 

@@ -143,7 +143,11 @@ class Limits:
 
 @dataclass(frozen=True, slots=True)
 class Pricing:
-    """Token-Preise. Erst ab Phase 4 relevant, jetzt nur mitgefuehrt."""
+    """Token-Preise je Million Token, getrennt fuer Ein- und Ausgabe.
+
+    Ohne sie kann der Ledger einen ``monthly_budget_usd`` nicht fuehren —
+    deshalb sind sie dort Pflicht und werden beim Einlesen erzwungen.
+    """
 
     input_per_mtok: float | None = None
     output_per_mtok: float | None = None
@@ -285,9 +289,13 @@ class Provider:
     monthly_budget_usd: float | None = None
     """Ausgabendeckel der kostenlosen Stufe, in US-Dollar je Monat.
 
-    Kein Zeitfenster, sondern eine Geldgrenze — der Ledger kann sie mit
-    Anfragen- und Tokenzaehlern nicht fuehren. Wird erst in Phase 4 zusammen
-    mit ``pricing`` ausgewertet; bis dahin nur mitgefuehrt.
+    Kein Zeitfenster, sondern eine Geldgrenze: der Ledger rechnet sie aus den
+    gemessenen Token und ``pricing`` hoch und sperrt den Anbieter, wenn der
+    Betrag erreicht ist. Der Deckel haengt am Konto, nicht am Modell — alle
+    Modelle eines Anbieters teilen ihn sich.
+
+    Wer ihn setzt, muss an jedem Modell vollstaendige ``pricing``-Angaben
+    fuehren. Ein Deckel ohne Preise waere keiner.
     """
     preference: int = 50
     """Redaktionelle Rangfolge, kleiner = frueher.
@@ -384,6 +392,21 @@ class Provider:
             not isinstance(budget, (int, float)) or isinstance(budget, bool) or budget < 0
         ):
             raise RegistryError(f"{where}.monthly_budget_usd: Zahl >= 0 oder leer erwartet")
+
+        if budget is not None:
+            # Ein Deckel ohne Preise ist kein Deckel: der Ledger koennte nur
+            # Anfragen und Token zaehlen und wuerde den Betrag nie erreichen.
+            # Lieber die Datei ablehnen als still nicht begrenzen.
+            ohne_preis = [
+                model.id
+                for model in models
+                if model.pricing.input_per_mtok is None or model.pricing.output_per_mtok is None
+            ]
+            if ohne_preis:
+                raise RegistryError(
+                    f"{where}: monthly_budget_usd gesetzt, aber {ohne_preis} fuehren keine "
+                    "vollstaendigen pricing-Angaben (input_per_mtok und output_per_mtok)"
+                )
 
         preference = data.get("preference", 50)
         if not isinstance(preference, int) or isinstance(preference, bool):

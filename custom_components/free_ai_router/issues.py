@@ -32,6 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 ISSUE_KEIN_ANBIETER = "kein_anbieter"
 ISSUE_SCHLUESSEL = "schluessel_abgelehnt"
 ISSUE_LUECKE = "profil_ohne_abdeckung"
+ISSUE_BUDGET = "budget_aufgebraucht"
 
 
 def _setzen(
@@ -85,6 +86,30 @@ def async_pruefen(hass: HomeAssistant, runtime: RouterRuntime) -> None:
                 schwer=True,
             )
 
+    # --- Ausgabendeckel erreicht ------------------------------------------
+    # Kein schwerer Befund: der Router weicht aus, und zum Monatsersten
+    # loest es sich von selbst. Aber es aendert die Erwartung — wer Mistral
+    # als Tiefenpuffer eingeplant hat, hat ihn bis dahin nicht mehr.
+    for provider_id, provider in sorted(anbieter.items()):
+        budget = provider.monthly_budget_usd
+        if not budget:
+            continue
+        ausgegeben = runtime.ledger.spend_state(provider).spent_usd
+        if ausgegeben < budget:
+            continue
+        issue_id = f"{ISSUE_BUDGET}_{provider_id}"
+        gewollt.add(issue_id)
+        _setzen(
+            hass,
+            issue_id,
+            ISSUE_BUDGET,
+            {
+                "anbieter": provider.name,
+                "budget": f"{budget:.2f}",
+                "ausgegeben": f"{ausgegeben:.2f}",
+            },
+        )
+
     # --- Profile ohne Kanal ------------------------------------------------
     abdeckung = runtime.coverage()
     for profile in PROFILES:
@@ -102,6 +127,7 @@ def async_pruefen(hass: HomeAssistant, runtime: RouterRuntime) -> None:
     bekannt = {ISSUE_KEIN_ANBIETER}
     bekannt |= {f"{ISSUE_SCHLUESSEL}_{pid}" for pid in anbieter}
     bekannt |= {f"{ISSUE_LUECKE}_{profile}" for profile in PROFILES}
+    bekannt |= {f"{ISSUE_BUDGET}_{pid}" for pid in anbieter}
     for issue_id in bekannt - gewollt:
         issue_registry.async_delete_issue(hass, DOMAIN, issue_id)
 

@@ -165,6 +165,12 @@ sensor.free_ai_router_verworfen_heute
 sensor.free_ai_router_<anbieter>_anfragen_heute    ← Restkontingent in den Attributen
 ```
 
+Bei einem Anbieter mit Ausgabendeckel stehen in denselben Attributen
+`budget_usd`, `ausgegeben_usd` und `rest_usd`. Ist der Betrag aufgebraucht,
+meldet sich das zusätzlich unter **Einstellungen → Reparaturen** — nicht als
+Störung, sondern weil es die Erwartung ändert: der Puffer ist bis zum
+Monatsersten weg.
+
 *Reserve gegriffen heute* ist der Sensor, auf den es ankommt. Ein Erstkanal,
 der still dauerhaft ausfällt, fällt sonst erst auf, wenn auch die Reserve weg
 ist. Dieselbe Lage meldet sich zusätzlich von selbst unter **Einstellungen →
@@ -181,6 +187,19 @@ Reparaturen**, samt Link zur Key-Seite des betroffenen Anbieters.
    ein. Fünf gleichzeitig auslösende Bewegungsmelder reißen 15 RPM lange vor
    500 RPD.
 3. Gegen ein **Tagesfenster** hilft kein Warten — der Router wechselt sofort.
+   Dasselbe gilt für den **Ausgabendeckel**: Mistrals kostenlose Stufe ist auf
+   10 $ API-Nutzung im Monat begrenzt, und das ist kein Zeitfenster, sondern
+   ein Geldbetrag. Der Ledger rechnet ihn aus den gemessenen Token und der
+   Preisliste hoch, bucht schon beim Absenden vor und sperrt den Anbieter,
+   wenn der Betrag erreicht ist — bis zum Monatsersten, in der Zeitzone des
+   Anbieters. Der Deckel hängt am Konto: alle Modelle eines Anbieters teilen
+   ihn sich.
+
+   Ein- und Ausgabe werden getrennt gerechnet, weil sie getrennt bepreist
+   sind. Bei `mistral-small` kostet die Ausgabe das Vierfache der Eingabe;
+   mit einem Mischpreis wäre der Deckel bei langen Antworten zu spät
+   erreicht. Der so gerechnete Betrag ist eine Schätzung — maßgeblich bleibt
+   die Abrechnung des Anbieters.
 4. Jeder Wechsel steht im Log und im Attribut `zuletzt_genutzter_kanal`.
 5. Erst wenn **kein** Kanal übrig ist, endet der Aufruf mit einem
    `HomeAssistantError`, dessen Text jeden Versuch einzeln nennt. Eine

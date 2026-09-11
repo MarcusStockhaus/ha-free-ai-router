@@ -193,4 +193,16 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
             }
             if zustand["block_reason"]:
                 gesperrt.append(f"{channel.model.id}: {zustand['block_reason']}")
-        return {"modelle": modelle, "gesperrt": gesperrt or None}
+
+        attribute: dict[str, Any] = {"modelle": modelle, "gesperrt": gesperrt or None}
+
+        # Der Ausgabendeckel gehoert an den Anbieter, nicht an das Modell:
+        # alle Modelle eines Kontos teilen sich denselben Betrag.
+        kanaele = self._kanaele()
+        budget = kanaele[0].provider.monthly_budget_usd if kanaele else None
+        if budget:
+            ausgegeben = ledger.spend_state(kanaele[0].provider).spent_usd
+            attribute["budget_usd"] = budget
+            attribute["ausgegeben_usd"] = round(ausgegeben, 4)
+            attribute["rest_usd"] = round(max(0.0, budget - ausgegeben), 4)
+        return attribute

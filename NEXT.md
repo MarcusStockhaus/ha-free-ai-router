@@ -152,24 +152,47 @@ Automationsvorschläge reicht das; für Häufigeres wäre der nächste Kandidat 
 Anbieter außerhalb der bisherigen Allowlist — und das ist dann eine
 Code-Änderung in `allowlist.py`, kein Datenupdate.
 
-## 5b. Für Phase 4 vorgemerkt: Ausgabendeckel als eigener Limit-Typ
+## 5b. ~~Für Phase 4 vorgemerkt~~ — Ausgabendeckel, gebaut am 11.09.2026
 
 Mistrals kostenlose Stufe ist auf **10 $ API-Nutzung im Monat** gedeckelt. Das
 Registry-Schema kennt nur Zeitfenster (`rpm`, `rpd`, `tpm`, `tpd`) — einen
 Ausgabendeckel kann der Ledger damit nicht führen.
 
-Die Daten liegen seit dem 10.09.2026 vollständig vor: `monthly_budget_usd: 10`
-am Anbieter, `pricing` je Modell (von mistral.ai/pricing/api). Der Ledger zählt
-Token bereits je Modell. Was fehlt, ist nur noch die Multiplikation und ein
-Monatsfenster im Ledger — dann kann der Router „noch 3 $ im Monat" als
-Rangkriterium behandeln.
+**Erledigt.** Der Ledger führt jetzt ein Monatsfenster je Anbieter
+(`SpendState`), rechnet aus den gemessenen Token und `pricing` den Betrag hoch,
+bucht schon beim Absenden vor und berichtigt nach der Antwort — dieselbe
+Mechanik wie bei den Token, nur eine Stufe strenger, weil gegen einen
+aufgebrauchten Deckel kein Warten hilft.
 
-Rechnerisch trägt der Deckel rund 2.560 Kameraanalysen am Tag auf
-`ministral-3b-2512`. Der Ledger merkt davon heute nichts; bis Phase 4 schützt
-allein die Rangfolge.
+Ein paar Entscheidungen, die dabei angefallen sind:
 
-Bis dahin gilt die Behelfslösung: `preference: 50` sorgt dafür, dass die
-ungedeckelten Kanäle zuerst drankommen.
+- **Ein- und Ausgabe getrennt gerechnet.** Bei `mistral-small` kostet die
+  Ausgabe das Vierfache der Eingabe; mit einem Mischpreis wäre der Deckel bei
+  langen Antworten zu spät erreicht.
+- **Der Deckel hängt am Konto, nicht am Modell.** Anders als die Kontingente,
+  die je Modell oder je Schlüssel zählen. Zwei Modelle desselben Anbieters
+  teilen sich den Betrag.
+- **Monatsgrenze in der Zeitzone des Anbieters**, wie schon der Tageszähler.
+- **Das Restbudget geht als `headroom` in die Rangfolge**, also genau dort
+  ein, wo schon das Restkontingent steht. Der Router brauchte dafür keine
+  Zeile.
+- **Ein Deckel ohne Preise wird beim Einlesen abgelehnt.** Er wäre sonst
+  keiner: der Ledger zählte Anfragen und Token und erreichte den Betrag nie,
+  während die Datei behauptet, der Anbieter sei begrenzt.
+
+Nachgerechnet am echten Registry-Stand: 10 $ tragen **74.627 Kameraanalysen**
+auf `ministral-3b-2512` (Bild plus Schema-Antwort, 0,000134 $ je Stück) — rund
+2.500 am Tag. Die Simulation über einen ganzen Monat trifft den Deckel auf den
+Cent genau und meldet danach „Monatsbudget aufgebraucht (10.00 von 10.00 USD)"
+mit der richtigen Wartezeit bis zum Monatsersten.
+
+Sichtbar wird das in den Attributen des Anbieter-Sensors (`budget_usd`,
+`ausgegeben_usd`, `rest_usd`) und als Reparatur-Hinweis, sobald der Betrag
+erreicht ist. Bewusst kein schwerer Befund: der Router weicht aus, und zum
+Monatsersten löst es sich von selbst.
+
+`preference: 50` bleibt trotzdem richtig — die ungedeckelten Kanäle sollen
+weiterhin zuerst drankommen, damit Geld erst fließt, wenn Freies aus ist.
 
 ## 6. Phase 2 — begonnen am 11.09.2026
 

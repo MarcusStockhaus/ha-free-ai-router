@@ -265,12 +265,36 @@ def test_kameraanalyse_mit_schema_hat_mehr_als_einen_kanal() -> None:
     )
 
 
+def mit_preisen(**changes):
+    """MINIMAL, aber mit vollstaendigen Preisangaben am Modell."""
+    data = variant(**changes)
+    data["models"][0]["pricing"] = {"input_per_mtok": 0.1, "output_per_mtok": 0.2}
+    return data
+
+
 def test_monatsdeckel_wird_gelesen() -> None:
-    """Ausgabendeckel sind kein Zeitfenster — sie werden nur mitgefuehrt,
-    bis Phase 4 sie zusammen mit den Preisen auswerten kann."""
-    provider = Provider.parse(variant(monthly_budget_usd=10), "test")
+    provider = Provider.parse(mit_preisen(monthly_budget_usd=10), "test")
     assert provider.monthly_budget_usd == 10.0
     assert Provider.parse(MINIMAL, "test").monthly_budget_usd is None
+
+
+def test_deckel_ohne_preise_wird_abgelehnt() -> None:
+    """Ein Deckel ohne Preise ist kein Deckel.
+
+    Der Ledger koennte dann nur Anfragen und Token zaehlen und wuerde den
+    Betrag nie erreichen — der Anbieter liefe unbegrenzt weiter, waehrend die
+    Datei behauptet, er sei begrenzt. Lieber die Datei ablehnen.
+    """
+    with pytest.raises(RegistryError, match="pricing"):
+        Provider.parse(variant(monthly_budget_usd=10), "test")
+
+
+def test_halbe_preisangabe_reicht_nicht() -> None:
+    """Nur der Eingabepreis: die Ausgabe bliebe unbeziffert und damit gratis."""
+    data = variant(monthly_budget_usd=10)
+    data["models"][0]["pricing"] = {"input_per_mtok": 0.1}
+    with pytest.raises(RegistryError, match="pricing"):
+        Provider.parse(data, "test")
 
 
 def test_negativer_monatsdeckel_wird_abgelehnt() -> None:

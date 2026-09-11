@@ -95,6 +95,10 @@
     "profil_ohne_abdeckung": {
       "title": "Profil „{profil}“ hat keinen Kanal",
       "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Fähigkeitserkennung beim Einrichten, und was sie misst, gewinnt über die Registry."
+    },
+    "budget_aufgebraucht": {
+      "title": "{anbieter}: Monatsbudget aufgebraucht",
+      "description": "{anbieter} hat in diesem Monat {ausgegeben} von {budget} US-Dollar verbraucht. Die kostenlose Stufe ist damit bis zum Monatsersten zu.\n\nAnfragen laufen weiter über die übrigen Anbieter — bemerkt wird es erst, wenn dort das Kontingent knapp wird. Wer den Puffer braucht, richtet einen weiteren Anbieter ein oder wartet den Monatswechsel ab.\n\nDer Betrag ist selbst gerechnet, aus den gemessenen Token und der Preisliste in der Anbieterdatei. Die Abrechnung des Anbieters ist maßgeblich."
     }
   }
 }
