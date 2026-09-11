@@ -69,8 +69,9 @@ das ist ein Ergebnis.)
 ### 1. Host in die Allowlist
 
 Das ist der **einzige** Python-Teil, und er ist Absicht: eine Datendatei darf
-niemals einen neuen Endpunkt einführen. Ein späterer Feed-Dienst soll Modelle
-und Limits aktualisieren dürfen, aber nie, wohin Kamerabilder fließen.
+niemals einen neuen Endpunkt einführen. Auch der signierte Feed-Dienst
+([FEED.md](FEED.md)) darf Modelle und Limits aktualisieren, aber nie, wohin
+Kamerabilder fließen.
 
 ```diff
 --- a/custom_components/free_ai_router/allowlist.py

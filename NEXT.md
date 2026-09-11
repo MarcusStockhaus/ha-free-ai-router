@@ -1,7 +1,8 @@
 # Wiedereinstieg
 
-Stand 11.09.2026. Phase 1 läuft in einem echten Home Assistant (2026.8.3).
-122 Tests grün.
+Stand 11.09.2026. Phase 1 läuft in einem echten Home Assistant (2026.8.3),
+Phase 2 ist inhaltlich durch, Phase 3 steht code-komplett und abgeschaltet.
+201 Tests grün.
 
 ---
 
@@ -198,8 +199,50 @@ ist keine Programmierarbeit mehr:
 - [ ] Jemanden ohne Vorwissen die Türklingel-Analyse einrichten lassen —
       das ist das Abnahmekriterium des Konzepts für Phase 2
 
-Nicht vorziehen: der Feed-Dienst (Phase 3) ist der technisch reizvollste Teil
-und der einzige, den du für dich nicht brauchst.
+---
+
+## 7. Phase 3 — Feed-Dienst, gebaut am 11.09.2026
+
+Ausführlich in [FEED.md](FEED.md). Kurz:
+
+- [x] **Dokumentformat** (`feed.py`) — `providers` in Registry-Form,
+      `measurements` daneben. Trennung von Definition und Beobachtung, damit
+      eine Messung keine Felder in die Definition einschleusen kann.
+- [x] **Signatur** — Ed25519 über die rohen Bytes der Datei, keine
+      Kanonisierung. Ohne gültige Signatur gibt es kein Dokument; einen Weg,
+      an den Inhalt zu kommen, ohne vorher zu prüfen, hat das Modul nicht.
+- [x] **Frische und Rückschrittsschutz** — 14 Tage Obergrenze, vom Client
+      gerechnet, und kein Dokument, das älter ist als das zuletzt gesehene.
+- [x] **Die Allowlist hält auch hinter gültiger Signatur** — der zugehörige
+      Test arbeitet deshalb absichtlich mit einer echten Signatur.
+- [x] **Prober** (`tools/prober.py`) — zwei Takte, Zustandsdatei über Läufe
+      hinweg, drei Notbremsen gegen Falschmeldungen.
+- [x] **Client** (`feed_client.py`) — bedingte Abrufe, 1-MB-Grenze, erneutes
+      Prüfen beim Laden aus dem Zwischenspeicher, Ausfall ohne Folgen.
+- [x] **Workflow** (`.github/workflows/prober.yml`) — stündlich sparsam,
+      täglich voll, Ergebnis auf den Zweig `feed`.
+- [x] **41 Tests** dazu, zwei Liveläufe gegen die echten Anbieter.
+
+**Der Livelauf hat wieder etwas widerlegt.** Mistral antwortete mit `429`. Ein
+Ratenlimit als Ausfall zu zählen hätte gereicht, um nach drei gedrosselten
+Läufen ein gesundes Modell allen Nutzern totzumelden — der Endpunkt hat ja
+geantwortet. Seitdem lassen `401`, `402`, `403` und `429` die Runde
+ungewertet. Dieselbe Überlegung schützt vor dem abgelaufenen Proberschlüssel.
+
+### Was zum Einschalten noch fehlt
+
+Beides sind Entscheidungen, keine Programmierarbeit:
+
+- [ ] **Wo der Feed liegen soll.** Der Workflow legt `site/` auf den Zweig
+      `feed`; ausgeliefert wird er noch nicht. GitHub Pages aus einem privaten
+      Repository verlangt einen bezahlten Tarif — eigener Webspace per `rsync`
+      wäre die andere Möglichkeit. Die Adresse muss dauerhaft dieselbe
+      bleiben: sie steht danach im Quelltext jeder ausgelieferten Fassung.
+- [ ] **Ein eigenes Proberkonto.** Die Restkontingente, die der Prober
+      beobachtet, sind seine eigenen. Mit den Schlüsseln des Autors gemessen
+      wären es dessen Kontingente — und der Prober verbrauchte sie mit.
+- [ ] Danach `FEED_URL` und `FEED_PUBLIC_KEY_B64` in `feed.py` setzen. Bis
+      dahin ist der Feed nicht abgeschaltet, sondern nicht vorhanden.
 
 ---
 

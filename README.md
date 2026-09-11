@@ -199,10 +199,14 @@ Googles kostenlose Stufe setzt um Mitternacht Pacific zurück.
 
 Die Registry-Dateien bestimmen, wohin Daten fließen. Deshalb steht zusätzlich
 eine **fest eincompilierte Host-Allowlist** im Python-Code: eine Datendatei
-kann niemals einen Endpunkt einführen, der dort nicht steht. Das ist die zweite
-Linie hinter der Signatur des Feed-Dienstes, der in einer späteren Ausbaustufe
-Modelle und Limits aktualisieren soll — er darf Texte und Zahlen ändern,
-niemals aber das Ziel.
+kann niemals einen Endpunkt einführen, der dort nicht steht.
+
+Das ist die zweite Linie hinter der Signatur des **Feed-Dienstes**, der
+Modelle und Limits aktuell hält. Er darf Texte und Zahlen ändern, niemals aber
+das Ziel. Der Feed ist in dieser Fassung **aus** — `FEED_URL` und
+`FEED_PUBLIC_KEY_B64` stehen leer, die Integration holt also nichts und fragt
+nichts. Wie er funktioniert und wie man ihn einschaltet, steht in
+[FEED.md](FEED.md).
 
 ---
 
