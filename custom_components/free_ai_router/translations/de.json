@@ -45,12 +45,37 @@
   },
   "entity": {
     "ai_task": {
-      "schnell": { "name": "Schnell" },
-      "vision": { "name": "Bildanalyse" },
-      "reasoning": { "name": "Reasoning" }
+      "schnell": {
+        "name": "Schnell"
+      },
+      "vision": {
+        "name": "Bildanalyse"
+      },
+      "reasoning": {
+        "name": "Reasoning"
+      }
     },
     "conversation": {
-      "assist": { "name": "Assist" }
+      "assist": {
+        "name": "Assist"
+      }
+    },
+    "sensor": {
+      "anfragen_heute": {
+        "name": "Anfragen heute"
+      },
+      "token_heute": {
+        "name": "Token heute"
+      },
+      "reserve_heute": {
+        "name": "Reserve gegriffen heute"
+      },
+      "verworfen_heute": {
+        "name": "Verworfen heute"
+      },
+      "anbieter_anfragen": {
+        "name": "{anbieter} Anfragen heute"
+      }
     }
   },
   "exceptions": {

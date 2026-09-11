@@ -328,3 +328,99 @@ def test_verbrauch_faellt_nie_unter_null() -> None:
     ledger = Ledger()
     ledger.record_success(provider, model, tokens=10, estimated_tokens=9999)
     assert ledger.bucket(bucket_key(provider, model)).minute_tokens == 0
+
+
+# --------------------------------------------------------------------------
+# Tageszaehler fuers Dashboard
+# --------------------------------------------------------------------------
+
+
+def test_tageszaehler_zaehlt_anfragen_und_token() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 1_000_000.0
+
+    ledger.record_request(provider, model, tokens=1100, now=now)
+    ledger.record_request(provider, model, tokens=1100, now=now)
+
+    assert ledger.stats.requests == 2
+    assert ledger.stats.tokens == 2200
+
+
+def test_reserve_und_verwerfen_werden_gezaehlt() -> None:
+    """Der Wert, auf den es ankommt: ein still dauerhaft ausfallender
+    Erstkanal faellt sonst erst auf, wenn auch die Reserve weg ist."""
+    ledger = Ledger()
+    now = 1_000_000.0
+
+    ledger.note_fallback(now=now)
+    ledger.note_fallback(now=now)
+    ledger.note_discarded(now=now)
+
+    assert ledger.stats.fallbacks == 2
+    assert ledger.stats.discarded == 1
+
+
+def test_tageszaehler_springt_lokal_um() -> None:
+    """Anders als die Kontingentfenster: die Zahlen sind fuer den Menschen
+    davor, nicht fuer den Anbieter."""
+    import time as _time
+    from datetime import datetime, timedelta
+
+    provider, model, _ = build()
+    ledger = Ledger()
+
+    heute = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0)
+    morgen = heute + timedelta(days=1)
+
+    ledger.record_request(provider, model, now=heute.timestamp())
+    assert ledger.stats.requests == 1
+
+    ledger.record_request(provider, model, now=morgen.timestamp())
+    assert ledger.stats.requests == 1, "Zaehler haette zuruecksetzen muessen"
+    assert ledger.stats.day_key == morgen.strftime("%Y-%m-%d")
+    del _time
+
+
+async def test_tageszaehler_ueberlebt_den_neustart() -> None:
+    provider, model, _ = build()
+    gespeichert: dict = {}
+
+    async def save(data):
+        gespeichert.clear()
+        gespeichert.update(data)
+
+    ledger = Ledger(save=save)
+    ledger.record_request(provider, model, tokens=1100)
+    ledger.note_fallback()
+    await ledger.async_save()
+
+    wieder = Ledger()
+    wieder.restore(gespeichert)
+    assert wieder.stats.requests == 1
+    assert wieder.stats.tokens == 1100
+    assert wieder.stats.fallbacks == 1
+
+
+def test_tageszaehler_zeigt_verbrauch_nicht_vorbuchung() -> None:
+    """Der Ledger bucht vor dem Absenden eine Schaetzung und berichtigt sie
+    danach. Ohne dieselbe Berichtigung im Tageszaehler zeigt das Dashboard die
+    Schaetzung — bei einer Kameraanalyse das Zweieinhalbfache des Verbrauchs.
+    """
+    provider, model, _ = build()
+    ledger = Ledger()
+    now = 1_000_000.0
+
+    ledger.record_request(provider, model, tokens=1366, now=now)   # Schaetzung
+    assert ledger.stats.tokens == 1366
+
+    ledger.record_success(provider, model, tokens=1172, estimated_tokens=1366, now=now)
+    assert ledger.stats.tokens == 1172, "Tageszaehler wurde nicht berichtigt"
+    assert ledger.bucket(bucket_key(provider, model)).day_tokens == 1172
+
+
+def test_tageszaehler_faellt_nie_unter_null() -> None:
+    provider, model, _ = build()
+    ledger = Ledger()
+    ledger.record_success(provider, model, tokens=10, estimated_tokens=9999)
+    assert ledger.stats.tokens == 0

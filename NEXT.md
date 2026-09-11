@@ -168,10 +168,18 @@ allein die Rangfolge.
 Bis dahin gilt die Behelfslösung: `preference: 50` sorgt dafür, dass die
 ungedeckelten Kanäle zuerst drankommen.
 
-## 6. Erst danach Phase 2
+## 6. Phase 2 — begonnen am 11.09.2026
 
-Blueprints, Verbrauchssensoren, öffentliche README, `CONTRIBUTING.md`,
-CI-Schemacheck (`tools/validate_registry.py` ist dafür schon fertig).
+- [x] **Blueprint Kameraanalyse** — Sperrzeit, genauer Auslöser, freie
+      Zusatzbedingung als Eingabefelder. Live geprüft.
+- [x] **Verbrauchssensoren** — vier Tageszähler (Anfragen, Token, Reserve
+      gegriffen, verworfen) plus einer je Anbieter mit Restkontingent je
+      Modell in den Attributen.
+- [ ] Blueprint für die Türklingel (Auslöser ist ein Ereignis, keine Bewegung)
+- [ ] Fehlerbehandlung für fremde Setups
+- [ ] Öffentliche README mit Grundsatz und Erwartungsrahmen
+- [ ] `CONTRIBUTING.md` mit genau einem Beispiel-Diff
+- [ ] CI-Schemacheck (`tools/validate_registry.py` ist dafür schon fertig)
 
 Nicht vorziehen: der Feed-Dienst (Phase 3) ist der technisch reizvollste Teil
 und der einzige, den du für dich nicht brauchst.

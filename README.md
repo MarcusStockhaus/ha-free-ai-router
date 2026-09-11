@@ -110,6 +110,20 @@ Danach gibt es:
 | `ai_task.free_ai_router_reasoning` | großer Kontext, Automationsbau |
 | `conversation.free_ai_router_assist` | Assist, mit Gerätesteuerung |
 
+Dazu sechs Sensoren: **Anfragen heute**, **Token heute**, **Reserve gegriffen
+heute**, **Verworfen heute** und je Anbieter einer mit dem Restkontingent je
+Modell in den Attributen.
+
+Der wichtigste davon ist *Reserve gegriffen heute*. Ein Erstkanal, der still
+dauerhaft ausfällt, fällt sonst erst auf, wenn auch die Reserve weg ist.
+
+### Blueprint
+
+`blueprints/automation/free_ai_router/kamera_analyse.yaml` — Kameraanalyse bei
+Bewegung, mit Sperrzeit als Pflichtgedanken statt als Fußnote. Da Verkleinern
+nichts spart (siehe oben), ist die Anzahl der Auslösungen die einzige
+Stellschraube, die es gibt.
+
 Ein Bildanhang schlägt das Profil: hängt an einer Anfrage an der
 `schnell`-Entity ein Bild, routet der Router auf einen Vision-fähigen Kanal.
 Sonst würde die Kameraanalyse daran scheitern, dass sie an der falschen Entity

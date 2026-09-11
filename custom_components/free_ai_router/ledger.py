@@ -106,6 +106,46 @@ class BucketState:
         return state
 
 
+@dataclass(slots=True)
+class DayStats:
+    """Tageszaehler fuers Dashboard, nicht fuers Routing.
+
+    Der Tagesschluessel ist hier bewusst *lokal*, nicht in der Zeitzone eines
+    Anbieters: die Zahlen beantworten "was war heute los" fuer den Menschen
+    davor. Die Kontingentfenster in :class:`BucketState` bleiben davon
+    unberuehrt und rechnen weiter in der Zone des Anbieters.
+    """
+
+    day_key: str = ""
+    requests: int = 0
+    tokens: int = 0
+    fallbacks: int = 0
+    """Wie oft heute die Reserve eingesprungen ist.
+
+    Der Wert, auf den es ankommt: ein Erstkanal, der still dauerhaft ausfaellt,
+    faellt sonst erst auf, wenn auch die Reserve weg ist.
+    """
+    discarded: int = 0
+    """Anfragen, fuer die kein Kanal mehr da war."""
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "day_key": self.day_key,
+            "requests": self.requests,
+            "tokens": self.tokens,
+            "fallbacks": self.fallbacks,
+            "discarded": self.discarded,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DayStats:
+        stats = cls()
+        for name in cls.__slots__:
+            if name in data:
+                setattr(stats, name, data[name])
+        return stats
+
+
 @dataclass(frozen=True, slots=True)
 class Availability:
     """Antwort auf: kann dieser Topf jetzt eine Anfrage tragen?"""
@@ -137,6 +177,7 @@ class Ledger:
 
     save: SaveCallback | None = None
     buckets: dict[str, BucketState] = field(default_factory=dict)
+    stats: DayStats = field(default_factory=DayStats)
     _locks: dict[str, asyncio.Lock] = field(default_factory=dict, repr=False)
     _dirty: bool = field(default=False, repr=False)
 
@@ -147,6 +188,24 @@ class Ledger:
             state = BucketState()
             self.buckets[key] = state
         return state
+
+    def _roll_stats(self, now: float) -> None:
+        """Tageszaehler zuruecksetzen, wenn lokal ein neuer Tag begonnen hat."""
+        heute = datetime.fromtimestamp(now).strftime("%Y-%m-%d")
+        if self.stats.day_key != heute:
+            self.stats = DayStats(day_key=heute)
+
+    def note_fallback(self, *, now: float | None = None) -> None:
+        """Die Reserve ist eingesprungen."""
+        self._roll_stats(time.time() if now is None else now)
+        self.stats.fallbacks += 1
+        self._dirty = True
+
+    def note_discarded(self, *, now: float | None = None) -> None:
+        """Kein Kanal mehr da — die Anfrage wurde verworfen."""
+        self._roll_stats(time.time() if now is None else now)
+        self.stats.discarded += 1
+        self._dirty = True
 
     def _roll(self, state: BucketState, tz_name: str, now: float) -> None:
         """Fenster weiterdrehen, bevor gelesen oder gezaehlt wird."""
@@ -253,6 +312,9 @@ class Ledger:
         if tokens:
             state.minute_tokens += tokens
             state.day_tokens += tokens
+        self._roll_stats(now)
+        self.stats.requests += 1
+        self.stats.tokens += tokens
         self._dirty = True
 
     def absorb_headers(
@@ -300,6 +362,11 @@ class Ledger:
             self._roll(state, provider.daily_reset_timezone, now)
             state.minute_tokens = max(0, state.minute_tokens + delta)
             state.day_tokens = max(0, state.day_tokens + delta)
+            # Der Tageszaehler fuers Dashboard muss dieselbe Berichtigung
+            # bekommen. Sonst zeigt er die Vorbuchung statt des Verbrauchs —
+            # bei einer Kameraanalyse das Zweieinhalbfache.
+            self._roll_stats(now)
+            self.stats.tokens = max(0, self.stats.tokens + delta)
         if info is not None:
             self.absorb_headers(provider, model, info, now=now)
         self._dirty = True
@@ -393,6 +460,7 @@ class Ledger:
         return {
             "version": 1,
             "buckets": {key: state.as_dict() for key, state in self.buckets.items()},
+            "stats": self.stats.as_dict(),
         }
 
     def restore(self, data: dict[str, Any] | None) -> None:
@@ -402,6 +470,8 @@ class Ledger:
         for key, raw in buckets.items():
             if isinstance(raw, dict):
                 self.buckets[key] = BucketState.from_dict(raw)
+        if isinstance(data.get("stats"), dict):
+            self.stats = DayStats.from_dict(data["stats"])
 
     async def async_save(self, *, force: bool = False) -> None:
         if self.save is None or (not self._dirty and not force):

@@ -35,6 +35,14 @@ _LOGGER = logging.getLogger(__name__)
 #: ausgeloest hat, ist dann ohnehin nicht mehr aktuell.
 DEFAULT_MAX_QUEUE_WAIT_S = 20.0
 
+#: Was fuer die Vorbuchung als Ausgabe veranschlagt wird. Nicht
+#: ``max_output_tokens`` — das ist eine Obergrenze, keine Erwartung. Gemessen
+#: liefert eine strukturierte Kameraanalyse rund 60 Ausgabe-Token; mit dem
+#: Limit von 2048 zu buchen wuerde das Minutenfenster zweieinhalbmal zu
+#: schnell fuellen und unnoetig bremsen. Der tatsaechliche Verbrauch wird
+#: nach der Antwort nachgetragen.
+ERWARTETE_AUSGABE_TOKEN = 256
+
 
 def _kurz(err: Exception, laenge: int = 160) -> str:
     """Fehlertext auf Logzeilen-Laenge bringen.
@@ -164,7 +172,9 @@ class RouterClient:
 
             # Schaetzung vorbuchen: bei engen Tokenfenstern soll der naechste
             # Aufruf bremsen, bevor der Anbieter 429 sagt.
-            geschaetzt = requirements.approx_input_tokens + max_output_tokens
+            geschaetzt = requirements.approx_input_tokens + min(
+                max_output_tokens, ERWARTETE_AUSGABE_TOKEN
+            )
             self.ledger.record_request(provider, model, tokens=geschaetzt)
             try:
                 response = await adapter.chat(
@@ -193,6 +203,7 @@ class RouterClient:
             )
             attempts.append(f"{candidate.key}: ok")
             if len(attempts) > 1:
+                self.ledger.note_fallback()
                 _LOGGER.info(
                     "Reserve gegriffen: %s hat geliefert, vorher %s",
                     candidate.key,
@@ -206,6 +217,7 @@ class RouterClient:
                 waited_s=waited_total,
             )
 
+        self.ledger.note_discarded()
         await self.ledger.async_save()
         raise NoChannelAvailable(
             f"Alle Kanaele fuer Profil {requirements.profile!r} ausgefallen oder am Limit",

@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 #: Plattformen als Text, damit ``Platform`` nicht auf Modulebene noetig ist.
-PLATFORMS: list[str] = ["ai_task", "conversation"]
+PLATFORMS: list[str] = ["ai_task", "conversation", "sensor"]
 
 #: Ledger nicht bei jeder Anfrage auf die SD-Karte schreiben.
 LEDGER_SAVE_DELAY_S = 30
