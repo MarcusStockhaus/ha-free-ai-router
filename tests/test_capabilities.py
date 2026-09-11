@@ -97,6 +97,8 @@ class Endpunkt:
         self.kann_schema = True
         self.kann_werkzeuge = True
         self.gesehene_bilder: list[tuple[str, str]] = []
+        # Simuliert ein Modell, das nur manchmal wirklich hinsieht.
+        self.nur_erste_runde_richtig = False
 
     async def chat(self, request: web.Request) -> web.Response:
         payload = await request.json()
@@ -114,7 +116,10 @@ class Endpunkt:
                 )
             # Ein blindes Modell raet: dann steht hier eine feste
             # Verlegenheitsantwort, die praktisch nie zufaellig passt.
-            text = f"{bild[0]}, {bild[1]}" if self.sieht_richtig else "rot, blau"
+            richtig = self.sieht_richtig and not (
+                self.nur_erste_runde_richtig and len(self.gesehene_bilder) > 1
+            )
+            text = f"{bild[0]}, {bild[1]}" if richtig else "rot, blau"
 
         elif payload.get("response_format"):
             if not self.kann_schema:
@@ -370,3 +375,40 @@ async def test_fortschritt_wird_gemeldet(umgebung) -> None:
         on_progress=lambda done, total, label: schritte.append((done, total, label)),
     )
     assert schritte == [(1, 1, "Test / modell-a")]
+
+
+async def test_vision_braucht_zwei_treffer_in_folge(umgebung) -> None:
+    """Ein Modell, das nur manchmal richtig raet, darf nicht durchkommen.
+
+    Am 11.09.2026 bestand ministral-8b eine Runde und antwortete in der
+    naechsten "Rot, Blau" — die beiden haeufigsten Verlegenheitsfarben.
+    """
+    endpunkt = umgebung["endpunkt"]
+    endpunkt.sieht_richtig = True
+    endpunkt.nur_erste_runde_richtig = True
+
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+
+    assert probe.vision.ok is False
+    assert "Runde 2 von 2" in probe.vision.detail
+    assert len(endpunkt.gesehene_bilder) == 2, "zweite Runde wurde nicht gefahren"
+
+
+async def test_zwei_richtige_runden_zaehlen_als_bestanden(umgebung) -> None:
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+    assert probe.vision.ok is True
+    assert len(umgebung["endpunkt"].gesehene_bilder) == 2
+
+
+async def test_blindes_modell_kostet_nur_einen_aufruf(umgebung) -> None:
+    """Wer die erste Runde verfehlt, wird nicht noch einmal gefragt."""
+    umgebung["endpunkt"].sieht_richtig = False
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+    assert probe.vision.ok is False
+    assert len(umgebung["endpunkt"].gesehene_bilder) == 1

@@ -75,6 +75,11 @@ _TOOL_PROMPT = "Schalte das Licht im Wohnzimmer ein. Nutze dafuer das Werkzeug."
 #: Antwort zurueck, und die Messung meldet faelschlich "kann es nicht".
 PROBE_OUTPUT_TOKENS = 768
 
+#: Runden der Bildpruefung. Eine Runde laesst sich mit rund fuenf Prozent
+#: Wahrscheinlichkeit erraten; zwei druecken das unter ein Promille. Mehr
+#: kostet nur Kontingent, ohne noch etwas zu klaeren.
+VISION_ROUNDS = 2
+
 ProgressCallback = Callable[[int, int, str], None]
 
 
@@ -353,43 +358,69 @@ async def _check_vision(
     api_key: str,
     model: Model,
     timeout: float,
+    runden: int = VISION_ROUNDS,
 ) -> tuple[CheckResult, bool | None]:
-    started = time.monotonic()
-    challenge = make_challenge()
-    image = ImageAttachment(mime_type=challenge.mime_type, data=challenge.image)
-    try:
-        response = await adapter.chat(
-            session,
-            provider,
-            api_key,
-            ChatRequest(
-                model=model.id,
-                instructions=challenge.prompt,
-                images=(image,),
-                max_output_tokens=PROBE_OUTPUT_TOKENS,
-                thinking_budget=0,
-            ),
-            timeout=timeout,
-        )
-    except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
-        return CheckResult(False, str(err), time.monotonic() - started), None
+    """Bildpruefung ueber mehrere Runden mit je neuen Farben.
 
-    detail = (response.text or "").strip()[:60]
-    if not challenge.solved(response.text):
-        # Angenommen, aber nicht angesehen: manche Endpunkte verwerfen den
-        # Bildteil stillschweigend und antworten trotzdem. Als Vision-Kanal
-        # taugt das nichts.
-        falsch = challenge.wrong_colors(response.text)
-        hinweis = f", genannt: {', '.join(falsch)}" if falsch else ""
-        return (
-            CheckResult(
+    Warum mehrfach: eine einzelne Runde laesst sich mit rund fuenf Prozent
+    Wahrscheinlichkeit erraten, und genau das ist am 11.09.2026 passiert —
+    dasselbe Modell bestand einen Lauf und antwortete im naechsten "Rot, Blau",
+    die beiden haeufigsten Verlegenheitsfarben. Zwei Runden druecken die
+    Ratequote unter ein Promille.
+
+    Kostet nur bei Modellen, die tatsaechlich sehen, einen zweiten Aufruf:
+    die erste falsche Antwort beendet die Pruefung.
+    """
+    started = time.monotonic()
+    erkannt: list[str] = []
+
+    for runde in range(1, runden + 1):
+        challenge = make_challenge()
+        image = ImageAttachment(mime_type=challenge.mime_type, data=challenge.image)
+        try:
+            response = await adapter.chat(
+                session,
+                provider,
+                api_key,
+                ChatRequest(
+                    model=model.id,
+                    instructions=challenge.prompt,
+                    images=(image,),
+                    max_output_tokens=PROBE_OUTPUT_TOKENS,
+                    thinking_budget=0,
+                ),
+                timeout=timeout,
+            )
+        except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
+            if runde == 1:
+                return CheckResult(False, str(err), time.monotonic() - started), None
+            # Eine spaetere Runde am Netz gescheitert: das ist kein Befund
+            # ueber das Modell. Was bis hierhin stimmte, zaehlt.
+            _LOGGER.debug("%s: Vision-Runde %s abgebrochen: %s", model.key, runde, err)
+            break
+
+        if not challenge.solved(response.text):
+            # Angenommen, aber nicht angesehen: manche Endpunkte verwerfen den
+            # Bildteil stillschweigend und antworten trotzdem.
+            falsch = challenge.wrong_colors(response.text)
+            hinweis = f", genannt: {', '.join(falsch)}" if falsch else ""
+            detail = (response.text or "").strip()[:60]
+            vorher = f"Runde {runde} von {runden}; " if runde > 1 else ""
+            return (
+                CheckResult(
+                    False,
+                    f"{vorher}erwartet {challenge.expected_text}{hinweis} — "
+                    f"Antwort: {detail!r}",
+                    time.monotonic() - started,
+                ),
                 False,
-                f"erwartet {challenge.expected_text}{hinweis} — Antwort: {detail!r}",
-                response.total_s,
-            ),
-            False,
-        )
-    return CheckResult(True, f"{challenge.expected_text} erkannt", response.total_s), True
+            )
+        erkannt.append(challenge.expected_text)
+
+    return (
+        CheckResult(True, " / ".join(erkannt) + " erkannt", time.monotonic() - started),
+        True,
+    )
 
 
 async def _check_tools(

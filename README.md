@@ -180,8 +180,8 @@ Dokumentation. Sie sind Momentaufnahmen — das Probe-CLI hält sie aktuell.
 | `groq/openai/gpt-oss-120b` | reasoning | 30 | 1.000 | 8k |
 | `openrouter/nemotron-3-nano-omni…:free` | vision | 20 | 50 | — |
 | `openrouter/nemotron-3.5-lightning:free` | schnell | 20 | 50 | — |
-| `mistral/ministral-3b-2512` | schnell, **vision** | 750 | — | 1.300k |
-| `mistral/ministral-8b-2512` | schnell, **vision** | 188 | — | 625k |
+| `mistral/ministral-3b-2512` | schnell | 750 | — | 1.300k |
+| `mistral/ministral-8b-2512` | schnell | 188 | — | 625k |
 | `mistral/codestral-2508` | reasoning | 125 | — | 625k |
 
 Drei Befunde, die die ursprüngliche Planung umwerfen:
@@ -205,33 +205,15 @@ Puffer nicht — es trennt ihn in zwei Töpfe.
 Bildanalyse nicht mehr an einem einzigen Anbieter — der härteste Punkt des
 ursprünglichen Entwurfs ist entschärft.
 
-**Mistrals Ministral-Modelle können Bilder** — und anders als Gemma auch
-Structured Output. Mit 750 Anfragen pro Minute ist `ministral-3b-2512` der
-kapazitätsstärkste Kanal im Feld.
+**Der Vision-Test läuft in zwei Runden.** Eine einzelne Runde lässt sich mit
+rund fünf Prozent Wahrscheinlichkeit erraten — und genau das ist passiert:
+Mistrals Ministral bestand einen Lauf und fiel im nächsten durch. Bei zwei
+Runden mit je neuen Farben liegt die Ratequote unter einem Promille.
 
-Drei Vorbehalte, alle drei wesentlich:
-
-1. **Gedeckelt auf 10 $ API-Nutzung im Monat.** Das ist keine Zeitfenster-,
-   sondern eine Ausgabengrenze — der Ledger sieht sie mit Anfragen- und
-   Tokenzählern nicht, das löst erst Phase 4. Was der Deckel praktisch trägt,
-   bei rund 1.300 Token je Kameraanalyse:
-
-   | Modell | je Analyse | im Deckel |
-   |---|---:|---:|
-   | `ministral-3b-2512` | 0,013 ct | ~2.560/Tag |
-   | `ministral-8b-2512` | 0,020 ct | ~1.710/Tag |
-   | `mistral-small-2603` | 0,024 ct | ~1.390/Tag |
-   | `codestral-2508` | 0,045 ct | ~740/Tag |
-
-   Kein Papiertiger, aber auch keine Mauer: Mistral verdoppelt die Kapazität
-   der ungedeckelten Kanäle etwa, statt sie zu ersetzen.
-2. Die kostenlose Stufe verlangt die **Zustimmung zum Training**. Bei
-   Kamerabildern ist das eine eigene Abwägung.
-3. Ein 3B-Modell liest eine Szene nicht so gut wie Gemini. Der Test beweist,
-   dass das Bild ankommt und ausgewertet wird — nicht die Analysequalität.
-
-Deshalb steht Mistral mit `preference: 50` hinter Google und Groq: erst die
-ungedeckelten Kanäle, dann dieser.
+Was dabei herauskam: Ministral ist **kein** Vision-Kanal. Es trifft je eine
+Farbe und rät die zweite („Grün, Dunkelblau“ statt grün und orange). Wer
+Türkis für Blau hält, beschreibt auch eine Kameraszene entsprechend. Mistral
+bleibt als schneller, schemafester Text-Kanal — mehr nicht.
 
 Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 
@@ -239,11 +221,12 @@ Realistisch, für **Kameraanalyse mit Schema** — der Normalfall:
 |---|---|
 | Gemini Flash-Lite (2 Modelle) | 1.000/Tag |
 | Groq Qwen3.8 | 1.000/Tag, aber 8k Token/Minute ≈ 6/min |
-| Mistral Ministral 3B + 8B | 938/Minute, Monatsdeckel ≈ 2.560/Tag |
 | Gemini 3.5 Flash | 20/Tag |
 | OpenRouter Nemotron Omni | 50/Tag, unzuverlässig |
 
 Für **freie Bildbeschreibung ohne Schema** kommen Gemmas 28.800/Tag dazu.
+Mistral trägt zur Bildanalyse nichts bei, wohl aber zu `schnell` und
+`reasoning`.
 
 Das Kontingent ist damit kein Engpass mehr, sondern Buchhaltung — genau wie im
 Konzept angenommen, nur über andere Kanäle als dort vermutet. Die ungedeckelten
