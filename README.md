@@ -6,6 +6,11 @@ verteilt. Für HA-Installationen ohne GPU.
 **Das hier ist die Arbeitsfassung für den Eigengebrauch.** Die veröffentlichungsreife
 README mit Erwartungsrahmen, Blueprints und `CONTRIBUTING.md` ist Phase 2.
 
+Stand 11.09.2026: läuft in Home Assistant 2026.8.3. Alle sieben
+Akzeptanzkriterien aus dem Implementierungsauftrag sind erfüllt — Config Flow,
+Kameraanalyse mit Schema, Assist mit Gerätesteuerung, Ausfall des ersten
+Anbieters mit Wechsel auf die Reserve. 124 Tests, ohne Netz und ohne HA.
+
 ---
 
 ## Schritt 0 — Probe-CLI, ohne Home Assistant
