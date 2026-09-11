@@ -175,8 +175,11 @@ ungedeckelten Kanäle zuerst drankommen.
 - [x] **Verbrauchssensoren** — vier Tageszähler (Anfragen, Token, Reserve
       gegriffen, verworfen) plus einer je Anbieter mit Restkontingent je
       Modell in den Attributen.
-- [ ] Blueprint für die Türklingel (Auslöser ist ein Ereignis, keine Bewegung)
-- [ ] Fehlerbehandlung für fremde Setups
+- [x] **Blueprint Türklingel** — erkennt `event`- und `binary_sensor`-Klingeln,
+      kurze Sperrzeit gegen doppeltes Drücken. Die Auslöse-Bedingung ist über
+      die Template-API gegen sieben Fälle geprüft, ohne etwas in HA anzulegen.
+- [ ] Fehlerbehandlung für fremde Setups (Reparatur-Hinweise über die
+      `issue_registry`: Profil ohne Abdeckung, Schlüssel abgelehnt)
 - [ ] Öffentliche README mit Grundsatz und Erwartungsrahmen
 - [ ] `CONTRIBUTING.md` mit genau einem Beispiel-Diff
 - [ ] CI-Schemacheck (`tools/validate_registry.py` ist dafür schon fertig)

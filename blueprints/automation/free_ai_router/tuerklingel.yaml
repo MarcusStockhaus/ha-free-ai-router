@@ -1,0 +1,174 @@
+blueprint:
+  name: Türklingel-Analyse (Free AI Router)
+  description: >-
+    Wertet das Kamerabild aus, wenn jemand klingelt, und meldet in einem Satz,
+    wer vor der Tür steht.
+
+
+    **Der Unterschied zur Bewegungsanalyse:** Klingeln ist eine Absicht, keine
+    Beobachtung. Es passiert selten genug, dass das Kontingent keine Rolle
+    spielt — eine Türklingel kommt auf fünf bis zwanzig Auslösungen am Tag,
+    ein Bewegungsmelder an der Straße auf zweitausend. Die Sperrzeit ist hier
+    deshalb kurz und dient nur dazu, doppeltes Drücken abzufangen.
+
+
+    **Was die Kamera können muss:** ein Standbild liefern. Das ist bei
+    Türklingeln nicht selbstverständlich — manche liefern nur einen Videostream
+    und scheitern dann mit „Unable to get image". Prüfen lässt sich das in den
+    Entwicklerwerkzeugen unter Vorlagen mit
+    `{{ states('camera.deine_klingel') }}`, oder schlicht in der Kameraansicht:
+    kommt dort kein Bild, kommt auch keine Analyse.
+  domain: automation
+  source_url: https://github.com/-/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/tuerklingel.yaml
+  input:
+    was:
+      name: Klingel und Kamera
+      icon: mdi:doorbell-video
+      input:
+        klingel:
+          name: Klingelknopf
+          description: >-
+            Der Sensor, der beim Klingeln auslöst. Je nach Integration ein
+            `event`-Eintrag, ein `binary_sensor` oder ein Knopf. Beide
+            Bauarten werden erkannt.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: event
+                - domain: binary_sensor
+        kamera:
+          name: Kamera
+          description: Die Kamera an der Tür. Muss ein Standbild liefern können.
+          selector:
+            entity:
+              filter:
+                - domain: camera
+        entity:
+          name: KI-Entity
+          default: ai_task.free_ai_router_bildanalyse
+          selector:
+            entity:
+              filter:
+                - domain: ai_task
+
+    verhalten:
+      name: Verhalten
+      icon: mdi:tune
+      input:
+        sperrzeit:
+          name: Sperrzeit
+          description: >-
+            Fängt doppeltes Drücken ab. Kurz halten — anders als bei der
+            Bewegungsanalyse geht es hier nicht ums Kontingent, sondern nur
+            darum, nicht zweimal dasselbe zu melden.
+          default:
+            seconds: 30
+          selector:
+            duration: {}
+        frage:
+          name: Frage an die KI
+          default: >-
+            Jemand hat an der Haustür geklingelt. Wer oder was ist auf dem Bild
+            zu sehen? Achte auf Uniformen oder Kleidung von Lieferdiensten und
+            auf abgestellte Pakete. Antworte sachlich und ohne Vermutungen über
+            Personen.
+          selector:
+            text:
+              multiline: true
+
+    danach:
+      name: Was danach passiert
+      icon: mdi:bell-ring
+      input:
+        aktion:
+          name: Aktion
+          description: >-
+            Verfügbar ist `ergebnis` mit den Feldern `beschreibung`, `person`,
+            `lieferdienst` und `paket`.
+
+
+            Wer das Bild mitschicken will, hängt davor ein
+            `camera.snapshot` und verweist in der Benachrichtigung auf die
+            Datei — das hängt von der eigenen Einrichtung ab und steht deshalb
+            nicht als Vorgabe hier.
+          default:
+            - action: persistent_notification.create
+              data:
+                title: Es hat geklingelt
+                message: "{{ ergebnis.beschreibung }}"
+          selector:
+            action: {}
+
+mode: single
+max_exceeded: silent
+
+variables:
+  sperrzeit: !input sperrzeit
+  kamera: !input kamera
+
+triggers:
+  # Ein Zustandswechsel ohne Filter, damit beide Bauarten greifen: ein
+  # binary_sensor wechselt nach "on", ein event-Eintrag auf einen neuen
+  # Zeitstempel. Aussortiert wird in der Bedingung.
+  - trigger: state
+    entity_id: !input klingel
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is not none
+         and trigger.to_state is not none
+         and trigger.to_state.state not in ['unknown', 'unavailable', 'off']
+         and trigger.to_state.state != trigger.from_state.state }}
+  - condition: template
+    value_template: >-
+      {% set letzte = state_attr(this.entity_id, 'last_triggered') %}
+      {{ letzte is none
+         or (now() - letzte).total_seconds()
+            > (sperrzeit.hours | default(0) | int) * 3600
+              + (sperrzeit.minutes | default(0) | int) * 60
+              + (sperrzeit.seconds | default(0) | int) }}
+
+actions:
+  - action: ai_task.generate_data
+    data:
+      entity_id: !input entity
+      task_name: Tuerklingel
+      instructions: !input frage
+      structure:
+        person:
+          description: Ist mindestens eine Person zu sehen?
+          required: true
+          selector:
+            boolean: {}
+        lieferdienst:
+          description: >-
+            Deutet die Kleidung oder ein Fahrzeug auf einen Lieferdienst hin?
+          required: true
+          selector:
+            boolean: {}
+        paket:
+          description: Ist ein abgestelltes Paket oder Päckchen zu sehen?
+          required: true
+          selector:
+            boolean: {}
+        beschreibung:
+          description: >-
+            Ein kurzer deutscher Satz, der sich vorlesen lässt.
+          required: true
+          selector:
+            text: {}
+      attachments:
+        media_content_id: "media-source://camera/{{ kamera }}"
+        media_content_type: image/jpeg
+    response_variable: befund
+    continue_on_error: true
+
+  - condition: template
+    value_template: "{{ befund is defined and befund.data is defined }}"
+
+  - variables:
+      ergebnis: "{{ befund.data }}"
+
+  - sequence: !input aktion
