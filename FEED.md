@@ -145,10 +145,9 @@ Ein Anbieter ohne Schlüssel wird übersprungen. Das ist kein Fehler und
 
 ### 3. Takte
 
-`.github/workflows/prober.yml` kennt zwei — **der Zeitplan ist zunächst
-auskommentiert.** Solange kein Proberkonto und kein Signierschlüssel
-eingerichtet sind, wäre ein stündlicher Lauf eine stündlich rote Meldung.
-Zum Einschalten die beiden `cron`-Zeilen wieder aktivieren:
+`.github/workflows/prober.yml` fährt zwei. Schalte den Zeitplan erst ein,
+wenn die Secrets stehen — vorher wäre ein stündlicher Lauf eine stündlich rote
+Meldung:
 
 ```
 stündlich   --cheap   ein Request je Modell: lebt es, welche Header kommen

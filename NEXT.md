@@ -240,17 +240,37 @@ Beides sind Entscheidungen, keine Programmierarbeit:
       `https://marcusstockhaus.github.io/ha-free-ai-router/v1/providers.json`.
       Eine eigene Domain kommt später davor; bis dahin hängt die Adresse am
       Kontonamen, und ein Umzug kostet ein Release.
-- [ ] **Pages einschalten.** Geht erst, wenn der Zweig `feed` existiert — und
-      den legt der erste Lauf des Probers an.
-- [ ] **Ein eigenes Proberkonto.** Die Restkontingente, die der Prober
-      beobachtet, sind seine eigenen. Mit den Schlüsseln des Autors gemessen
-      wären es dessen Kontingente — und der Prober verbrauchte sie mit.
-- [ ] **Signierschlüssel erzeugen** (`tools/feed_keys.py neu`), den privaten
-      Teil als Secret `FAR_FEED_PRIVATE_KEY` hinterlegen, den öffentlichen als
-      `FEED_PUBLIC_KEY_B64` in `feed.py`. Erst dann ist der Feed vorhanden —
-      vorher ist er nicht abgeschaltet, sondern es gibt ihn nicht.
-- [ ] Zuletzt die beiden `cron`-Zeilen in `.github/workflows/prober.yml`
-      wieder aktivieren.
+- [x] **Pages eingeschaltet** — Zweig `feed`, Ordner `/docs`. Live geprüft:
+      `ETag` führt zu `304`, `feed-state.json` wird nicht ausgeliefert, und
+      der echte Client-Code holt, prüft und übernimmt das Dokument.
+- [x] **Schlüssel** — Signierpaar erzeugt, privat als Secret
+      `FAR_FEED_PRIVATE_KEY`, öffentlich in `feed.py`. Zeitplan aktiv:
+      stündlich sparsam, täglich 03:07 UTC voll.
+- [ ] **Ein eigenes Proberkonto.** Zum Start laufen die Schlüssel des Autors
+      (so entschieden am 11.09.2026). Das hat zwei Folgen: der Prober
+      verbraucht dessen Kontingent mit — gedeckelt auf ein Viertel, siehe
+      `BUDGET_SHARE` —, und die gemessenen Limits sind die seines Kontos. Für
+      andere Nutzer stimmen sie nur, solange es ein gewöhnliches Gratiskonto
+      ist.
+- [ ] **Eine eigene Domain** vor die `github.io`-Adresse. Sie hängt am
+      Kontonamen; ohne Domain kostet ein Umzug ein Release, weil die Adresse
+      im Quelltext jeder ausgelieferten Fassung steht.
+
+### Zwei Messungen, die der erste Feed-Lauf aufgeworfen hat
+
+Beides sind *positive* Ergebnisse — ein bestandener Test lässt sich schwerer
+vortäuschen als ein gescheiterter, und die Bildprüfung läuft über zwei Runden
+mit je neuen Farben (Ratequote unter ein Promille). Trotzdem widersprechen sie
+dem bisherigen Stand und gehören über mehrere Läufe beobachtet:
+
+- **`mistral/ministral-3b-2512` hat die Bildprüfung bestanden.** Bisher galt
+  es als blind. Die Registry führt es weiterhin nur unter `profiles:
+  [schnell]` — als Bildkanal zählt es erst, wenn `vision` dort einträgt, und
+  das ist eine Änderung an der Anbieterdatei, nicht am Feed.
+- **`openrouter/nemotron-3-nano-omni` kann Werkzeuge.** War als `tools: false`
+  eingetragen.
+
+Gegenprobe bei Gelegenheit: `python tools/probe_cli.py --provider mistral`.
 
 ---
 
