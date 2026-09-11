@@ -15,6 +15,12 @@ Zwei Takte, weil der Prober nicht der groesste Verbraucher des Kontingents
 sein darf, das er vermisst: ein Request je Modell und Stunde fuer die
 Lebendigkeit, die teuren Pruefungen (Bild, Schema, Werkzeuge) einmal am Tag.
 
+Der Takt ist dabei nur die Obergrenze. Je Modell rechnet der Prober zusaetzlich
+aus dem bekannten Tageskontingent aus, wie oft er es sich leisten kann
+(:func:`mindestabstand`) — Googles grosse Flash-Modelle haben **20 Anfragen am
+Tag**, ein stuendliches Lebenszeichen waere davon allein 24. Beide Takte
+zusammen bleiben bei :data:`BUDGET_SHARE` des Kontingents.
+
 Drei Vorsichtsmassnahmen gegen Falschmeldungen — sie sind der eigentliche
 Inhalt dieses Skripts, das Messen selbst steht in ``capabilities.py``:
 
@@ -42,7 +48,7 @@ import argparse
 import asyncio
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +79,15 @@ from tools.feed_keys import load_private_key, sign_bytes  # noqa: E402
 from tools.probe_cli import key_for, load_env  # noqa: E402
 
 STATE_VERSION = 1
+
+#: Anteil des bekannten Tageskontingents, den der Prober hoechstens fuer sich
+#: beansprucht — beide Takte zusammen. Er misst fremde Kontingente; er darf
+#: sie nicht aufbrauchen.
+BUDGET_SHARE = 0.25
+
+#: Requests, die ein voller Lauf je Modell kostet: Lebendigkeit, Schema,
+#: zwei Bildrunden, Werkzeuge.
+LAUFKOSTEN_VOLL = 5
 
 #: Antworten, die eine Runde ungewertet lassen. Gemeinsam ist ihnen, dass der
 #: Endpunkt geantwortet hat: er lebt, er wollte nur nicht messen lassen.
@@ -199,17 +214,79 @@ def to_measurement(eintrag: dict[str, Any]) -> Measurement:
 # --------------------------------------------------------------------------
 
 
+def mindestabstand(model: Any, *, full: bool, share: float = BUDGET_SHARE) -> timedelta | None:
+    """Wie lange dieses Modell nach einer Messung in Ruhe gelassen wird.
+
+    ``None`` heisst: kein bekanntes Tageskontingent, also keine Drosselung.
+
+    Der Takt des Workflows ist eine Obergrenze, kein Versprechen. Ein Modell
+    mit 20 Anfragen am Tag — Googles grosse Flash-Modelle haben genau das —
+    waere von einem stuendlichen Lebenszeichen allein schon erschoepft, bevor
+    der Nutzer eine einzige Anfrage stellt. Der Prober nimmt sich deshalb
+    hoechstens ``share`` des bekannten Tageskontingents und rechnet daraus
+    seinen eigenen Abstand aus.
+
+    Die beiden Takte **teilen sich** diesen Anteil. Bekaeme jeder den vollen,
+    stuende am Ende die doppelte Rechnung: bei 20 Anfragen am Tag fuenf fuer
+    die Lebenszeichen und fuenf fuer den taeglichen vollen Lauf, zusammen die
+    Haelfte des Kontingents.
+    """
+    rpd = getattr(model.limits, "rpd", None)
+    if not rpd:
+        return None
+    kosten = LAUFKOSTEN_VOLL if full else 1
+    budget_pro_tag = rpd * share / 2
+    laeufe_pro_tag = budget_pro_tag / kosten
+    if laeufe_pro_tag <= 0:  # pragma: no cover - nur bei share=0
+        return timedelta.max
+    return timedelta(hours=24) / laeufe_pro_tag
+
+
+def faellig(
+    model: Any,
+    eintrag: dict[str, Any] | None,
+    *,
+    full: bool,
+    now: datetime,
+    share: float = BUDGET_SHARE,
+) -> bool:
+    """Darf dieses Modell in diesem Lauf gemessen werden?"""
+    abstand = mindestabstand(model, full=full, share=share)
+    if abstand is None:
+        return True
+    zuletzt = (eintrag or {}).get("checked_at")
+    if not zuletzt:
+        return True
+    try:
+        gemessen = datetime.fromisoformat(str(zuletzt))
+    except ValueError:
+        return True
+    if gemessen.tzinfo is None:
+        gemessen = gemessen.replace(tzinfo=UTC)
+    return now - gemessen >= abstand
+
+
 async def run_probes(
     providers: list[Any],
     keys: dict[str, str],
     *,
     full: bool,
     timeout: float,
-) -> tuple[dict[str, ModelProbe], list[str]]:
-    """Vermisst alle Anbieter, fuer die ein Schluessel da ist."""
+    state: dict[str, dict[str, Any]] | None = None,
+    now: datetime | None = None,
+    share: float = BUDGET_SHARE,
+) -> tuple[dict[str, ModelProbe], list[str], list[str]]:
+    """Vermisst alle Anbieter, fuer die ein Schluessel da ist.
+
+    Rueckgabe: (Messungen, Anbieter ohne Schluessel, wegen Kontingent
+    uebersprungene Modelle).
+    """
     probes: dict[str, ModelProbe] = {}
     ohne_schluessel: list[str] = []
+    geschont: list[str] = []
     checks = ALL_CHECKS if full else CHEAP_CHECKS
+    state = state or {}
+    now = now or datetime.now(UTC)
 
     async with aiohttp.ClientSession() as session:
         for provider in providers:
@@ -217,13 +294,23 @@ async def run_probes(
             if not api_key:
                 ohne_schluessel.append(provider.id)
                 continue
+
+            dran = []
+            for model in provider.models:
+                if faellig(model, state.get(model.key), full=full, now=now, share=share):
+                    dran.append(model)
+                else:
+                    geschont.append(model.key)
+            if not dran:
+                continue
+
             print(f"  {provider.name} ...", flush=True)
             ergebnis = await probe_provider(
-                session, provider, api_key, checks=checks, timeout=timeout
+                session, provider, api_key, models=dran, checks=checks, timeout=timeout
             )
             for probe in ergebnis.models:
                 probes[probe.key] = probe
-    return probes, ohne_schluessel
+    return probes, ohne_schluessel, geschont
 
 
 def write_site(
@@ -291,6 +378,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env", default=".env")
     parser.add_argument("--timeout", type=float, default=45.0)
     parser.add_argument("--history-keep", type=int, default=90)
+    parser.add_argument(
+        "--budget-share",
+        type=float,
+        default=BUDGET_SHARE,
+        help="Anteil des Tageskontingents, den der Prober beanspruchen darf",
+    )
     parser.add_argument("--notes", default="", help="Freitext, der im Dokument mitlaeuft")
     parser.add_argument("--dry-run", action="store_true", help="nichts schreiben, nur berichten")
     parser.add_argument(
@@ -315,10 +408,27 @@ def main(argv: list[str] | None = None) -> int:
     env = load_env(Path(args.env))
     keys = {provider.id: key_for(provider.id, env) for provider in registry}
 
+    state = load_state(Path(args.state))
+
     print(f"Prober, {'voll' if full else 'sparsam'}, {now.isoformat()}")
-    probes, ohne_schluessel = asyncio.run(
-        run_probes(list(registry), keys, full=full, timeout=args.timeout)
+    probes, ohne_schluessel, geschont = asyncio.run(
+        run_probes(
+            list(registry),
+            keys,
+            full=full,
+            timeout=args.timeout,
+            state=state,
+            now=now,
+            share=args.budget_share,
+        )
     )
+
+    if not probes:
+        # Nichts faellig ist kein Fehler und kein Ausfall. Das bestehende
+        # Dokument bleibt, wie es ist; seine Messungen tragen ohnehin je ein
+        # eigenes ``checked_at``.
+        print(f"  nichts faellig ({len(geschont)} Modelle geschont)")
+        return 0
 
     lebendig = [probe for probe in probes.values() if probe.alive]
     if not lebendig and not args.force_publish:
@@ -330,7 +440,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
 
-    state = load_state(Path(args.state))
     abgelehnt: list[str] = []
     gedrosselt: list[str] = []
     for key, probe in probes.items():
@@ -355,6 +464,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {len(lebendig)} von {len(probes)} Modellen lebendig")
     if ohne_schluessel:
         print(f"  ohne Schluessel uebersprungen: {', '.join(ohne_schluessel)}")
+    if geschont:
+        print(f"  wegen Tageskontingent geschont: {', '.join(sorted(geschont))}")
     if tot:
         print(f"  als tot gemeldet (>= {DEAD_AFTER_FAILURES} Laeufe): {', '.join(tot)}")
     if gedrosselt:

@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from conftest import make_model
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
@@ -197,9 +198,9 @@ def public_b64(pfad: Path) -> str:
     return base64.b64encode(roh).decode("ascii")
 
 
-def lauf(monkeypatch, probes: dict[str, ModelProbe]) -> None:
-    async def fake_run_probes(providers, keys, *, full, timeout):
-        return probes, []
+def lauf(monkeypatch, probes: dict[str, ModelProbe], geschont: list[str] | None = None) -> None:
+    async def fake_run_probes(providers, keys, **_kwargs):
+        return probes, [], list(geschont or [])
 
     monkeypatch.setattr(prober, "run_probes", fake_run_probes)
 
@@ -333,3 +334,90 @@ def test_erst_mehrere_laeufe_melden_tot(monkeypatch, tmp_path: Path, schluesseld
         messung = doc.measurements["groq/qwen3.8-27b"]
         assert messung.consecutive_failures == durchgang
         assert messung.is_dead is (durchgang >= DEAD_AFTER_FAILURES)
+
+
+# --------------------------------------------------------------------------
+# Kontingent des vermessenen Kontos
+# --------------------------------------------------------------------------
+
+
+def test_zwanzig_am_tag_vertraegt_keinen_stuendlichen_takt() -> None:
+    """Der Grund, warum es diese Drosselung gibt.
+
+    Googles grosse Flash-Modelle haben 20 Anfragen am Tag. Ein stuendliches
+    Lebenszeichen waere davon allein 24 — das Kontingent waere weg, bevor der
+    Nutzer eine einzige Anfrage stellt.
+    """
+    model = make_model("gemini-3.5-flash", "google_ai_studio", rpd=20)
+    abstand = prober.mindestabstand(model, full=False)
+    assert abstand is not None
+    assert abstand > timedelta(hours=1)
+
+    vor_einer_stunde = {"checked_at": (JETZT - timedelta(hours=1)).isoformat()}
+    assert prober.faellig(model, vor_einer_stunde, full=False, now=JETZT) is False
+
+    vor_zwoelf_stunden = {"checked_at": (JETZT - timedelta(hours=12)).isoformat()}
+    assert prober.faellig(model, vor_zwoelf_stunden, full=False, now=JETZT) is True
+
+
+def test_grosszuegiges_kontingent_vertraegt_den_stuendlichen_takt() -> None:
+    model = make_model("gemini-3.5-flash-lite", "google_ai_studio", rpd=500)
+    vor_einer_stunde = {"checked_at": (JETZT - timedelta(hours=1)).isoformat()}
+    assert prober.faellig(model, vor_einer_stunde, full=False, now=JETZT) is True
+
+
+def test_voller_lauf_kostet_mehr_und_wartet_laenger() -> None:
+    model = make_model("gemini-3.5-flash", "google_ai_studio", rpd=20)
+    sparsam = prober.mindestabstand(model, full=False)
+    voll = prober.mindestabstand(model, full=True)
+    assert voll is not None and sparsam is not None
+    assert voll > sparsam
+    assert voll >= timedelta(hours=24)
+
+
+def test_unbekanntes_kontingent_wird_nicht_gedrosselt() -> None:
+    """Leer heisst unbekannt, nicht unbegrenzt — aber raten hilft hier nicht."""
+    model = make_model("ministral-3b", "mistral")
+    assert prober.mindestabstand(model, full=False) is None
+    assert prober.faellig(model, {"checked_at": JETZT.isoformat()}, full=False, now=JETZT) is True
+
+
+def test_noch_nie_gemessen_ist_immer_faellig() -> None:
+    model = make_model("gemini-3.5-flash", "google_ai_studio", rpd=20)
+    assert prober.faellig(model, None, full=False, now=JETZT) is True
+    assert prober.faellig(model, {}, full=False, now=JETZT) is True
+
+
+def test_nichts_faellig_ist_kein_ausfall(monkeypatch, tmp_path: Path) -> None:
+    """Ein Lauf, in dem alles geschont wird, darf nicht wie ein Netzausfall enden."""
+    lauf(monkeypatch, {}, geschont=["google_ai_studio/gemini-3.5-flash"])
+    code = prober.main(
+        [
+            "--cheap",
+            "--out",
+            str(tmp_path / "site"),
+            "--state",
+            str(tmp_path / "state.json"),
+            "--env",
+            str(tmp_path / "fehlt.env"),
+        ]
+    )
+    assert code == 0
+    assert not (tmp_path / "site").exists()
+
+
+def test_beide_takte_zusammen_bleiben_im_anteil() -> None:
+    """Die eigentliche Zusage: ein Viertel, nicht zweimal ein Viertel.
+
+    Nachgerechnet fuer Googles grosse Flash-Modelle, die mit 20 Anfragen am
+    Tag den engsten Fall stellen.
+    """
+    model = make_model("gemini-3.5-flash", "google_ai_studio", rpd=20)
+    tag = timedelta(hours=24)
+
+    sparsam = prober.mindestabstand(model, full=False)
+    voll = prober.mindestabstand(model, full=True)
+    assert sparsam is not None and voll is not None
+
+    requests_pro_tag = (tag / sparsam) * 1 + (tag / voll) * prober.LAUFKOSTEN_VOLL
+    assert requests_pro_tag <= 20 * prober.BUDGET_SHARE
