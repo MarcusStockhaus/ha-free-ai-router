@@ -1,0 +1,195 @@
+blueprint:
+  name: Kameraanalyse bei Bewegung (Free AI Router)
+  description: >-
+    Lässt ein Kamerabild von der KI auswerten, wenn ein Bewegungsmelder
+    auslöst — und zwar sparsam.
+
+
+    **Warum das wichtig ist:** Eine Analyse kostet rund 1.100 Token. Bei Groqs
+    8.000 Token pro Minute sind das sechs bis sieben Analysen in der Minute,
+    bei Googles Flash-Lite 500 am Tag. Ein Bewegungsmelder an einer Straße
+    löst leicht 2.000 Mal am Tag aus. Ohne Sperrzeit ist das Tagesbudget vor
+    dem Mittagessen weg.
+
+
+    Das Bild vorher zu verkleinern hilft übrigens **nicht** — gemessen kostet
+    dasselbe Motiv bei 256×144 genauso viel wie bei 4096×2304. Die Anbieter
+    rechnen unabhängig von der Auflösung ab. Sparen lässt sich nur an der
+    Anzahl der Auslösungen, und genau dafür ist dieser Blueprint da.
+  domain: automation
+  source_url: https://github.com/-/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/kamera_analyse.yaml
+  input:
+    was:
+      name: Was ausgewertet wird
+      icon: mdi:cctv
+      input:
+        kamera:
+          name: Kamera
+          description: >-
+            Muss ein Standbild liefern können. Prüfen lässt sich das in den
+            Entwicklerwerkzeugen: liefert die Kamera in der Vorschau kein Bild,
+            scheitert auch die Analyse.
+          selector:
+            entity:
+              filter:
+                - domain: camera
+        ausloeser:
+          name: Auslöser
+          description: >-
+            Bewegungsmelder, Türklingel oder Frigate-Objekterkennung. Mehrere
+            möglich. Je genauer der Auslöser, desto weniger unnötige Analysen —
+            ein Frigate-Sensor für „Person erkannt" ist einem rohen
+            Bewegungsmelder deutlich überlegen.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+        frage:
+          name: Frage an die KI
+          description: Was soll auf dem Bild erkannt werden?
+          default: >-
+            Beschreibe kurz, was auf dem Kamerabild zu sehen ist. Achte auf
+            Personen, Fahrzeuge und abgestellte Pakete.
+          selector:
+            text:
+              multiline: true
+
+    sparsamkeit:
+      name: Sparsamkeit
+      icon: mdi:speedometer-slow
+      description: >-
+        Die drei Stellschrauben, die über das Tagesbudget entscheiden.
+      input:
+        sperrzeit:
+          name: Sperrzeit
+          description: >-
+            So lange wird nach einer Analyse nicht erneut ausgelöst. Der
+            wirksamste einzelne Hebel. Fünf Minuten begrenzen auf höchstens
+            288 Analysen am Tag, eine Minute auf 1.440 — das reißt jedes freie
+            Kontingent.
+          default: 300
+          selector:
+            duration: {}
+        bedingung:
+          name: Zusätzliche Bedingung
+          description: >-
+            Optional. Zum Beispiel nur bei Dunkelheit, nur wenn niemand zu
+            Hause ist, oder nur außerhalb der Mülltonnen-Abholzeit.
+          default: []
+          selector:
+            condition: {}
+        entity:
+          name: KI-Entity
+          description: >-
+            Welche Entity die Analyse übernimmt. Der Free AI Router verteilt
+            von dort aus selbst auf den passenden Anbieter und weicht auf die
+            Reserve aus, wenn ein Kanal ausfällt.
+          default: ai_task.free_ai_router_bildanalyse
+          selector:
+            entity:
+              filter:
+                - domain: ai_task
+
+    danach:
+      name: Was danach passiert
+      icon: mdi:bell-ring
+      input:
+        nur_bei_person:
+          name: Nur melden, wenn eine Person zu sehen ist
+          description: >-
+            Die Analyse läuft immer, gemeldet wird nur bei einer Person. Spart
+            keine Token, aber sehr viele überflüssige Benachrichtigungen.
+          default: true
+          selector:
+            boolean: {}
+        aktion:
+          name: Aktion
+          description: >-
+            Was mit dem Ergebnis geschehen soll. Verfügbar ist die Variable
+            `ergebnis` mit den Feldern `beschreibung`, `person`, `fahrzeug`
+            und `paket`.
+          default:
+            - action: persistent_notification.create
+              data:
+                title: Kamera
+                message: "{{ ergebnis.beschreibung }}"
+          selector:
+            action: {}
+
+mode: single
+max_exceeded: silent
+
+variables:
+  sperrzeit: !input sperrzeit
+  nur_bei_person: !input nur_bei_person
+  kamera: !input kamera
+
+triggers:
+  - trigger: state
+    entity_id: !input ausloeser
+    to: "on"
+
+conditions:
+  # Sperrzeit. Bewusst als Bedingung und nicht als delay am Ende: so blockiert
+  # die Automation nicht, sondern verwirft den Auslöser sofort.
+  - condition: template
+    value_template: >-
+      {% set letzte = state_attr(this.entity_id, 'last_triggered') %}
+      {{ letzte is none
+         or (now() - letzte).total_seconds()
+            > (sperrzeit.hours | default(0) | int) * 3600
+              + (sperrzeit.minutes | default(0) | int) * 60
+              + (sperrzeit.seconds | default(0) | int) }}
+  - condition: !input bedingung
+
+actions:
+  - action: ai_task.generate_data
+    data:
+      entity_id: !input entity
+      task_name: "Kameraanalyse {{ kamera }}"
+      instructions: !input frage
+      structure:
+        person:
+          description: Ist mindestens eine Person zu sehen?
+          required: true
+          selector:
+            boolean: {}
+        fahrzeug:
+          description: Ist ein Fahrzeug zu sehen?
+          required: true
+          selector:
+            boolean: {}
+        paket:
+          description: Ist ein abgestelltes Paket oder Päckchen zu sehen?
+          required: true
+          selector:
+            boolean: {}
+        beschreibung:
+          description: Ein kurzer deutscher Satz zur Szene.
+          required: true
+          selector:
+            text: {}
+      attachments:
+        media_content_id: "media-source://camera/{{ kamera }}"
+        media_content_type: image/jpeg
+    response_variable: befund
+    # Fällt jeder Kanal aus, endet der Aufruf mit einem Fehler. Die Automation
+    # soll deswegen nicht als defekt gelten — der Router hat es dann bereits
+    # über alle Reserven versucht und es steht im Log.
+    continue_on_error: true
+
+  # ai_task.generate_data antwortet als {conversation_id, data}. Das eine
+  # Feld auszupacken erspart jedem Nutzer das `befund.data.` vor jedem Zugriff
+  # — und mir den Fehler, den ich hier beim ersten Anlauf gemacht habe.
+  - condition: template
+    value_template: "{{ befund is defined and befund.data is defined }}"
+
+  - variables:
+      ergebnis: "{{ befund.data }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ not nur_bei_person or ergebnis.person }}"
+        sequence: !input aktion
