@@ -1,0 +1,202 @@
+{
+  "models": {
+    "google_ai_studio/gemini-3.1-flash-lite": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 1.4929009699999938,
+      "limits": {},
+      "ttft_s": 1.4449279149999938
+    },
+    "google_ai_studio/gemini-3.5-flash": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 9.548246811999988,
+      "limits": {},
+      "ttft_s": 9.500975182999994
+    },
+    "google_ai_studio/gemini-3.5-flash-lite": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.7769522730000062,
+      "limits": {},
+      "ttft_s": 0.7720743840000068
+    },
+    "google_ai_studio/gemini-3.8-flash": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 19.89423204900001,
+      "limits": {},
+      "ttft_s": 19.883919026
+    },
+    "google_ai_studio/gemma-4-26b-a4b-it": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": false,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 2.5890886720000026,
+      "limits": {},
+      "ttft_s": 0.9655502399999989
+    },
+    "google_ai_studio/gemma-4-31b-it": {
+      "alive": false,
+      "capabilities": {},
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 1,
+      "last_status": 500,
+      "limits": {}
+    },
+    "groq/openai/gpt-oss-120b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.3487358419999964,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.3459149420000074
+    },
+    "groq/openai/gpt-oss-20b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.18558345799999643,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.18412369099999637
+    },
+    "groq/qwen/qwen3.8-27b": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.10155054100002303,
+      "limits": {
+        "rpm": 1000,
+        "tpm": 8000
+      },
+      "ttft_s": 0.0993422000000237
+    },
+    "mistral/codestral-2508": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.30179659099999867,
+      "limits": {},
+      "ttft_s": 0.2871641559999887
+    },
+    "mistral/ministral-3b-2512": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.413377588000003,
+      "limits": {},
+      "ttft_s": 0.4099553790000243
+    },
+    "mistral/ministral-8b-2512": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 0.35261129100001654,
+      "limits": {},
+      "ttft_s": 0.32185318000000507
+    },
+    "mistral/mistral-small-2603": {
+      "capabilities": {},
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_status": 429,
+      "limits": {}
+    },
+    "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
+      "alive": true,
+      "capabilities": {
+        "structured_output": true,
+        "tools": true,
+        "vision": true
+      },
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-11T09:26:39.607244+00:00",
+      "latency_total_s": 1.9268094279999843,
+      "limits": {},
+      "ttft_s": 1.8547722280000016
+    },
+    "openrouter/nvidia/nemotron-3.5-lightning:free": {
+      "alive": false,
+      "capabilities": {},
+      "checked_at": "2026-09-11T09:26:39.607244+00:00",
+      "consecutive_failures": 1,
+      "last_status": null,
+      "limits": {}
+    }
+  },
+  "updated_at": "2026-09-11T09:26:39.607244+00:00",
+  "version": 1
+}
