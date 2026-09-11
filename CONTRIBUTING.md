@@ -26,8 +26,20 @@ Also, in dieser Reihenfolge:
 
 ```bash
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements-dev.txt
-cp .env.example .env          # Schlüssel eintragen
+```
+
+Umfeld aktivieren — **das ist der Schritt, der gern vergessen wird.** Ohne ihn
+greift `python` aufs System-Python, und die Abhängigkeiten fehlen
+(`ModuleNotFoundError: No module named 'aiohttp'`):
+
+```bash
+source .venv/bin/activate      # Linux, macOS
+.venv\Scripts\activate          # Windows
+```
+
+```bash
+pip install -r requirements-dev.txt
+cp .env.example .env           # Schlüssel eintragen
 ```
 
 ```bash

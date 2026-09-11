@@ -11,8 +11,14 @@ Zuerst messen, dann bauen. Das CLI prüft alle Anbieter durch und gibt aus, was
 sie tatsächlich können — nicht, was in ihrer Doku steht.
 
 ```bash
-python -m venv .venv && .venv/Scripts/python -m pip install -r requirements-dev.txt
+python -m venv .venv
+source .venv/bin/activate      # Linux, macOS
+.venv\Scripts\activate          # Windows
+pip install -r requirements-dev.txt
 ```
+
+Alle folgenden Befehle setzen das aktivierte Umfeld voraus. Ohne es meldet
+`python` ein fehlendes `aiohttp`.
 
 ```bash
 cp .env.example .env
@@ -21,7 +27,7 @@ cp .env.example .env
 Schlüssel in `.env` eintragen, dann:
 
 ```bash
-.venv/Scripts/python tools/probe_cli.py --discover
+python tools/probe_cli.py --discover
 ```
 
 Ausgabe je Modell: lebt, Vision, Structured Output, Tool-Calling, Zeit bis zum
@@ -32,9 +38,9 @@ Anbieters gegen die Registry und meldet veraltete Einträge.
 Weitere Schalter:
 
 ```bash
-.venv/Scripts/python tools/probe_cli.py --cheap                 # nur Liveness + Header
-.venv/Scripts/python tools/probe_cli.py --provider groq         # ein Anbieter
-.venv/Scripts/python tools/probe_cli.py --json befund.json      # Rohbefunde sichern
+python tools/probe_cli.py --cheap                 # nur Liveness + Header
+python tools/probe_cli.py --provider groq         # ein Anbieter
+python tools/probe_cli.py --json befund.json      # Rohbefunde sichern
 ```
 
 Das Vision-Testbild besteht aus **zwei zufällig gewählten Farbflächen** aus
@@ -57,7 +63,7 @@ beweist, dass das Bild ankommt und ausgewertet wird.
 Eine YAML-Datei unter `custom_components/free_ai_router/providers/`. Kein Python.
 
 ```bash
-.venv/Scripts/python tools/validate_registry.py
+python tools/validate_registry.py
 ```
 
 Prüft gegen `registry_schema.json`, den Loader und die Host-Allowlist.
@@ -70,7 +76,7 @@ wohin Daten fließen.
 ## Tests
 
 ```bash
-.venv/Scripts/python -m pytest
+python -m pytest
 ```
 
 Läuft ohne Netz und ohne Home Assistant. Der Router ist reine Logik; Adapter,
@@ -78,7 +84,7 @@ Ledger und Reserve werden gegen einen lokalen Testserver geprüft — inklusive
 simuliertem Ausfall des ersten Anbieters und RPM-Anschlag.
 
 ```bash
-.venv/Scripts/python -m ruff check custom_components tools tests
+python -m ruff check custom_components tools tests
 ```
 
 ---
