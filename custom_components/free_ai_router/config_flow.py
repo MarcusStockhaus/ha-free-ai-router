@@ -14,11 +14,15 @@ Ablauf:
 4. ``result`` — Messergebnis, dann Menue: weiterer Anbieter oder fertig.
 5. ``summary`` — welches Profil bedient wer, wo bleibt eine Luecke.
 
-Beim zweiten Aufruf (``reconfigure``, im Dreipunktmenue der Integration)
-beginnt es stattdessen bei ``verwalten``: eine Uebersicht der eingerichteten
-Zugaenge, mit den Wegen Schluessel ersetzen, Anbieter entfernen, weiteren
-hinzufuegen. Der Schluessel selbst wird dabei nie angezeigt — nur seine
-letzten vier Zeichen, gerade genug zum Wiedererkennen.
+Danach ist jeder eingerichtete Anbieter ein **Subentry** und damit eine eigene
+Zeile auf der Integrationsseite. Hinzufuegen, Schluessel ersetzen und
+Entfernen laufen ueber :class:`AnbieterSubentryFlow`; die Knoepfe, die Liste
+und der Loeschdialog kommen von Home Assistant. Ein selbstgebautes
+Verwaltungsmenue waere daneben nur eine zweite, schlechtere Oberflaeche.
+
+Die Schritte ``key``, ``probe`` und ``result`` teilen sich beide Fluesse ueber
+:class:`_MessSchritte` — ein neuer Schluessel gehoert genauso gemessen wie ein
+neuer Anbieter. Ein anderer Schluessel kann ein anderes Konto sein.
 """
 
 from __future__ import annotations
@@ -29,10 +33,18 @@ from datetime import datetime
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_RECONFIGURE, ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    SOURCE_USER,
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryData,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
-    BooleanSelector,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -43,7 +55,15 @@ from homeassistant.helpers.selector import (
 )
 
 from .capabilities import ProviderProbe, merge_into_registry, probe_provider, quick_key_check
-from .const import CONF_API_KEY, CONF_MODELS, CONF_PROVIDER, DOMAIN, PROFILE_LABELS_DE, PROFILES
+from .const import (
+    CONF_API_KEY,
+    CONF_MODELS,
+    CONF_PROVIDER,
+    DOMAIN,
+    PROFILE_LABELS_DE,
+    PROFILES,
+    SUBENTRY_TYPE_ANBIETER,
+)
 from .ledger import Availability
 from .registry import Provider, Registry, RegistryError, load_registry
 from .router import coverage
@@ -134,12 +154,17 @@ def _probe_report(provider: Provider, probe: ProviderProbe) -> str:
     return "\n".join(lines) or "- keine Messwerte"
 
 
-class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Mehrstufige Einrichtung, mehrere Anbieter nacheinander."""
+class _MessSchritte:
+    """Schluesseleingabe und Faehigkeitsmessung — von beiden Fluessen benutzt.
 
-    VERSION = 1
+    Der Einrichtungsassistent und der Subentry-Flow brauchen dieselben drei
+    Schritte: Schluessel testen, Faehigkeiten messen, Ergebnis zeigen. Ein
+    neuer Schluessel gehoert genauso gemessen wie ein neuer Anbieter — er
+    kann ein anderes Konto sein, und was das Konto darf, ist damit offen.
+    """
 
     def __init__(self) -> None:
+        super().__init__()
         self._registry: Registry | None = None
         self._providers: dict[str, dict[str, Any]] = {}
         self._pending_provider: Provider | None = None
@@ -152,52 +177,6 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
         if self._registry is None:
             self._registry = await self.hass.async_add_executor_job(load_registry)
         return self._registry
-
-    # ------------------------------------------------------- Anbieterauswahl
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        try:
-            registry = await self._async_registry()
-        except RegistryError as err:
-            _LOGGER.error("Registry unbrauchbar: %s", err)
-            return self.async_abort(
-                reason="registry_invalid", description_placeholders={"error": str(err)}
-            )
-
-        remaining = [
-            provider
-            for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-            if provider.id not in self._providers
-        ]
-        if not remaining:
-            return await self.async_step_summary()
-
-        if user_input is not None:
-            self._pending_provider = registry.require(user_input[CONF_PROVIDER])
-            return await self.async_step_key()
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_PROVIDER): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(value=provider.id, label=provider.name)
-                            for provider in remaining
-                        ],
-                        mode=SelectSelectorMode.LIST,
-                    )
-                )
-            }
-        )
-        return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-            description_placeholders={
-                "cards": "\n".join(_provider_card(provider) for provider in remaining),
-                "configured": ", ".join(self._providers) or "noch keiner",
-            },
-        )
 
     # --------------------------------------------------------- Key-Eingabe
     async def async_step_key(
@@ -291,6 +270,62 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
             session, provider, self._pending_key, discover=True, concurrency=1
         )
 
+
+
+class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
+    """Gefuehrte Ersteinrichtung: mehrere Anbieter nacheinander.
+
+    Am Ende entsteht ein Config Entry mit je einem Subentry pro Anbieter.
+    """
+
+    VERSION = 2
+
+    # ------------------------------------------------------- Anbieterauswahl
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        try:
+            registry = await self._async_registry()
+        except RegistryError as err:
+            _LOGGER.error("Registry unbrauchbar: %s", err)
+            return self.async_abort(
+                reason="registry_invalid", description_placeholders={"error": str(err)}
+            )
+
+        remaining = [
+            provider
+            for provider in sorted(registry, key=lambda item: (item.preference, item.id))
+            if provider.id not in self._providers
+        ]
+        if not remaining:
+            return await self.async_step_summary()
+
+        if user_input is not None:
+            self._pending_provider = registry.require(user_input[CONF_PROVIDER])
+            return await self.async_step_key()
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_PROVIDER): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            SelectOptionDict(value=provider.id, label=provider.name)
+                            for provider in remaining
+                        ],
+                        mode=SelectSelectorMode.LIST,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            description_placeholders={
+                "cards": "\n".join(_provider_card(provider) for provider in remaining),
+                "configured": ", ".join(self._providers) or "noch keiner",
+            },
+        )
+
     # ------------------------------------------------------------ Ergebnis
     async def async_step_result(
         self, user_input: dict[str, Any] | None = None
@@ -312,12 +347,7 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
         registry = await self._async_registry()
         remaining = [item for item in registry if item.id not in self._providers]
 
-        menu_options = ["add_another"] if remaining else []
-        if self.source == SOURCE_RECONFIGURE:
-            # Beim Nachbessern ist die Verwaltung der naheliegende Rueckweg:
-            # von dort geht auch "weiterer Anbieter", nur eben mit Uebersicht.
-            menu_options.append("verwalten")
-        menu_options.append("summary")
+        menu_options = ["add_another", "summary"] if remaining else ["summary"]
         return self.async_show_menu(
             step_id="result",
             menu_options=menu_options,
@@ -339,14 +369,24 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         registry = await self._async_registry()
-        data = {"providers": self._providers}
 
         if user_input is not None:
-            if self.source == SOURCE_RECONFIGURE:
-                return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(), data=data
-                )
-            return self.async_create_entry(title=TITLE, data=data)
+            # Je Anbieter ein Subentry. Der Config Entry selbst haelt keine
+            # Anbieterdaten mehr — sonst gaebe es zwei Wahrheiten, und die
+            # Integrationsseite zeigte die falsche.
+            return self.async_create_entry(
+                title=TITLE,
+                data={},
+                subentries=[
+                    ConfigSubentryData(
+                        data={CONF_PROVIDER: provider_id, **daten},
+                        subentry_type=SUBENTRY_TYPE_ANBIETER,
+                        title=registry.require(provider_id).name,
+                        unique_id=provider_id,
+                    )
+                    for provider_id, daten in self._providers.items()
+                ],
+            )
 
         return self.async_show_form(
             step_id="summary",
@@ -358,7 +398,7 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
         """Welches Profil wird von wem bedient, wo bleibt eine Luecke?"""
         from . import build_channels  # lokal: sonst Zirkelimport beim Laden
 
-        channels = build_channels(registry, {"providers": self._providers})
+        channels = build_channels(registry, self._providers)
         entries = coverage(channels, _ALWAYS_FREE)
 
         lines: list[str] = []
@@ -376,126 +416,120 @@ class FreeAIRouterConfigFlow(ConfigFlow, domain=DOMAIN):
             lines.append(f"- **{label}** — {entry.primary.key}{reserve}")
         return "\n".join(lines)
 
-    # --------------------------------------------------------- Nachtraeglich
-    async def async_step_reconfigure(
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Ein Anbieter ist ein Subentry — damit gibt es ihn als eigene Zeile."""
+        return {SUBENTRY_TYPE_ANBIETER: AnbieterSubentryFlow}
+
+
+class AnbieterSubentryFlow(_MessSchritte, ConfigSubentryFlow):
+    """Anbieter hinzufuegen und seinen Schluessel ersetzen.
+
+    Beides derselbe Weg: Schluessel, Messung, Ergebnis. Nur der Abschluss
+    unterscheidet sich — neu anlegen oder den bestehenden Subentry ersetzen.
+
+    Was hier *nicht* steht, ist das Entfernen. Den Knopf und den
+    Bestaetigungsdialog dafuer bringt Home Assistant selbst mit; ihn
+    nachzubauen hiesse, eine zweite und schlechtere Oberflaeche zu pflegen.
+    """
+
+    @property
+    def _ist_neu(self) -> bool:
+        return self.source == SOURCE_USER
+
+    def _eingerichtet(self) -> dict[str, dict[str, Any]]:
+        from . import configured_providers  # lokal: sonst Zirkelimport
+
+        return configured_providers(self._get_entry())
+
+    async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Bestehende Zugaenge ansehen und aendern."""
-        entry = self._get_reconfigure_entry()
-        self._providers = dict(entry.data.get("providers") or {})
-        if not self._providers:
-            # Nichts zu verwalten — dann ist die Anbieterauswahl der richtige
-            # erste Schritt, so wie bei der Ersteinrichtung.
-            return await self.async_step_user()
-        return await self.async_step_verwalten()
+    ) -> SubentryFlowResult:
+        """Anbieter waehlen — nur die, die es noch nicht gibt."""
+        try:
+            registry = await self._async_registry()
+        except RegistryError as err:
+            return self.async_abort(
+                reason="registry_invalid", description_placeholders={"error": str(err)}
+            )
 
-    async def async_step_verwalten(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Uebersicht der eingerichteten Zugaenge, mit den Wegen dahin.
-
-        Der Schluessel steht hier nicht. Es gibt keinen Grund, ihn dem
-        Frontend, dem Browserverlauf und jedem Screenshot zu zeigen — die
-        letzten vier Zeichen reichen, um zu erkennen, welcher es ist.
-        """
-        registry = await self._async_registry()
-        offen = [item for item in registry if item.id not in self._providers]
-
-        menu_options = ["schluessel", "entfernen"]
-        if offen:
-            menu_options.insert(0, "hinzufuegen")
-        menu_options.append("summary")
-
-        karten = [
-            _zugang_karte(provider, self._providers[provider.id])
+        vorhanden = self._eingerichtet()
+        offen = [
+            provider
             for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-            if provider.id in self._providers
+            if provider.id not in vorhanden
         ]
-        return self.async_show_menu(
-            step_id="verwalten",
-            menu_options=menu_options,
-            description_placeholders={
-                "zugaenge": "\n".join(karten),
-                "offen": ", ".join(item.name for item in offen) or "keiner",
-            },
-        )
+        if not offen:
+            return self.async_abort(reason="alle_eingerichtet")
 
-    async def async_step_hinzufuegen(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        return await self.async_step_user()
-
-    async def async_step_schluessel(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Anbieter waehlen, dessen Schluessel ersetzt werden soll.
-
-        Danach laeuft derselbe Weg wie beim Einrichten: Test, Messung,
-        Ergebnis. Ein neuer Schluessel kann ein anderes Konto sein, und was
-        das Konto darf, ist damit offen — das gehoert gemessen und nicht
-        uebernommen.
-        """
-        registry = await self._async_registry()
         if user_input is not None:
             self._pending_provider = registry.require(user_input[CONF_PROVIDER])
-            self._pending_key = ""
             return await self.async_step_key()
 
         return self.async_show_form(
-            step_id="schluessel",
-            data_schema=self._anbieter_auswahl(registry),
-            description_placeholders={"zugaenge": self._zugaenge_text(registry)},
-        )
-
-    async def async_step_entfernen(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Einen Anbieter samt Schluessel und Messwerten herausnehmen."""
-        registry = await self._async_registry()
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            if not user_input.get("bestaetigen"):
-                errors["base"] = "nicht_bestaetigt"
-            else:
-                provider_id = user_input[CONF_PROVIDER]
-                self._providers.pop(provider_id, None)
-                _LOGGER.info("Anbieter %s entfernt", provider_id)
-                if not self._providers:
-                    return await self.async_step_summary()
-                return await self.async_step_verwalten()
-
-        return self.async_show_form(
-            step_id="entfernen",
+            step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PROVIDER): self._anbieter_selector(registry),
-                    vol.Required("bestaetigen", default=False): BooleanSelector(),
+                    vol.Required(CONF_PROVIDER): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value=provider.id, label=provider.name)
+                                for provider in offen
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
                 }
             ),
-            errors=errors,
-            description_placeholders={"zugaenge": self._zugaenge_text(registry)},
+            description_placeholders={
+                "cards": "\n".join(_provider_card(provider) for provider in offen)
+            },
         )
 
-    # --------------------------------------------------- Hilfen fuer beides
-    def _anbieter_selector(self, registry: Registry) -> SelectSelector:
-        return SelectSelector(
-            SelectSelectorConfig(
-                options=[
-                    SelectOptionDict(value=provider.id, label=provider.name)
-                    for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-                    if provider.id in self._providers
-                ],
-                mode=SelectSelectorMode.LIST,
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Schluessel ersetzen. Der Anbieter steht schon fest."""
+        registry = await self._async_registry()
+        subentry = self._get_reconfigure_subentry()
+        provider_id = subentry.data.get(CONF_PROVIDER, "")
+        provider = registry.get(provider_id)
+        if provider is None:
+            return self.async_abort(reason="unbekannter_anbieter")
+        self._pending_provider = provider
+        return await self.async_step_key()
+
+    async def async_step_result(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        provider = self._pending_provider
+        probe = self._probe_result
+        assert provider is not None and probe is not None
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="result",
+                data_schema=vol.Schema({}),
+                description_placeholders={
+                    "name": provider.name,
+                    "report": _probe_report(provider, probe),
+                    "working": str(len(probe.working_models)),
+                    "total": str(len(probe.models)),
+                },
             )
-        )
 
-    def _anbieter_auswahl(self, registry: Registry) -> vol.Schema:
-        return vol.Schema({vol.Required(CONF_PROVIDER): self._anbieter_selector(registry)})
-
-    def _zugaenge_text(self, registry: Registry) -> str:
-        return "\n".join(
-            _zugang_karte(provider, self._providers[provider.id])
-            for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-            if provider.id in self._providers
+        daten = {
+            CONF_PROVIDER: provider.id,
+            CONF_API_KEY: self._pending_key,
+            CONF_MODELS: merge_into_registry(provider, probe.models),
+        }
+        if self._ist_neu:
+            return self.async_create_entry(
+                title=provider.name, data=daten, unique_id=provider.id
+            )
+        return self.async_update_and_abort(
+            self._get_entry(), self._get_reconfigure_subentry(), data=daten
         )

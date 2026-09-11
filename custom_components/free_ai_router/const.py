@@ -45,6 +45,11 @@ CONF_API_KEY: Final = "api_key"
 CONF_CAPABILITIES: Final = "capabilities"
 CONF_MODELS: Final = "models"
 
+#: Ein eingerichteter Anbieter ist ein Subentry dieses Typs. Damit zeigt Home
+#: Assistant ihn als eigene Zeile auf der Integrationsseite — mit Knoepfen zum
+#: Aendern und Entfernen, die wir nicht selbst bauen muessen.
+SUBENTRY_TYPE_ANBIETER: Final = "anbieter"
+
 STORAGE_KEY_LEDGER: Final = f"{DOMAIN}.ledger"
 STORAGE_VERSION_LEDGER: Final = 1
 

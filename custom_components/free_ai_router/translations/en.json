@@ -23,49 +23,19 @@
         "description": "Gemessen, nicht abgeschrieben:\n\n{report}",
         "menu_options": {
           "add_another": "Weiteren Anbieter hinzufügen",
-          "summary": "Fertig, Übersicht anzeigen",
-          "verwalten": "Manage access"
+          "summary": "Fertig, Übersicht anzeigen"
         }
       },
       "summary": {
         "title": "Übersicht",
         "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht."
-      },
-      "verwalten": {
-        "title": "Manage access",
-        "description": "Configured:\n\n{zugaenge}\n\nNot configured yet: {offen}\n\nThe key itself is not shown — only its last four characters. To replace it you need a new one anyway.",
-        "menu_options": {
-          "hinzufuegen": "Add a provider",
-          "schluessel": "Replace key",
-          "entfernen": "Remove provider",
-          "summary": "Done, show overview"
-        }
-      },
-      "schluessel": {
-        "title": "Replace key",
-        "description": "{zugaenge}\n\nThe new key is checked immediately and the provider is measured again. A different key can be a different account, and what that account may do is an open question until measured.",
-        "data": {
-          "provider": "Provider"
-        }
-      },
-      "entfernen": {
-        "title": "Remove provider",
-        "description": "{zugaenge}\n\nRemoves this provider's key and measurements. The entities stay; the router spreads requests over the remaining channels. If it was the last one, every call fails — the overview in the next step says so.",
-        "data": {
-          "provider": "Provider",
-          "bestaetigen": "Yes, remove"
-        },
-        "data_description": {
-          "bestaetigen": "Nothing happens without the checkbox."
-        }
       }
     },
     "progress": {
       "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
     },
     "error": {
-      "key_rejected": "Der Schlüssel wurde nicht angenommen.",
-      "nicht_bestaetigt": "Not confirmed — nothing is removed without the checkbox."
+      "key_rejected": "Der Schlüssel wurde nicht angenommen."
     },
     "abort": {
       "already_configured": "Free AI Router ist bereits eingerichtet.",
@@ -144,6 +114,49 @@
           "name": "Liveness only",
           "description": "One call per model instead of the expensive checks for images, schemas and tools. Fast and frugal, leaves the capabilities measured so far untouched."
         }
+      }
+    }
+  },
+  "config_subentries": {
+    "anbieter": {
+      "initiate_flow": {
+        "user": "Add provider",
+        "reconfigure": "Replace key"
+      },
+      "entry_type": "Provider",
+      "step": {
+        "user": {
+          "title": "Select provider",
+          "description": "Not configured yet:\n\n{cards}",
+          "data": {
+            "provider": "Provider"
+          }
+        },
+        "key": {
+          "title": "Schlüssel für {name}",
+          "description": "Key-Seite öffnen: {signup_url}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+          "data": {
+            "api_key": "API-Schlüssel"
+          },
+          "data_description": {
+            "api_key": "Wird sofort mit einem echten Aufruf geprüft."
+          }
+        },
+        "result": {
+          "title": "{name}: {working} of {total} models reachable",
+          "description": "Measured, not copied:\n\n{report}"
+        }
+      },
+      "progress": {
+        "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
+      },
+      "error": {
+        "key_rejected": "Der Schlüssel wurde nicht angenommen."
+      },
+      "abort": {
+        "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
+        "alle_eingerichtet": "Every known provider is already configured.",
+        "unbekannter_anbieter": "This provider is no longer in the registry."
       }
     }
   }

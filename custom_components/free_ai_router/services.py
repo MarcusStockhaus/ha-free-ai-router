@@ -83,7 +83,9 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
     runtime = entry.runtime_data
     registry = runtime.base_registry or runtime.registry
 
-    configured: dict[str, Any] = dict(entry.data.get("providers") or {})
+    from . import configured_providers, subentry_of
+
+    configured: dict[str, Any] = configured_providers(entry)
     gewuenscht = call.data.get(ATTR_ANBIETER)
     if gewuenscht:
         unbekannt = sorted(set(gewuenscht) - set(configured))
@@ -102,7 +104,6 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
 
     begonnen = time.monotonic()
     bericht: dict[str, Any] = {}
-    neue_daten = {pid: dict(daten) for pid, daten in configured.items()}
     etwas_geaendert = False
 
     for provider_id in ziele:
@@ -141,7 +142,16 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
             key: merge_overrides(vorher.get(key) or {}, wert) for key, wert in gemessen.items()
         }
         aenderungen = describe_changes(vorher, nachher)
-        neue_daten[provider_id] = {**configured[provider_id], CONF_MODELS: nachher}
+
+        subentry = subentry_of(entry, provider_id)
+        if subentry is None:
+            bericht[provider_id] = {"hinweis": "kein Subentry gefunden"}
+            continue
+        # Den Subentry zu aktualisieren laedt die Entry neu; dabei entstehen
+        # die Kanaele aus den frischen Werten.
+        hass.config_entries.async_update_subentry(
+            entry, subentry, data={**subentry.data, CONF_MODELS: nachher}
+        )
         etwas_geaendert = True
 
         bericht[provider_id] = {
@@ -158,13 +168,7 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         "umfang": "nur Lebendigkeit" if nur_lebendigkeit else "alle Pruefungen",
     }
 
-    if etwas_geaendert:
-        # Der Update-Listener laedt die Entry neu; dabei entstehen die Kanaele
-        # aus den frischen Werten.
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, "providers": neue_daten}
-        )
-    else:
+    if not etwas_geaendert:
         _LOGGER.info("Neu vermessen: nichts uebernommen")
 
     return ergebnis

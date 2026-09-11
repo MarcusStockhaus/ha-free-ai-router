@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from .const import (
@@ -30,6 +31,7 @@ from .const import (
     STORAGE_KEY_LEDGER,
     STORAGE_VERSION_FEED,
     STORAGE_VERSION_LEDGER,
+    SUBENTRY_TYPE_ANBIETER,
 )
 from .ledger import Ledger
 from .registry import (
@@ -106,7 +108,45 @@ class RouterRuntime:
 type FreeAIRouterConfigEntry = ConfigEntry[RouterRuntime]
 
 
-def build_channels(registry: Registry, entry_data: dict[str, Any]) -> tuple[Channel, ...]:
+def configured_providers(entry: FreeAIRouterConfigEntry) -> dict[str, dict[str, Any]]:
+    """Die eingerichteten Anbieter, je Anbieter-ID.
+
+    Sie liegen als Subentries am Config Entry — je Anbieter eine Zeile auf der
+    Integrationsseite, mit Aendern und Entfernen von Home Assistant selbst.
+    Die Reihenfolge spielt hier keine Rolle; sortiert wird beim Bau der
+    Kanaele nach ``preference``.
+
+    Die alte Ablage unter ``data["providers"]`` wird noch gelesen, damit ein
+    Entry, dessen Migration nicht durchlief, nicht ohne Anbieter dasteht.
+    """
+    aus_subentries = {
+        subentry.data[CONF_PROVIDER]: dict(subentry.data)
+        for subentry in entry.subentries.values()
+        if subentry.subentry_type == SUBENTRY_TYPE_ANBIETER and CONF_PROVIDER in subentry.data
+    }
+    if aus_subentries:
+        return aus_subentries
+    return dict(entry.data.get("providers") or {})
+
+
+def subentry_of(entry: FreeAIRouterConfigEntry, provider_id: str) -> Any | None:
+    """Der Subentry dieses Anbieters — oder ``None``, wenn es ihn nicht gibt.
+
+    Gebraucht, um die Verbrauchssensoren an die richtige Zeile zu haengen und
+    um beim Neuvermessen den richtigen Eintrag zu aktualisieren.
+    """
+    for subentry in entry.subentries.values():
+        if (
+            subentry.subentry_type == SUBENTRY_TYPE_ANBIETER
+            and subentry.data.get(CONF_PROVIDER) == provider_id
+        ):
+            return subentry
+    return None
+
+
+def build_channels(
+    registry: Registry, configured: dict[str, dict[str, Any]]
+) -> tuple[Channel, ...]:
     """Baue die Kanalliste aus Registry und gemessenen Ueberschreibungen.
 
     Reihenfolge: ``preference`` des Anbieters, dann die Reihenfolge der
@@ -114,7 +154,6 @@ def build_channels(registry: Registry, entry_data: dict[str, Any]) -> tuple[Chan
     gegen "Reserve"), auf die sich der Router als Rangkriterium stuetzt — und
     sie darf gerade nicht vom Dateinamen abhaengen.
     """
-    configured: dict[str, Any] = entry_data.get("providers") or {}
     channels: list[Channel] = []
 
     providers = sorted(
@@ -140,8 +179,7 @@ def build_channels(registry: Registry, entry_data: dict[str, Any]) -> tuple[Chan
     return tuple(channels)
 
 
-def api_keys(entry_data: dict[str, Any]) -> dict[str, str]:
-    configured: dict[str, Any] = entry_data.get("providers") or {}
+def api_keys(configured: dict[str, dict[str, Any]]) -> dict[str, str]:
     return {
         provider_id: data[CONF_API_KEY]
         for provider_id, data in configured.items()
@@ -183,6 +221,7 @@ async def async_setup_entry(
     ledger.restore(stored)
 
     session = async_get_clientsession(hass)
+    eingerichtet = configured_providers(entry)
 
     # Der Feed wird aus dem Zwischenspeicher uebernommen, nicht geholt: der
     # Start soll nicht an einem fremden Server haengen. Nachgesehen wird
@@ -198,9 +237,9 @@ async def async_setup_entry(
         client=RouterClient(
             session=session,
             ledger=ledger,
-            keys=api_keys(entry.data),
+            keys=api_keys(eingerichtet),
         ),
-        channels=build_channels(wirksam, entry.data),
+        channels=build_channels(wirksam, eingerichtet),
         store=store,
         base_registry=registry,
         feed=feed,
@@ -243,7 +282,7 @@ def _uebernehmen(entry: FreeAIRouterConfigEntry, runtime: RouterRuntime) -> None
     """
     basis = runtime.base_registry or runtime.registry
     runtime.registry = runtime.feed.apply(basis)
-    runtime.channels = build_channels(runtime.registry, entry.data)
+    runtime.channels = build_channels(runtime.registry, configured_providers(entry))
     _log_coverage(runtime)
 
 
@@ -279,6 +318,52 @@ def _log_coverage(runtime: RouterRuntime) -> None:
         _LOGGER.info("Profil %s: %s%s", profile, entry.primary.key, reserve)
 
 
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: FreeAIRouterConfigEntry
+) -> bool:
+    """Anbieter aus ``data["providers"]`` in Subentries ueberfuehren.
+
+    Fassung 1 hielt alle Anbieter in einem Feld des Config Entry. Damit gab es
+    auf der Integrationsseite eine einzige Zeile, und Aendern oder Entfernen
+    eines einzelnen Anbieters ging nur ueber einen selbstgebauten Dialog.
+    Fassung 2 legt je Anbieter einen Subentry an — die Zeilen, die Knoepfe und
+    der Loeschdialog kommen dann von Home Assistant.
+    """
+    from homeassistant.config_entries import ConfigSubentry
+
+    if entry.version > 2:
+        return False
+    if entry.version == 2:
+        return True
+
+    providers: dict[str, Any] = dict(entry.data.get("providers") or {})
+    registry: Registry | None = None
+    if providers:
+        try:
+            registry = await hass.async_add_executor_job(load_registry)
+        except RegistryError as err:
+            _LOGGER.error("Migration ohne Registry nicht moeglich: %s", err)
+            return False
+
+    for provider_id, daten in providers.items():
+        provider = registry.get(provider_id) if registry else None
+        hass.config_entries.async_add_subentry(
+            entry,
+            ConfigSubentry(
+                data=MappingProxyType({CONF_PROVIDER: provider_id, **daten}),
+                subentry_type=SUBENTRY_TYPE_ANBIETER,
+                title=provider.name if provider else provider_id,
+                unique_id=provider_id,
+            ),
+        )
+
+    hass.config_entries.async_update_entry(entry, data={}, version=2)
+    _LOGGER.info(
+        "Config Entry auf Fassung 2 gehoben: %s Anbieter als Subentries", len(providers)
+    )
+    return True
+
+
 async def async_unload_entry(
     hass: HomeAssistant, entry: FreeAIRouterConfigEntry
 ) -> bool:
@@ -311,6 +396,8 @@ async def async_reload_entry(
 
 __all__ = [
     "CONF_API_KEY",
+    "configured_providers",
+    "subentry_of",
     "CONF_MODELS",
     "CONF_PROVIDER",
     "DOMAIN",

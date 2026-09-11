@@ -29,6 +29,46 @@ def _texte() -> dict:
     return json.loads((WURZEL / "strings.json").read_text(encoding="utf-8"))
 
 
+#: Welche Klasse ihre Texte wo sucht. Der Mixin liefert Schritte an beide
+#: Fluesse und muss deshalb in beiden Bloecken stehen.
+_BLOECKE = {
+    "_MessSchritte": ("config", "config_subentries.anbieter"),
+    "FreeAIRouterConfigFlow": ("config",),
+    "AnbieterSubentryFlow": ("config_subentries.anbieter",),
+}
+
+
+def _block(pfad: str) -> dict:
+    ziel = _texte()
+    for teil in pfad.split("."):
+        ziel = ziel[teil]
+    return ziel
+
+
+def _schritte_je_klasse() -> dict[str, set[str]]:
+    """Sichtbare Schritte, nach der Klasse getrennt, in der sie stehen."""
+    ergebnis: dict[str, set[str]] = {}
+    for knoten in ast.walk(_baum()):
+        if not isinstance(knoten, ast.ClassDef):
+            continue
+        gefunden: set[str] = set()
+        for unter in ast.walk(knoten):
+            if not isinstance(unter, ast.Call):
+                continue
+            aufgerufen = unter.func.attr if isinstance(unter.func, ast.Attribute) else None
+            if aufgerufen not in {"async_show_form", "async_show_menu"}:
+                continue
+            for arg in unter.keywords:
+                if (
+                    arg.arg == "step_id"
+                    and isinstance(arg.value, ast.Constant)
+                    and isinstance(arg.value.value, str)
+                ):
+                    gefunden.add(arg.value.value)
+        ergebnis[knoten.name] = gefunden
+    return ergebnis
+
+
 def _argumente(funktionen: set[str], name: str) -> set[str]:
     """Zeichenketten, die einer dieser Funktionen als ``name=`` mitgegeben werden.
 
@@ -64,20 +104,36 @@ def _schritte_im_code() -> set[str]:
 
 
 def test_jeder_sichtbare_schritt_hat_einen_text() -> None:
-    texte = _texte()["config"]["step"]
-    sichtbar = _argumente({"async_show_form", "async_show_menu"}, "step_id")
-    assert sichtbar, "keine Schritte gefunden — Test trifft nicht mehr zu"
-    fehlend = sorted(sichtbar - set(texte))
-    assert not fehlend, f"ohne Text in config.step: {fehlend}"
+    """Und zwar im Block des Flusses, zu dem er gehoert.
+
+    Der Einrichtungsassistent sucht seine Texte unter ``config``, der
+    Subentry-Flow unter ``config_subentries.anbieter``. Ein Schritt aus dem
+    gemeinsamen Mixin braucht beide.
+    """
+    je_klasse = _schritte_je_klasse()
+    assert je_klasse.get("_MessSchritte"), "Mixin nicht gefunden — Test trifft nicht mehr zu"
+
+    fehlend: list[str] = []
+    for klasse, bloecke in _BLOECKE.items():
+        assert klasse in je_klasse, f"Klasse {klasse} gibt es nicht mehr"
+        for pfad in bloecke:
+            texte = _block(pfad)["step"]
+            fehlend += [
+                f"{pfad}.step.{name} (aus {klasse})"
+                for name in sorted(je_klasse[klasse] - set(texte))
+            ]
+    assert not fehlend, f"ohne Text: {fehlend}"
 
 
 def test_jeder_fortschritt_hat_einen_text() -> None:
-    """Fortschrittsschritte holen ihren Text aus ``config.progress``."""
-    texte = _texte()["config"]["progress"]
+    """Fortschrittsschritte holen ihren Text aus ``progress``, nicht aus ``step``."""
     aktionen = _argumente({"async_show_progress"}, "progress_action")
     assert aktionen, "keine Fortschrittsschritte gefunden"
-    fehlend = sorted(aktionen - set(texte))
-    assert not fehlend, f"ohne Text in config.progress: {fehlend}"
+    fehlend: list[str] = []
+    for pfad in ("config", "config_subentries.anbieter"):
+        offen = sorted(aktionen - set(_block(pfad)["progress"]))
+        fehlend += [f"{pfad}.progress.{name}" for name in offen]
+    assert not fehlend, f"ohne Text: {fehlend}"
 
 
 def test_jeder_menuepunkt_zeigt_auf_einen_schritt() -> None:
@@ -111,23 +167,23 @@ def test_jeder_fehlerschluessel_hat_einen_text() -> None:
     assert not fehlend, f"ohne Text in config.error: {fehlend}"
 
 
-def test_die_neuen_verwaltungsschritte_sind_vollstaendig() -> None:
-    """Die Verwaltung ist der Weg, auf dem Schluessel geaendert werden."""
-    schritte = _texte()["config"]["step"]
-    for name in ("verwalten", "schluessel", "entfernen"):
-        assert name in schritte, f"{name} fehlt in strings.json"
-        assert schritte[name].get("title"), f"{name} ohne Titel"
-        assert schritte[name].get("description"), f"{name} ohne Beschreibung"
+def test_der_anbieter_subentry_ist_beschriftet() -> None:
+    """Ohne diese Texte heisst der Knopf auf der Integrationsseite „anbieter"."""
+    block = _block("config_subentries.anbieter")
+    assert block["entry_type"], "entry_type fehlt — die Zeile haette keine Bezeichnung"
+    for quelle in ("user", "reconfigure"):
+        assert block["initiate_flow"].get(quelle), f"initiate_flow.{quelle} fehlt"
 
 
 def test_platzhalter_werden_auch_gefuellt() -> None:
-    """Ein ``{zugaenge}`` im Text ohne Wert im Code bliebe als Klammer stehen."""
+    """Ein ``{report}`` im Text ohne Wert im Code bliebe als Klammer stehen."""
     import re
 
     quelle = QUELLE.read_text(encoding="utf-8")
-    for name in ("verwalten", "schluessel", "entfernen"):
-        text = _texte()["config"]["step"][name]["description"]
-        for platzhalter in re.findall(r"\{(\w+)\}", text):
-            assert f'"{platzhalter}"' in quelle, (
-                f"{name}: Platzhalter {{{platzhalter}}} wird im Code nicht gesetzt"
-            )
+    fehlend: list[str] = []
+    for pfad in ("config", "config_subentries.anbieter"):
+        for name, schritt in _block(pfad)["step"].items():
+            for platzhalter in re.findall(r"\{(\w+)\}", schritt.get("description", "")):
+                if f'"{platzhalter}"' not in quelle:
+                    fehlend.append(f"{pfad}.step.{name}: {{{platzhalter}}}")
+    assert not fehlend, f"im Code nicht gesetzt: {fehlend}"

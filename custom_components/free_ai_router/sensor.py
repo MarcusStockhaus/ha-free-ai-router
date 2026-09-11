@@ -93,15 +93,22 @@ async def async_setup_entry(
     entry: FreeAIRouterConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    from . import subentry_of
+
     runtime = entry.runtime_data
-    entities: list[SensorEntity] = [
+    async_add_entities(
         RouterGesamtSensor(entry, beschreibung) for beschreibung in GESAMT_SENSOREN
-    ]
-    entities.extend(
-        RouterAnbieterSensor(entry, provider_id)
-        for provider_id in sorted({channel.provider.id for channel in runtime.channels})
     )
-    async_add_entities(entities)
+
+    # Der Anbietersensor gehoert zu seiner Zeile auf der Integrationsseite,
+    # nicht zur Integration als Ganzes. Dann steht der Verbrauch dort, wo auch
+    # der Schluessel steht — und verschwindet mit, wenn der Anbieter geht.
+    for provider_id in sorted({channel.provider.id for channel in runtime.channels}):
+        subentry = subentry_of(entry, provider_id)
+        async_add_entities(
+            [RouterAnbieterSensor(entry, provider_id)],
+            config_subentry_id=subentry.subentry_id if subentry else None,
+        )
 
 
 class RouterGesamtSensor(RouterEntity, SensorEntity):

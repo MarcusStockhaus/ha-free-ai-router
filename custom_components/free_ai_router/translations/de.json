@@ -23,49 +23,19 @@
         "description": "Gemessen, nicht abgeschrieben:\n\n{report}",
         "menu_options": {
           "add_another": "Weiteren Anbieter hinzufügen",
-          "summary": "Fertig, Übersicht anzeigen",
-          "verwalten": "Zugänge verwalten"
+          "summary": "Fertig, Übersicht anzeigen"
         }
       },
       "summary": {
         "title": "Übersicht",
         "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht."
-      },
-      "verwalten": {
-        "title": "Zugänge verwalten",
-        "description": "Eingerichtet:\n\n{zugaenge}\n\nNoch nicht eingerichtet: {offen}\n\nDer Schlüssel selbst wird nicht angezeigt — nur seine letzten vier Zeichen. Zum Ersetzen brauchst du ohnehin einen neuen.",
-        "menu_options": {
-          "hinzufuegen": "Anbieter hinzufügen",
-          "schluessel": "Schlüssel ersetzen",
-          "entfernen": "Anbieter entfernen",
-          "summary": "Fertig, Übersicht anzeigen"
-        }
-      },
-      "schluessel": {
-        "title": "Schlüssel ersetzen",
-        "description": "{zugaenge}\n\nNach der Eingabe wird der neue Schlüssel sofort geprüft und der Anbieter neu vermessen. Ein anderer Schlüssel kann ein anderes Konto sein, und was das Konto darf, ist damit offen.",
-        "data": {
-          "provider": "Anbieter"
-        }
-      },
-      "entfernen": {
-        "title": "Anbieter entfernen",
-        "description": "{zugaenge}\n\nEntfernt Schlüssel und Messwerte dieses Anbieters. Die Entities bleiben; der Router verteilt die Anfragen danach auf die übrigen Kanäle. Ist es der letzte, scheitert jeder Aufruf — darauf weist dich die Übersicht im nächsten Schritt hin.",
-        "data": {
-          "provider": "Anbieter",
-          "bestaetigen": "Ja, entfernen"
-        },
-        "data_description": {
-          "bestaetigen": "Ohne Haken passiert nichts."
-        }
       }
     },
     "progress": {
       "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
     },
     "error": {
-      "key_rejected": "Der Schlüssel wurde nicht angenommen.",
-      "nicht_bestaetigt": "Nicht bestätigt — ohne Haken wird nichts entfernt."
+      "key_rejected": "Der Schlüssel wurde nicht angenommen."
     },
     "abort": {
       "already_configured": "Free AI Router ist bereits eingerichtet.",
@@ -144,6 +114,49 @@
           "name": "Nur Lebendigkeit",
           "description": "Ein Aufruf je Modell statt der teuren Prüfungen auf Bilder, Schemata und Werkzeuge. Schnell und sparsam, lässt die bisher gemessenen Fähigkeiten unangetastet."
         }
+      }
+    }
+  },
+  "config_subentries": {
+    "anbieter": {
+      "initiate_flow": {
+        "user": "Anbieter hinzufügen",
+        "reconfigure": "Schlüssel ersetzen"
+      },
+      "entry_type": "Anbieter",
+      "step": {
+        "user": {
+          "title": "Anbieter auswählen",
+          "description": "Noch nicht eingerichtet:\n\n{cards}",
+          "data": {
+            "provider": "Anbieter"
+          }
+        },
+        "key": {
+          "title": "Schlüssel für {name}",
+          "description": "Key-Seite öffnen: {signup_url}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+          "data": {
+            "api_key": "API-Schlüssel"
+          },
+          "data_description": {
+            "api_key": "Wird sofort mit einem echten Aufruf geprüft."
+          }
+        },
+        "result": {
+          "title": "{name}: {working} von {total} Modellen erreichbar",
+          "description": "Gemessen, nicht abgeschrieben:\n\n{report}"
+        }
+      },
+      "progress": {
+        "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
+      },
+      "error": {
+        "key_rejected": "Der Schlüssel wurde nicht angenommen."
+      },
+      "abort": {
+        "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
+        "alle_eingerichtet": "Alle bekannten Anbieter sind schon eingerichtet.",
+        "unbekannter_anbieter": "Diesen Anbieter gibt es in der Registry nicht mehr."
       }
     }
   }
