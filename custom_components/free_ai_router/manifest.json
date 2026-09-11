@@ -9,10 +9,10 @@
     "ai_task",
     "conversation"
   ],
-  "documentation": "https://github.com/marcusstockhaus/ha-free-ai-router",
+  "documentation": "https://github.com/MarcusStockhaus/ha-free-ai-router",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/marcusstockhaus/ha-free-ai-router/issues",
+  "issue_tracker": "https://github.com/MarcusStockhaus/ha-free-ai-router/issues",
   "requirements": [
     "PyYAML>=6.0"
   ],

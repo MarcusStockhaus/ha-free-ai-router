@@ -54,7 +54,7 @@ manuelle Installation filtert genau die Nutzer, die Betreuung erwarten.
 Auf einem System mit Shell-Zugang (SSH-Add-on oder Terminal):
 
 ```bash
-cd /tmp && git clone https://github.com/marcusstockhaus/ha-free-ai-router
+cd /tmp && git clone https://github.com/MarcusStockhaus/ha-free-ai-router
 cp -r ha-free-ai-router/custom_components/free_ai_router /config/custom_components/
 cp -r ha-free-ai-router/blueprints/automation/free_ai_router /config/blueprints/automation/
 ```

@@ -17,7 +17,7 @@ blueprint:
     rechnen unabhängig von der Auflösung ab. Sparen lässt sich nur an der
     Anzahl der Auslösungen, und genau dafür ist dieser Blueprint da.
   domain: automation
-  source_url: https://github.com/marcusstockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/kamera_analyse.yaml
+  source_url: https://github.com/MarcusStockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/kamera_analyse.yaml
   input:
     was:
       name: Was ausgewertet wird

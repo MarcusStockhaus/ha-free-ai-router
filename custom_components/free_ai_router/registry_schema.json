@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/marcusstockhaus/ha-free-ai-router/registry_schema.json",
+  "$id": "https://github.com/MarcusStockhaus/ha-free-ai-router/registry_schema.json",
   "title": "Free AI Router — Anbieter-Registry",
   "description": "Eine Datei je Anbieter unter providers/. Ein neuer Anbieter darf kein Python erfordern.",
   "type": "object",

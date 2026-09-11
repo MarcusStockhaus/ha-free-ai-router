@@ -19,7 +19,7 @@ blueprint:
     `{{ states('camera.deine_klingel') }}`, oder schlicht in der Kameraansicht:
     kommt dort kein Bild, kommt auch keine Analyse.
   domain: automation
-  source_url: https://github.com/marcusstockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/tuerklingel.yaml
+  source_url: https://github.com/MarcusStockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/tuerklingel.yaml
   input:
     was:
       name: Klingel und Kamera
