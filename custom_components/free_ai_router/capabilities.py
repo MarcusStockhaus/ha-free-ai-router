@@ -591,6 +591,72 @@ def merge_into_registry(
     return overrides
 
 
+#: Felder, die :func:`describe_changes` vergleicht.
+_VERGLEICHSFELDER = ("vision", "tools", "structured_output")
+_JA_NEIN = {True: "ja", False: "nein", None: "unbekannt"}
+
+
+def merge_overrides(vorher: dict[str, Any], nachher: dict[str, Any]) -> dict[str, Any]:
+    """Neue Messung ueber die alte legen — ohne das Ungemessene zu loeschen.
+
+    Eine sparsame Messung prueft Bilder, Schemata und Werkzeuge gar nicht.
+    Ihre leeren Felder duerfen die frueheren Befunde nicht ueberschreiben:
+    "nicht gemessen" ist kein "kann es nicht". Derselbe Unterschied wie bei
+    ``CheckResult.ok is None``, nur eine Ebene hoeher.
+    """
+    ergebnis = dict(nachher)
+    ergebnis["capabilities"] = {
+        **(vorher.get("capabilities") or {}),
+        **(nachher.get("capabilities") or {}),
+    }
+    ergebnis["limits"] = {**(vorher.get("limits") or {}), **(nachher.get("limits") or {})}
+    return ergebnis
+
+
+def describe_changes(
+    vorher: dict[str, dict[str, Any]], nachher: dict[str, dict[str, Any]]
+) -> list[str]:
+    """Was eine Messung am bisherigen Stand geaendert hat, in Klartext.
+
+    Das ist die eigentliche Antwort auf "was hat das gebracht" — eine
+    Messung ohne Aenderung ist ein genauso gueltiges Ergebnis, aber sie soll
+    sich von einer unterscheiden lassen, die etwas gedreht hat.
+    """
+    zeilen: list[str] = []
+    for key, neu in sorted(nachher.items()):
+        alt = vorher.get(key) or {}
+        modell = key.split("/", 1)[-1]
+        alt_lebt, neu_lebt = bool(alt.get("alive", True)), bool(neu.get("alive", True))
+        if alt and alt_lebt != neu_lebt:
+            zeilen.append(f"{modell}: erreichbar {_JA_NEIN[alt_lebt]} -> {_JA_NEIN[neu_lebt]}")
+        alte_caps = alt.get("capabilities") or {}
+        neue_caps = neu.get("capabilities") or {}
+        for feld in _VERGLEICHSFELDER:
+            if feld in neue_caps and alte_caps.get(feld) != neue_caps[feld]:
+                zeilen.append(
+                    f"{modell}: {feld} {_JA_NEIN[alte_caps.get(feld)]} "
+                    f"-> {_JA_NEIN[neue_caps[feld]]}"
+                )
+    return zeilen
+
+
+def should_discard(vorher: dict[str, dict[str, Any]], lebendig: int) -> bool:
+    """Ist dieses Messergebnis unbrauchbar und sollte verworfen werden?
+
+    Wahr, wenn kein einziges Modell geantwortet hat, obwohl vorher welche
+    liefen. Das ist fast immer die eigene Leitung und nicht das Ende des
+    Anbieters — und eine kaputte Leitung darf nicht dazu fuehren, dass sich
+    die Installation selbst die Kanaele abschaltet. Dieselbe Notbremse faehrt
+    der Prober fuer den Feed.
+
+    Beim ersten Mal (``vorher`` leer) gibt es nichts zu schuetzen: dann ist
+    auch ein durchweg totes Ergebnis ein Ergebnis.
+    """
+    if lebendig > 0 or not vorher:
+        return False
+    return any(eintrag.get("alive", True) for eintrag in vorher.values())
+
+
 async def gather_probes(
     session: aiohttp.ClientSession,
     jobs: Sequence[tuple[Provider, str]],
@@ -631,9 +697,12 @@ __all__ = [
     "CheckResult",
     "ModelProbe",
     "ProviderProbe",
+    "describe_changes",
     "gather_probes",
     "merge_into_registry",
+    "merge_overrides",
     "probe_model",
     "probe_provider",
     "quick_key_check",
+    "should_discard",
 ]

@@ -27,9 +27,12 @@ from conftest import make_model, make_provider
 from custom_components.free_ai_router.capabilities import (
     ALL_CHECKS,
     CHECK_LIVENESS,
+    describe_changes,
+    merge_overrides,
     probe_model,
     probe_provider,
     quick_key_check,
+    should_discard,
 )
 from custom_components.free_ai_router.testimage import (
     PALETTE,
@@ -513,3 +516,75 @@ async def test_blindes_modell_kostet_nur_einen_aufruf(umgebung) -> None:
     )
     assert probe.vision.ok is False
     assert len(umgebung["endpunkt"].gesehene_bilder) == 1
+
+
+# --------------------------------------------------------------------------
+# Neu vermessen: was eine zweite Messung mit der ersten macht
+# --------------------------------------------------------------------------
+
+
+def test_sparsame_messung_loescht_keine_faehigkeiten() -> None:
+    """Der Kern des Dienstes.
+
+    Ein Lauf mit `nur_lebendigkeit` prueft Bilder, Schemata und Werkzeuge gar
+    nicht. Seine leeren Felder duerfen die frueheren Befunde nicht wegraeumen —
+    sonst waere "nicht gemessen" wieder dasselbe wie "kann es nicht".
+    """
+    vorher = {
+        "alive": True,
+        "capabilities": {"vision": True, "tools": False},
+        "limits": {"rpd": 500},
+    }
+    nachher = {"alive": True, "capabilities": {}, "limits": {"rpm": 15}}
+
+    ergebnis = merge_overrides(vorher, nachher)
+
+    assert ergebnis["capabilities"] == {"vision": True, "tools": False}
+    assert ergebnis["limits"] == {"rpd": 500, "rpm": 15}
+    assert ergebnis["alive"] is True
+
+
+def test_neue_messung_schlaegt_die_alte() -> None:
+    vorher = {"capabilities": {"vision": False}}
+    nachher = {"capabilities": {"vision": True}}
+    assert merge_overrides(vorher, nachher)["capabilities"] == {"vision": True}
+
+
+def test_aenderungen_werden_benannt() -> None:
+    vorher = {"m/a": {"alive": True, "capabilities": {"vision": False}}}
+    nachher = {"m/a": {"alive": True, "capabilities": {"vision": True, "tools": True}}}
+
+    zeilen = describe_changes(vorher, nachher)
+
+    assert "a: vision nein -> ja" in zeilen
+    # tools war vorher unbekannt, nicht false — das soll die Meldung sagen.
+    assert "a: tools unbekannt -> ja" in zeilen
+
+
+def test_ohne_aenderung_keine_meldung() -> None:
+    stand = {"m/a": {"alive": True, "capabilities": {"vision": True}}}
+    assert describe_changes(stand, stand) == []
+
+
+def test_erstmessung_meldet_keine_erreichbarkeitsaenderung() -> None:
+    """Beim ersten Mal gibt es kein "vorher" — jede Meldung waere Rauschen."""
+    nachher = {"m/a": {"alive": False, "capabilities": {}}}
+    assert describe_changes({}, nachher) == []
+
+
+def test_ein_toter_lauf_wird_verworfen() -> None:
+    """Die Leitung ist tot, nicht der Anbieter — sonst schaltet sich die
+    Installation bei einem Netzausfall selbst ab."""
+    vorher = {"m/a": {"alive": True}, "m/b": {"alive": True}}
+    assert should_discard(vorher, lebendig=0) is True
+    assert should_discard(vorher, lebendig=1) is False
+
+
+def test_wer_vorher_schon_tot_war_darf_tot_bleiben() -> None:
+    vorher = {"m/a": {"alive": False}}
+    assert should_discard(vorher, lebendig=0) is False
+
+
+def test_erste_messung_wird_nie_verworfen() -> None:
+    assert should_discard({}, lebendig=0) is False
+

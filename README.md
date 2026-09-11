@@ -176,6 +176,40 @@ der still dauerhaft ausfällt, fällt sonst erst auf, wenn auch die Reserve weg
 ist. Dieselbe Lage meldet sich zusätzlich von selbst unter **Einstellungen →
 Reparaturen**, samt Link zur Key-Seite des betroffenen Anbieters.
 
+## Nachmessen
+
+```yaml
+action: free_ai_router.neu_vermessen
+data:
+  nur_lebendigkeit: false     # optional
+  anbieter: [mistral]         # optional, sonst alle
+```
+
+Die Fähigkeiten, mit denen der Router arbeitet, stammen aus dem Augenblick des
+Einrichtens. Sie schlagen bewusst alles andere — `alive` und Limits hängen am
+Konto und nicht am Modell, und was der eigene Schlüssel kann, weiß niemand
+besser als die eigene Messung. Ohne diesen Dienst bliebe ein einmal gemessener
+Wert allerdings für immer stehen.
+
+Der Aufruf liefert eine Antwort, die sagt, was sich geändert hat:
+
+```yaml
+anbieter:
+  mistral:
+    gemessen: 4
+    lebendig: 3
+    aenderungen:
+      - "ministral-3b-2512: vision nein -> ja"
+dauer_s: 47.2
+```
+
+Zwei Vorsichtsmaßnahmen, dieselben wie im Feed-Dienst: antwortet **kein
+einziges** Modell eines Anbieters, der vorher welche hatte, wird das Ergebnis
+verworfen — das ist fast immer die eigene Leitung, und eine kaputte Leitung
+darf nicht dazu führen, dass sich die Installation selbst die Kanäle
+abschaltet. Und `nur_lebendigkeit` lässt die bisher gemessenen Fähigkeiten
+unangetastet, statt sie zu löschen, weil nicht danach gefragt wurde.
+
 ---
 
 ## Was bei Limit oder Ausfall passiert

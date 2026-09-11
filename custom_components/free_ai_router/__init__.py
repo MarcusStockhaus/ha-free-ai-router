@@ -164,6 +164,7 @@ async def async_setup_entry(
     # PyYAML und jsonschema auskommen. Dasselbe gilt fuer den Feed-Client.
     from .client import RouterClient
     from .feed_client import FeedManager, feed_configured
+    from .services import async_setup_services
 
     try:
         registry = await hass.async_add_executor_job(load_registry)
@@ -210,6 +211,7 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(
         entry, [Platform(name) for name in PLATFORMS]
     )
+    async_setup_services(hass)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     entry.async_on_unload(_start_issue_check(hass, runtime))
     if feed_configured():
@@ -285,6 +287,13 @@ async def async_unload_entry(
     unloaded = await hass.config_entries.async_unload_platforms(
         entry, [Platform(name) for name in PLATFORMS]
     )
+    if unloaded and not hass.config_entries.async_loaded_entries(DOMAIN):
+        # Der Dienst gehoert der Domain, nicht der Entry. Abmelden erst, wenn
+        # keine geladene Entry mehr uebrig ist — sonst nimmt ein Reload ihn
+        # mitten im eigenen Aufruf weg.
+        from .services import async_unload_services
+
+        async_unload_services(hass)
     if unloaded:
         runtime = entry.runtime_data
         if runtime.store is not None:

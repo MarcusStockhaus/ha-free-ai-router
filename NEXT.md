@@ -326,6 +326,32 @@ Beides sind Entscheidungen, keine Programmierarbeit:
 
 ---
 
+## 8. Dienst zum Neuvermessen — gebaut am 11.09.2026
+
+Die Lücke, die der Tag sichtbar gemacht hat: die Fähigkeiten im Config Entry
+stammen aus dem Augenblick des Einrichtens und schlagen den Feed. Das ist
+richtig — `alive` und Limits hängen am Konto, nicht am Modell — hatte aber zur
+Folge, dass ein einmal falsch gemessener Wert unerreichbar war. Drei
+Korrekturen am Messverfahren an einem Tag hätten den Nutzer nie erreicht.
+
+`free_ai_router.neu_vermessen`, optional je Anbieter, optional nur die
+Lebendigkeit. Die Antwort sagt, was sich geändert hat.
+
+Dieselben Notbremsen wie im Prober, und aus demselben Grund:
+
+- **Ein Lauf ohne jede Antwort wird verworfen** (`should_discard`), sofern
+  vorher etwas lief. Sonst schaltet sich die Installation bei einem
+  Netzausfall selbst die Kanäle ab.
+- **Der sparsame Lauf löscht keine Fähigkeiten** (`merge_overrides`). Er prüft
+  sie gar nicht; sie zu leeren wäre wieder die Gleichsetzung von „nicht
+  gemessen" mit „kann es nicht".
+
+Die Entscheidungslogik liegt in `capabilities.py`, nicht in `services.py`:
+letzteres importiert Home Assistant und ist hier nicht testbar. Acht Tests,
+beide Notbremsen gegen abgeschaltete Logik gegengeprüft.
+
+---
+
 ## Kleinkram, notiert damit er nicht verlorengeht
 
 - `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der

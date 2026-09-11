@@ -1,0 +1,13 @@
+neu_vermessen:
+  fields:
+    anbieter:
+      required: false
+      example: "mistral"
+      selector:
+        text:
+          multiple: true
+    nur_lebendigkeit:
+      required: false
+      default: false
+      selector:
+        boolean:

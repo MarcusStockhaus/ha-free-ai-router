@@ -100,5 +100,21 @@
       "title": "{anbieter}: monthly budget spent",
       "description": "{anbieter} has used {ausgegeben} of {budget} US dollars this month. The free tier is closed until the first of next month.\n\nRequests keep running through the other providers — you will only notice when their quota runs short. Add another provider if you need the buffer, or wait for the month to roll over.\n\nThe amount is calculated here, from the measured tokens and the price list in the provider file. The provider's own billing is what counts."
     }
+  },
+  "services": {
+    "neu_vermessen": {
+      "name": "Measure again",
+      "description": "Measures again what the configured providers can actually do and takes the result. Needed because the values otherwise date from the moment of setup and stay there. A measurement that reaches nothing overwrites nothing.",
+      "fields": {
+        "anbieter": {
+          "name": "Providers",
+          "description": "Leave empty for all configured providers."
+        },
+        "nur_lebendigkeit": {
+          "name": "Liveness only",
+          "description": "One call per model instead of the expensive checks for images, schemas and tools. Fast and frugal, leaves the capabilities measured so far untouched."
+        }
+      }
+    }
   }
 }

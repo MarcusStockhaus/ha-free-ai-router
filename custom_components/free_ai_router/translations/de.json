@@ -100,5 +100,21 @@
       "title": "{anbieter}: Monatsbudget aufgebraucht",
       "description": "{anbieter} hat in diesem Monat {ausgegeben} von {budget} US-Dollar verbraucht. Die kostenlose Stufe ist damit bis zum Monatsersten zu.\n\nAnfragen laufen weiter über die übrigen Anbieter — bemerkt wird es erst, wenn dort das Kontingent knapp wird. Wer den Puffer braucht, richtet einen weiteren Anbieter ein oder wartet den Monatswechsel ab.\n\nDer Betrag ist selbst gerechnet, aus den gemessenen Token und der Preisliste in der Anbieterdatei. Die Abrechnung des Anbieters ist maßgeblich."
     }
+  },
+  "services": {
+    "neu_vermessen": {
+      "name": "Neu vermessen",
+      "description": "Misst noch einmal, was die eingerichteten Anbieter tatsächlich können, und übernimmt das Ergebnis. Nötig, weil die Werte sonst aus dem Moment des Einrichtens stammen und dort stehenbleiben. Eine Messung, die nichts erreicht, überschreibt nichts.",
+      "fields": {
+        "anbieter": {
+          "name": "Anbieter",
+          "description": "Leer lassen für alle eingerichteten Anbieter."
+        },
+        "nur_lebendigkeit": {
+          "name": "Nur Lebendigkeit",
+          "description": "Ein Aufruf je Modell statt der teuren Prüfungen auf Bilder, Schemata und Werkzeuge. Schnell und sparsam, lässt die bisher gemessenen Fähigkeiten unangetastet."
+        }
+      }
+    }
   }
 }
