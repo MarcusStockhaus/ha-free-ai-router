@@ -145,14 +145,31 @@ Ein Anbieter ohne Schlüssel wird übersprungen. Das ist kein Fehler und
 
 ### 3. Takte
 
-`.github/workflows/prober.yml` fährt zwei. Schalte den Zeitplan erst ein,
-wenn die Secrets stehen — vorher wäre ein stündlicher Lauf eine stündlich rote
-Meldung:
+Das Werkzeug kennt zwei:
 
 ```
-stündlich   --cheap   ein Request je Modell: lebt es, welche Header kommen
-täglich     --full    Bild, Schema, Werkzeuge — die teuren Prüfungen
+--cheap   ein Request je Modell: lebt es, welche Header kommen
+--full    zusätzlich Bild, Schema, Werkzeuge — die teuren Prüfungen
 ```
+
+Unter Cron läuft **einmal am Tag der volle** (`.github/workflows/prober.yml`,
+03:07 UTC). Der sparsame ist der Handgriff für zwischendurch:
+*Run workflow* ohne Haken.
+
+Häufiger wäre nicht besser, und zwar aus drei Richtungen:
+
+* Der Client sieht ohnehin nur alle `FEED_INTERVAL_HOURS` nach. Stündlich zu
+  veröffentlichen hieße, 24 Dokumente für sechs Abrufe zu bauen — fünf davon
+  beantwortet mit `304`.
+* Tot wird ein Modell nach `DEAD_AFTER_FAILURES` Läufen **in Folge**.
+  Stündlich wären das drei Stunden; die Störung von Googles Gemma am
+  11.09.2026 hätte gereicht, um es für alle Installationen abzuschalten.
+  Täglich sind es drei Tage — und drei Tage Dauerausfall sind ein Signal,
+  eine schlechte Viertelstunde nicht.
+* Es ist fremdes Kontingent.
+
+Schalte den Zeitplan erst ein, wenn die Secrets stehen — vorher wäre jeder
+Lauf eine rote Meldung.
 
 **Der Takt ist nur die Obergrenze.** Je Modell rechnet der Prober zusätzlich
 aus dem bekannten Tageskontingent (`limits.rpd`) aus, wie oft er es sich
@@ -160,13 +177,13 @@ leisten kann, und beide Takte zusammen bleiben bei `BUDGET_SHARE` — einem
 Viertel. Sonst wäre er selbst der größte Verbraucher des Kontingents, das er
 vermisst:
 
-| Modell | RPD | sparsam | voll | Requests/Tag |
-|---|---:|---|---|---|
-| `gemini-3.5-flash-lite` | 500 | stündlich | täglich | 29 (6 %) |
-| `gemini-3.5-flash` | **20** | alle 9,6 h | alle 48 h | 5 (25 %) |
-| `groq/qwen3.8-27b` | 1.000 | stündlich | täglich | 29 (3 %) |
-| `nemotron-3.5-lightning:free` | 50 | alle 3,8 h | täglich | 11 (22 %) |
-| `mistral/ministral-3b` | — | stündlich | täglich | 29 |
+| Modell | RPD | voller Lauf | Requests/Tag |
+|---|---:|---|---|
+| `gemini-3.5-flash-lite` | 500 | täglich | 5 (1 %) |
+| `gemini-3.5-flash` | **20** | alle 48 h | 2,5 (12 %) |
+| `groq/qwen3.8-27b` | 1.000 | täglich | 5 (0 %) |
+| `nemotron-3.5-lightning:free` | 50 | täglich | 5 (10 %) |
+| `mistral/ministral-3b` | — | täglich | 5 |
 
 Die Zeile mit den 20 Anfragen ist der Grund für die Rechnerei: Googles große
 Flash-Modelle wären von einem stündlichen Lebenszeichen allein erschöpft, bevor

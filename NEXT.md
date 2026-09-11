@@ -245,7 +245,10 @@ Beides sind Entscheidungen, keine Programmierarbeit:
       der echte Client-Code holt, prüft und übernimmt das Dokument.
 - [x] **Schlüssel** — Signierpaar erzeugt, privat als Secret
       `FAR_FEED_PRIVATE_KEY`, öffentlich in `feed.py`. Zeitplan aktiv:
-      stündlich sparsam, täglich 03:07 UTC voll.
+      **einmal täglich** um 03:07 UTC der volle Lauf. Der stündliche sparsame
+      Takt ist bewusst wieder herausgeflogen — der Client sieht nur alle vier
+      Stunden nach, und die Totmeldung nach drei Läufen in Folge wäre
+      stündlich schon nach drei Stunden gefallen.
 - [ ] **Ein eigenes Proberkonto.** Zum Start laufen die Schlüssel des Autors
       (so entschieden am 11.09.2026). Das hat zwei Folgen: der Prober
       verbraucht dessen Kontingent mit — gedeckelt auf ein Viertel, siehe

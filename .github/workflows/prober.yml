@@ -9,11 +9,20 @@ name: Feed-Prober
 # `/docs` — deshalb `docs`. Die Zustandsdatei liegt bewusst darueber in der
 # Wurzel: sie gehoert zur Buchfuehrung und nicht zur Auslieferung.
 #
-# Zwei Takte, damit der Prober nicht der groesste Verbraucher des Kontingents
-# wird, das er vermisst:
+# Der Zeitplan faehrt **einmal am Tag** alles. Das ist keine Sparmassnahme,
+# sondern die passende Aufloesung:
 #
-#   stuendlich  --cheap   ein Request je Modell: lebt es, welche Header kommen
-#   taeglich    --full    Bild, Schema, Werkzeuge — die teuren Pruefungen
+#   * Der Client sieht ohnehin nur alle FEED_INTERVAL_HOURS nach. Stuendlich
+#     zu veroeffentlichen hiesse, 24 Dokumente fuer sechs Abrufe zu bauen.
+#   * Tot wird ein Modell nach DEAD_AFTER_FAILURES Laeufen in Folge.
+#     Stuendlich waeren das drei Stunden — eine Stoerung wie die von Googles
+#     Gemma am 11.09.2026 haette gereicht. Taeglich sind es drei Tage, und
+#     drei Tage Dauerausfall sind ein Signal, eine schlechte Viertelstunde
+#     nicht.
+#   * Je Modell drosselt sich der Prober zusaetzlich am Tageskontingent.
+#
+# `--cheap` bleibt als Handgriff fuer zwischendurch: workflow_dispatch ohne
+# Haken faehrt nur die Lebendigkeit.
 #
 # Laeuft nur nach Zeitplan oder von Hand. Niemals bei einem Pull Request: der
 # hier verwendete Schluessel gehoert dem Proberkonto, und ein fremder PR darf
@@ -21,7 +30,6 @@ name: Feed-Prober
 
 on:
   schedule:
-    - cron: "17 * * * *"   # stuendlich, sparsam
     - cron: "7 3 * * *"    # taeglich 03:07 UTC, alles
   workflow_dispatch:
     inputs:
@@ -86,7 +94,7 @@ jobs:
           FAR_KEY_MISTRAL: ${{ secrets.FAR_KEY_MISTRAL }}
           FAR_KEY_OPENROUTER: ${{ secrets.FAR_KEY_OPENROUTER }}
         run: |
-          if [ "${{ github.event.schedule }}" = "7 3 * * *" ] || [ "${{ inputs.full }}" = "true" ]; then
+          if [ -n "${{ github.event.schedule }}" ] || [ "${{ inputs.full }}" = "true" ]; then
             takt=--full
           else
             takt=--cheap

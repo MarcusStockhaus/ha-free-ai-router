@@ -11,9 +11,15 @@ Endpunkt, der etwas entgegennimmt.
     python tools/prober.py --full                  # taeglich: alles messen
     python tools/prober.py --full --dry-run        # nur zeigen, nichts schreiben
 
-Zwei Takte, weil der Prober nicht der groesste Verbraucher des Kontingents
-sein darf, das er vermisst: ein Request je Modell und Stunde fuer die
-Lebendigkeit, die teuren Pruefungen (Bild, Schema, Werkzeuge) einmal am Tag.
+Zwei Takte: ``--cheap`` ist ein Request je Modell (lebt es, welche Header
+kommen), ``--full`` misst zusaetzlich Bild, Schema und Werkzeuge. Unter Cron
+laeuft **taeglich der volle**; der sparsame ist der Handgriff fuer
+zwischendurch.
+
+Warum nicht oefter: der Client sieht ohnehin nur alle paar Stunden nach, und
+tot wird ein Modell erst nach mehreren Laeufen in Folge — bei stuendlichem
+Takt waeren das drei Stunden, und eine Stoerung wie die von Googles Gemma am
+11.09.2026 haette gereicht.
 
 Der Takt ist dabei nur die Obergrenze. Je Modell rechnet der Prober zusaetzlich
 aus dem bekannten Tageskontingent aus, wie oft er es sich leisten kann
