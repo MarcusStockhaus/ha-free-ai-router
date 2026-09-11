@@ -195,9 +195,10 @@ ungedeckelten Kanäle zuerst drankommen.
 **Damit ist Phase 2 inhaltlich durch.** Was zur Veröffentlichung noch fehlt,
 ist keine Programmierarbeit mehr:
 
-- [ ] Das Repo öffentlich machen und `documentation`/`issue_tracker` im
-      Manifest sowie die `source_url` der Blueprints auf die echte Adresse
-      setzen (stehen derzeit auf einem Platzhalter)
+- [x] Das Repo öffentlich gemacht (11.09.2026); `documentation`,
+      `issue_tracker` und die `source_url` der Blueprints zeigen auf die
+      echte Adresse. Die Historie ist vorher auf Schlüsselmuster durchsucht
+      worden.
 - [ ] Jemanden ohne Vorwissen die Türklingel-Analyse einrichten lassen —
       das ist das Abnahmekriterium des Konzepts für Phase 2
 
@@ -221,9 +222,14 @@ Ausführlich in [FEED.md](FEED.md). Kurz:
       hinweg, drei Notbremsen gegen Falschmeldungen.
 - [x] **Client** (`feed_client.py`) — bedingte Abrufe, 1-MB-Grenze, erneutes
       Prüfen beim Laden aus dem Zwischenspeicher, Ausfall ohne Folgen.
-- [x] **Workflow** (`.github/workflows/prober.yml`) — stündlich sparsam,
-      täglich voll, Ergebnis auf den Zweig `feed`.
-- [x] **41 Tests** dazu, zwei Liveläufe gegen die echten Anbieter.
+- [x] **Workflow** (`.github/workflows/prober.yml`) — täglich 03:07 UTC der
+      volle Lauf, Ergebnis auf den Zweig `feed`.
+- [x] **44 Tests** dazu, vier Liveläufe gegen die echten Anbieter.
+- [x] **Im laufenden Home Assistant verifiziert** (11.09.2026, 08:54 UTC):
+      die Integration holt den Feed, prüft die Signatur gegen den
+      eincompilierten Schlüssel und legt ihn in
+      `.storage/free_ai_router.feed` ab. Neun Kanäle, keiner abgeschaltet,
+      alle drei Profile gedeckt, `ai_task.generate_data` antwortet.
 
 **Der Livelauf hat wieder etwas widerlegt.** Mistral antwortete mit `429`. Ein
 Ratenlimit als Ausfall zu zählen hätte gereicht, um nach drei gedrosselten
