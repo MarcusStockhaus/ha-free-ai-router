@@ -425,12 +425,13 @@ async def _check_vision(
                 timeout=timeout,
             )
         except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
-            if runde == 1:
-                return _fehlversuch(err, time.monotonic() - started), None
-            # Eine spaetere Runde am Netz gescheitert: das ist kein Befund
-            # ueber das Modell. Was bis hierhin stimmte, zaehlt.
+            # Eine abgebrochene Runde ist kein Befund ueber das Modell — in
+            # keiner Richtung. Frueher zaehlte hier "was bis hierhin stimmte",
+            # und damit konnte eine einzige bestandene Runde als Ergebnis
+            # durchgehen: genau die fuenf Prozent Ratequote, wegen der die
+            # Pruefung ueberhaupt mehrfach laeuft.
             _LOGGER.debug("%s: Vision-Runde %s abgebrochen: %s", model.key, runde, err)
-            break
+            return _fehlversuch(err, time.monotonic() - started), None
 
         if not challenge.solved(response.text):
             # Angenommen, aber nicht angesehen: manche Endpunkte verwerfen den

@@ -292,19 +292,22 @@ Beides sind Entscheidungen, keine Programmierarbeit:
 
 ### Zwei Messungen, die der erste Feed-Lauf aufgeworfen hat
 
-Beides sind *positive* Ergebnisse — ein bestandener Test lässt sich schwerer
-vortäuschen als ein gescheiterter, und die Bildprüfung läuft über zwei Runden
-mit je neuen Farben (Ratequote unter ein Promille). Trotzdem widersprechen sie
-dem bisherigen Stand und gehören über mehrere Läufe beobachtet:
+- **`mistral/ministral-3b-2512` habe die Bildprüfung bestanden — falsch.**
+  Ich hatte das für belastbar gehalten, weil ein bestandener Test sich
+  schwerer vortäuschen lässt als ein gescheiterter. Das stimmt nur, solange
+  der Test auch wirklich zu Ende läuft. Bei einem Abbruch in Runde zwei
+  zählte `_check_vision` „was bis hierhin stimmte" — und damit ging **eine**
+  bestandene Runde als Ergebnis durch, mit den rund fünf Prozent Ratequote,
+  wegen der die Prüfung überhaupt mehrfach läuft. Behoben am 11.09.2026: eine
+  abgebrochene Runde ist jetzt in keiner Richtung ein Befund.
 
-- **`mistral/ministral-3b-2512` hat die Bildprüfung bestanden.** Bisher galt
-  es als blind. Die Registry führt es weiterhin nur unter `profiles:
-  [schnell]` — als Bildkanal zählt es erst, wenn `vision` dort einträgt, und
-  das ist eine Änderung an der Anbieterdatei, nicht am Feed.
-- **`openrouter/nemotron-3-nano-omni` kann Werkzeuge.** War als `tools: false`
-  eingetragen.
+  Die Gegenprobe ist eindeutig: drei vollständige Zwei-Runden-Läufe (Phase 1
+  und zweimal beim Einrichten in HA) sagen **nein**, mit Antworten wie
+  „Rot, Blau" statt orange und türkis. Die Anbieterdatei hatte recht.
 
-Gegenprobe bei Gelegenheit: `python tools/probe_cli.py --provider mistral`.
+- **`openrouter/nemotron-3-nano-omni` kann Werkzeuge.** Bleibt stehen — die
+  Werkzeugprüfung kennt keine Runden und war von dem Fehler nicht betroffen.
+  War als `tools: false` eingetragen.
 
 ---
 

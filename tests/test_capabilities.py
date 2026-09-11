@@ -367,6 +367,26 @@ async def test_ratenlimit_waehrend_der_messung_bleibt_unbekannt(umgebung) -> Non
     assert probe.measured_capabilities() == {}
 
 
+async def test_abgebrochene_zweite_bildrunde_ist_kein_bestanden(umgebung) -> None:
+    """Eine bestandene Runde allein beweist nichts.
+
+    Sie laesst sich mit rund fuenf Prozent erraten — genau deshalb laeuft die
+    Bildpruefung ueber zwei Runden mit je neuen Farben. Frueher zaehlte bei
+    einem Abbruch in Runde zwei "was bis hierhin stimmte", und damit war die
+    Ratequote wieder da. Im Feed vom 11.09.2026 stand deshalb `vision: true`
+    fuer ein Modell, das die Pruefung in drei anderen Laeufen nicht bestand.
+    """
+    # Reihenfolge der Aufrufe: Lebendigkeit, Schema, Bild-Runde 1, Runde 2.
+    umgebung["endpunkt"].stoerung_ab = 4
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+
+    assert probe.alive
+    assert probe.vision.ok is None
+    assert "vision" not in probe.measured_capabilities()
+
+
 async def test_eine_gelesene_ablehnung_bleibt_ein_echtes_nein(umgebung) -> None:
     """Die Gegenprobe: ein 400 ist sehr wohl eine Aussage ueber das Modell.
 
