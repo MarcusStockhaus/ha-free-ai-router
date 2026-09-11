@@ -56,23 +56,24 @@
     "google_ai_studio/gemma-4-26b-a4b-it": {
       "alive": true,
       "capabilities": {
-        "structured_output": false,
+        "structured_output": true,
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 3.4993393169999933,
+      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
+      "latency_total_s": 3.881459561,
       "limits": {},
-      "ttft_s": 1.3898502909999877
+      "ttft_s": 0.8966302489999975
     },
     "google_ai_studio/gemma-4-31b-it": {
-      "alive": true,
+      "alive": false,
       "capabilities": {},
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
-      "consecutive_failures": 0,
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "consecutive_failures": 1,
       "last_full_at": "2026-09-11T09:32:05.572631+00:00",
+      "last_status": null,
       "latency_total_s": 19.80063153799999,
       "limits": {},
       "ttft_s": 18.560586920999995
@@ -133,12 +134,12 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.3195736410000052,
+      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
+      "latency_total_s": 0.31438256399999887,
       "limits": {},
-      "ttft_s": 0.309809993000016
+      "ttft_s": 0.3070524750000061
     },
     "mistral/ministral-3b-2512": {
       "alive": true,
@@ -147,12 +148,12 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.24544319000000314,
+      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
+      "latency_total_s": 0.42755784599999913,
       "limits": {},
-      "ttft_s": 0.24418007500000272
+      "ttft_s": 0.42494934600000533
     },
     "mistral/ministral-8b-2512": {
       "alive": true,
@@ -161,16 +162,16 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.29562270800002466,
+      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
+      "latency_total_s": 0.41603820800000335,
       "limits": {},
-      "ttft_s": 0.25434537400002455
+      "ttft_s": 0.3894609550000041
     },
     "mistral/mistral-small-2603": {
       "capabilities": {},
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-11T09:39:09.183927+00:00",
       "consecutive_failures": 0,
       "last_status": 429,
       "limits": {}
@@ -197,6 +198,6 @@
       "limits": {}
     }
   },
-  "updated_at": "2026-09-11T09:32:05.572631+00:00",
+  "updated_at": "2026-09-11T09:39:09.183927+00:00",
   "version": 2
 }
