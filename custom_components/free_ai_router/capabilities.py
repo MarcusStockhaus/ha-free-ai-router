@@ -12,6 +12,12 @@ ohne genau das Kontingent zu verbrauchen, das er vermessen soll.
 
 Grundsatz: Nichts wird abgeschrieben. Was hier nicht gemessen wurde, bleibt
 ``None`` — und ``None`` heisst "unbekannt", nicht "kann es nicht".
+
+Der Unterschied ist nicht akademisch. Ein gestoerter Anbieter (Zeitueberschreitung,
+500, Ratenlimit) hat ueber das Modell nichts ausgesagt; nur eine gelesene und
+abgelehnte Anfrage hat das. Wer beides als "kann es nicht" bucht, schaltet beim
+naechsten Schluckauf des Anbieters eine Faehigkeit ab — im Feed-Dienst gleich
+fuer alle Installationen auf einmal.
 """
 
 from __future__ import annotations
@@ -81,6 +87,33 @@ PROBE_OUTPUT_TOKENS = 768
 VISION_ROUNDS = 2
 
 ProgressCallback = Callable[[int, int, str], None]
+
+#: Statuscodes, aus denen sich ueber die Faehigkeit eines Modells nichts
+#: ablesen laesst: der Anbieter hat gar nicht erst gemessen.
+_SAGT_NICHTS = frozenset({401, 402, 403, 408, 409, 425, 429})
+
+
+def _nicht_messbar(err: Exception) -> bool:
+    """War der Fehler eine Aussage ueber das Modell — oder nur schlechtes Wetter?
+
+    Ein 400 ist eine Aussage: der Endpunkt hat die Anfrage gelesen und
+    abgelehnt, etwa weil er ``responseSchema`` nicht kennt. Eine
+    Zeitueberschreitung, ein 500 oder ein Ratenlimit sind keine. Sie als
+    "kann es nicht" zu buchen war der Fehler, der am 11.09.2026 im ersten
+    Feed stand: Googles Gemma war eine Viertelstunde lang gestoert und wurde
+    darauf fuer alle Installationen als blind veroeffentlicht.
+    """
+    status = getattr(err, "status", None)
+    if status is None:
+        return True  # Netz, Zeitueberschreitung, abgebrochene Verbindung
+    return status in _SAGT_NICHTS or status >= 500
+
+
+def _fehlversuch(err: Exception, dauer: float) -> CheckResult:
+    """``ok=None`` heisst unbekannt — und unbekannt ueberschreibt nichts."""
+    if _nicht_messbar(err):
+        return CheckResult(None, f"nicht messbar: {err}"[:120], dauer)
+    return CheckResult(False, str(err), dauer)
 
 
 # --------------------------------------------------------------------------
@@ -322,7 +355,7 @@ async def _check_structured(
             timeout=timeout,
         )
     except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
-        return CheckResult(False, str(err), time.monotonic() - started), None
+        return _fehlversuch(err, time.monotonic() - started), None
 
     parsed = response.parsed
     problem = _validate_struct(parsed)
@@ -393,7 +426,7 @@ async def _check_vision(
             )
         except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
             if runde == 1:
-                return CheckResult(False, str(err), time.monotonic() - started), None
+                return _fehlversuch(err, time.monotonic() - started), None
             # Eine spaetere Runde am Netz gescheitert: das ist kein Befund
             # ueber das Modell. Was bis hierhin stimmte, zaehlt.
             _LOGGER.debug("%s: Vision-Runde %s abgebrochen: %s", model.key, runde, err)
@@ -447,7 +480,7 @@ async def _check_tools(
             timeout=timeout,
         )
     except (TimeoutError, ProviderError, aiohttp.ClientError) as err:
-        return CheckResult(False, str(err), time.monotonic() - started)
+        return _fehlversuch(err, time.monotonic() - started)
 
     if not response.tool_calls:
         return CheckResult(False, f"kein Aufruf: {response.text.strip()[:60]!r}", response.total_s)

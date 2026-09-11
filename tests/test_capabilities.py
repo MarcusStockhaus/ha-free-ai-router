@@ -99,11 +99,21 @@ class Endpunkt:
         self.gesehene_bilder: list[tuple[str, str]] = []
         # Simuliert ein Modell, das nur manchmal wirklich hinsieht.
         self.nur_erste_runde_richtig = False
+        # Simuliert einen Anbieter, der mitten in der Messung wegbricht.
+        self.anfragen = 0
+        self.stoerung_ab: int | None = None
+        self.stoerung_status = 500
 
     async def chat(self, request: web.Request) -> web.Response:
         payload = await request.json()
+        self.anfragen += 1
         if self.status >= 400:
             return web.json_response({"error": {"message": "kaputt"}}, status=self.status)
+        if self.stoerung_ab is not None and self.anfragen >= self.stoerung_ab:
+            return web.json_response(
+                {"error": {"message": "Internal error encountered."}},
+                status=self.stoerung_status,
+            )
 
         text = "bereit"
         message: dict[str, Any] = {"role": "assistant"}
@@ -324,6 +334,53 @@ async def test_toter_endpunkt_ist_ein_messergebnis_keine_ausnahme(umgebung) -> N
     # produzieren. Unbekannt heisst nicht "kann es nicht".
     assert probe.vision.ok is None
     assert probe.measured_capabilities() == {}
+
+
+async def test_stoerung_nach_dem_lebenszeichen_bleibt_unbekannt(umgebung) -> None:
+    """Ein 500 mitten in der Messung sagt nichts ueber das Modell.
+
+    Genau das ist am 11.09.2026 passiert: Googles Gemma antwortete waehrend
+    des ersten Feed-Laufs zeitweise mit 500 und Zeitueberschreitungen — und
+    wurde daraufhin fuer alle Installationen als blind und werkzeuglos
+    veroeffentlicht. Ein gestoerter Anbieter hat nicht gemessen, und was nicht
+    gemessen wurde, ueberschreibt nichts.
+    """
+    umgebung["endpunkt"].stoerung_ab = 2  # das Lebenszeichen geht noch durch
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+
+    assert probe.alive
+    assert probe.structured_output.ok is None
+    assert probe.vision.ok is None
+    assert probe.tools.ok is None
+    assert probe.measured_capabilities() == {}
+
+
+async def test_ratenlimit_waehrend_der_messung_bleibt_unbekannt(umgebung) -> None:
+    umgebung["endpunkt"].stoerung_ab = 2
+    umgebung["endpunkt"].stoerung_status = 429
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+    assert probe.alive
+    assert probe.measured_capabilities() == {}
+
+
+async def test_eine_gelesene_ablehnung_bleibt_ein_echtes_nein(umgebung) -> None:
+    """Die Gegenprobe: ein 400 ist sehr wohl eine Aussage ueber das Modell.
+
+    Der Endpunkt hat die Anfrage gelesen und zurueckgewiesen — so meldet
+    Googles Gemma ein unbekanntes ``responseSchema``. Wuerde auch das als
+    "unbekannt" durchgehen, koennte die Messung ueberhaupt nie ein Nein
+    feststellen.
+    """
+    umgebung["endpunkt"].kann_schema = False
+    probe = await probe_model(
+        umgebung["session"], umgebung["provider"], "key", umgebung["model"]
+    )
+    assert probe.structured_output.ok is False
+    assert probe.measured_capabilities()["structured_output"] is False
 
 
 async def test_ungeprueftes_bleibt_unbekannt(umgebung) -> None:
