@@ -84,7 +84,15 @@ from custom_components.free_ai_router.registry import (  # noqa: E402
 from tools.feed_keys import load_private_key, sign_bytes  # noqa: E402
 from tools.probe_cli import key_for, load_env  # noqa: E402
 
-STATE_VERSION = 1
+#: Fassung der Zustandsdatei. **Hochzaehlen, wenn sich das Messverfahren
+#: aendert** — nicht nur, wenn sich das Dateiformat aendert. Ein alter Zustand
+#: traegt Faehigkeiten, die mit dem alten Verfahren ermittelt wurden, und
+#: ``merge_probe`` behaelt sie bei jeder nicht messbaren Runde bei. Sie
+#: ueberlebten also beliebig lange. Beim Uebergang auf 2 am 11.09.2026 ging es
+#: um die Bildpruefung: eine abgebrochene Runde galt als bestanden, und eine
+#: Antwort durfte neben den beiden richtigen Farben beliebig viele falsche
+#: nennen.
+STATE_VERSION = 2
 
 #: Anteil des bekannten Tageskontingents, den der Prober hoechstens fuer sich
 #: beansprucht — beide Takte zusammen. Er misst fremde Kontingente; er darf

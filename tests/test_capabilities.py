@@ -254,6 +254,21 @@ def test_sprachvarianten_werden_akzeptiert() -> None:
     assert challenge.solved(englisch)
 
 
+def test_die_halbe_palette_aufzaehlen_gilt_nicht() -> None:
+    """Wer den Farbraum abdeckt, statt hinzusehen, besteht nicht.
+
+    Der Prompt verlangt zwei Woerter. Eine Antwort, die fuenf Farben nennt,
+    enthaelt die beiden richtigen fast zwangslaeufig — das ist keine Messung,
+    sondern Abdeckung.
+    """
+    challenge = make_challenge(random.Random(7))
+    oben, unten = challenge.expected
+    fremd = [name for name in PALETTE if name not in challenge.expected][:3]
+
+    assert challenge.solved(f"{oben}, {unten}") is True
+    assert challenge.solved(f"{oben}, {unten}, {', '.join(fremd)}") is False
+
+
 def test_falsch_genannte_farben_werden_benannt() -> None:
     challenge = make_challenge(random.Random(3))
     falsche = next(name for name in PALETTE if name not in challenge.expected)

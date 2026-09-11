@@ -93,15 +93,21 @@ class VisionChallenge:
         return " und ".join(self.expected)
 
     def solved(self, text: str) -> bool:
-        """Nennt die Antwort beide Farben?
+        """Nennt die Antwort beide Farben — und keine dritte?
 
-        Grosszuegig bei Sprache und Formulierung, streng bei der Sache: es
-        muessen beide Farben vorkommen. Eine davon zu treffen ist Zufall.
+        Grosszuegig bei Sprache und Formulierung, streng bei der Sache.
+
+        Beide Farben zu verlangen ist die eine Haelfte: eine davon zu treffen
+        ist Zufall. Die andere Haelfte ist, keine weitere zuzulassen. Der
+        Prompt verlangt ausdruecklich zwei Woerter; wer stattdessen die halbe
+        Palette aufzaehlt, deckt den Raum ab, statt hinzusehen — und bestand
+        frueher genau damit.
         """
         lowered = (text or "").lower()
-        return all(
+        beide = all(
             any(wort in lowered for wort in PALETTE[name][1]) for name in self.expected
         )
+        return beide and not self.wrong_colors(text)
 
     def wrong_colors(self, text: str) -> list[str]:
         """Welche anderen Farben nennt die Antwort? Nur fuer die Fehlermeldung."""
