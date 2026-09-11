@@ -27,10 +27,13 @@ Inhalt dieses Skripts, das Messen selbst steht in ``capabilities.py``:
   laut gemeldet und beendet den Lauf mit Fehlercode.
 * **Tot erst nach mehreren Laeufen hintereinander** (``DEAD_AFTER_FAILURES``).
 
-Der Zustand zwischen den Laeufen steht in einer eigenen Datei. Sie darf mehr
-wissen als der Feed — Fehlertexte der Anbieter zum Beispiel, die durchaus
-Kontoangaben enthalten koennen. In das veroeffentlichte Dokument kommt nur,
-was ``feed.Measurement`` als Feld kennt.
+Der Zustand zwischen den Laeufen steht in einer eigenen Datei. Sie liegt im
+selben oeffentlichen Repo wie der Feed und ist deshalb genauso zurueckhaltend:
+festgehalten wird der Statuscode eines Fehlschlags, nicht der Antworttext.
+Fehlerkoerper der Anbieter enthalten regelmaessig Organisations-IDs und
+Kontingentangaben des Proberkontos. Veroeffentlicht wird ohnehin nur, was
+``feed.Measurement`` als Feld kennt — die Zustandsdatei fuehrt darueber hinaus
+nur die Buchfuehrung ueber mehrere Laeufe.
 """
 
 from __future__ import annotations
@@ -141,7 +144,7 @@ def merge_probe(
         eintrag["latency_total_s"] = probe.latency_total_s
         eintrag["ttft_s"] = probe.ttft_s
         eintrag["checked_at"] = now.isoformat()
-        eintrag.pop("last_error", None)
+        eintrag.pop("last_status", None)
         gemessene_limits = probe.measured_limits()
         if gemessene_limits:
             eintrag["limits"] = {**eintrag["limits"], **gemessene_limits}
@@ -155,7 +158,12 @@ def merge_probe(
             eintrag["last_full_at"] = now.isoformat()
         return eintrag, ""
 
-    eintrag["last_error"] = probe.error[:300]
+    # Nur der Statuscode, nicht der Antworttext. Fehlerkoerper der Anbieter
+    # enthalten regelmaessig Organisations-IDs und Kontingentangaben des
+    # Proberkontos — und die Zustandsdatei liegt im oeffentlichen Repo neben
+    # dem Feed. ``null`` heisst: keine HTTP-Antwort, also Netz oder Zeit.
+    # Wer den Volltext braucht, faehrt den Prober von Hand.
+    eintrag["last_status"] = probe.status
     eintrag["checked_at"] = now.isoformat()
 
     grund = NICHT_GEWERTET.get(probe.status or 0, "")

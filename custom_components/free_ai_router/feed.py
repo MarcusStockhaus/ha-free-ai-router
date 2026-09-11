@@ -81,7 +81,7 @@ FEED_PUBLIC_KEY_B64 = ""
 #: waehlen darf, waehlt auch den Schluessel. Eine Allowlist wie fuer die
 #: Anbieter-Endpunkte braucht es deshalb nicht: diese Adresse kann gar nicht
 #: aus einer Datendatei kommen.
-FEED_URL = ""
+FEED_URL = "https://marcusstockhaus.github.io/ha-free-ai-router/v1/providers.json"
 
 #: Felder, die eine Messung fuehren darf. Bewusst als Whitelist und nicht als
 #: Verbotsliste: der Feed soll strukturelle Befunde transportieren und nichts

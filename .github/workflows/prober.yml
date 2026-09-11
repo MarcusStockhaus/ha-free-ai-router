@@ -3,8 +3,11 @@ name: Feed-Prober
 # Der Feed-Dienst besteht aus diesem Workflow und einem Zweig. Kein Server,
 # keine Datenbank, kein Endpunkt, der etwas entgegennimmt: der Prober misst,
 # schreibt statische Dateien, signiert sie und legt sie auf den Zweig `feed`.
-# Wer sie ausliefert — GitHub Pages, eigener Webspace, ein CDN — ist eine
-# Frage der Veroeffentlichung und nicht dieses Workflows.
+#
+# Ausgeliefert wird ueber GitHub Pages aus diesem Zweig. Pages kennt bei der
+# Auslieferung aus einem Zweig nur zwei moegliche Ordner, die Wurzel und
+# `/docs` — deshalb `docs`. Die Zustandsdatei liegt bewusst darueber in der
+# Wurzel: sie gehoert zur Buchfuehrung und nicht zur Auslieferung.
 #
 # Zwei Takte, damit der Prober nicht der groesste Verbraucher des Kontingents
 # wird, das er vermisst:
@@ -97,8 +100,13 @@ jobs:
           set +e
           python tools/prober.py "$takt" \
             --state feed-data/feed-state.json \
-            --out feed-data/site \
+            --out feed-data/docs \
             --env /nonexistent
+
+          # Ohne diese Datei schiebt Pages alles durch Jekyll, und eine
+          # Datei mit fuehrendem Unterstrich waere stillschweigend nicht
+          # abrufbar.
+          touch feed-data/docs/.nojekyll
           code=$?
           set -e
           echo "code=$code" >> "$GITHUB_OUTPUT"

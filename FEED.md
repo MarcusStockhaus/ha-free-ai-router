@@ -183,16 +183,23 @@ um ein gesundes Modell totzumelden.
 
 ### 5. Ausliefern
 
-Der Workflow legt `site/` und `feed-state.json` auf den Zweig `feed`. Wer den
-Zweig ausliefert, ist offen:
+Der Workflow legt `docs/` und `feed-state.json` auf den Zweig `feed`.
+Eingestellt wird das unter *Settings → Pages*: Quelle **Deploy from a branch**,
+Zweig `feed`, Ordner **`/docs`**.
 
-* **GitHub Pages** aus dem Zweig `feed`, Ordner `/site` — setzt bei einem
-  privaten Repository einen bezahlten Tarif voraus.
-* **Eigener Webspace**, per `rsync` aus dem Zweig. Dann liefert der Server
-  `ETag` und `Last-Modified` von selbst; mehr braucht es nicht.
+Der Ordner ist nicht frei wählbar — Pages kennt bei der Auslieferung aus einem
+Zweig nur die Wurzel und `/docs`. Genau deshalb liegt die Zustandsdatei eine
+Ebene darüber: sie gehört zur Buchführung und nicht zur Auslieferung. Im
+öffentlichen Repo ist sie trotzdem lesbar, und darum hält sie von einem
+Fehlschlag nur den Statuscode fest, nicht den Antworttext.
 
-Wichtig ist nur, dass die Adresse dauerhaft dieselbe bleibt: sie steht danach
-im Quelltext jeder ausgelieferten Integration.
+Pages liefert `ETag` und `Last-Modified` von selbst; mehr braucht der Client
+nicht. Ein eigener Webspace per `rsync` täte es genauso.
+
+**Die Adresse muss dauerhaft dieselbe bleiben** — sie steht danach im
+Quelltext jeder ausgelieferten Fassung. Die `github.io`-Adresse hängt am
+Kontonamen; eine eigene Domain davor macht einen späteren Umzug zu einer
+DNS-Änderung statt zu einem Release.
 
 ### 6. Einschalten
 
@@ -200,8 +207,11 @@ Zwei Zeilen in `custom_components/free_ai_router/feed.py`:
 
 ```python
 FEED_PUBLIC_KEY_B64 = "qegjySfhs9BV9T+ngghPIIOiCX2SR+o6twOHCbiLufc="
-FEED_URL = "https://example.org/free-ai-router/v1/providers.json"
+FEED_URL = "https://marcusstockhaus.github.io/ha-free-ai-router/v1/providers.json"
 ```
+
+`FEED_URL` steht bereits; es fehlt nur der Schlüssel. Solange einer von beiden
+leer ist, holt die Integration nichts.
 
 Beides im Quelltext und nicht in einer Einstellung — wer die Quelle wählen
 darf, wählt auch den Schlüssel. Eine Allowlist wie für die Anbieter-Endpunkte

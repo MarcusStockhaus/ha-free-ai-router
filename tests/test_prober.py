@@ -60,14 +60,14 @@ def tot(status: int | None = None, error: str = "Zeitueberschreitung") -> ModelP
 
 def test_erfolg_setzt_den_zaehler_zurueck() -> None:
     eintrag, _ = prober.merge_probe(
-        {"consecutive_failures": 2, "alive": False, "last_error": "alt"},
+        {"consecutive_failures": 2, "alive": False, "last_status": 503},
         lebendig(),
         full=False,
         now=JETZT,
     )
     assert eintrag["alive"] is True
     assert eintrag["consecutive_failures"] == 0
-    assert "last_error" not in eintrag
+    assert "last_status" not in eintrag
     assert eintrag["limits"]["rpm"] == 30
 
 
@@ -146,10 +146,27 @@ def test_ratenlimit_ist_kein_ausfall() -> None:
     assert eintrag["alive"] is True
 
 
-def test_fehlertext_bleibt_im_zustand_und_nicht_im_feed() -> None:
-    eintrag, _ = prober.merge_probe(None, tot(error="Konto 4711 ueberzogen"), full=True, now=JETZT)
-    assert "Konto 4711" in eintrag["last_error"]
-    assert "last_error" not in prober.to_measurement(eintrag).as_dict()
+def test_der_antworttext_wird_nirgends_festgehalten() -> None:
+    """Auch die Zustandsdatei liegt im oeffentlichen Repo.
+
+    Fehlerkoerper der Anbieter enthalten regelmaessig Organisations-IDs und
+    Kontingentangaben des Proberkontos. Gespeichert wird deshalb nur der
+    Statuscode — eine strukturelle Angabe.
+    """
+    eintrag, _ = prober.merge_probe(
+        None,
+        tot(status=400, error="Organisation org-4711: Kontingent ueberzogen"),
+        full=True,
+        now=JETZT,
+    )
+    assert "org-4711" not in json.dumps(eintrag)
+    assert eintrag["last_status"] == 400
+    assert "org-4711" not in json.dumps(prober.to_measurement(eintrag).as_dict())
+
+
+def test_netzfehler_ohne_status() -> None:
+    eintrag, _ = prober.merge_probe(None, tot(), full=False, now=JETZT)
+    assert eintrag["last_status"] is None
 
 
 # --------------------------------------------------------------------------

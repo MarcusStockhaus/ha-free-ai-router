@@ -57,9 +57,11 @@ danach noch mit 182 Sekunden Restlaufzeit in
 
 - `configuration.yaml`: die Zeile `custom_components.free_ai_router: debug`
   wieder entfernen. Sicherung liegt als `configuration.yaml.vor-free-ai-router`.
-- Long-Lived Token widerrufen (Profil → Sicherheit).
 - Sicherung `.storage/core.config_entries.vor-ausfalltest` löschen, falls der
   Ausfalltest gelaufen ist.
+
+Zugangsdaten, die dabei zu erneuern sind, stehen absichtlich nicht in dieser
+Datei — sie liegt seit dem 11.09.2026 in einem öffentlichen Repo.
 
 ## 3. ~~Bildskalierung~~ — gemessen, Annahme widerlegt (11.09.2026)
 
@@ -233,23 +235,29 @@ ungewertet. Dieselbe Überlegung schützt vor dem abgelaufenen Proberschlüssel.
 
 Beides sind Entscheidungen, keine Programmierarbeit:
 
-- [ ] **Wo der Feed liegen soll.** Der Workflow legt `site/` auf den Zweig
-      `feed`; ausgeliefert wird er noch nicht. GitHub Pages aus einem privaten
-      Repository verlangt einen bezahlten Tarif — eigener Webspace per `rsync`
-      wäre die andere Möglichkeit. Die Adresse muss dauerhaft dieselbe
-      bleiben: sie steht danach im Quelltext jeder ausgelieferten Fassung.
+- [x] **Wo der Feed liegen soll** — entschieden am 11.09.2026: GitHub Pages
+      aus dem Zweig `feed`, Ordner `/docs`. `FEED_URL` steht entsprechend auf
+      `https://marcusstockhaus.github.io/ha-free-ai-router/v1/providers.json`.
+      Eine eigene Domain kommt später davor; bis dahin hängt die Adresse am
+      Kontonamen, und ein Umzug kostet ein Release.
+- [ ] **Pages einschalten.** Geht erst, wenn der Zweig `feed` existiert — und
+      den legt der erste Lauf des Probers an.
 - [ ] **Ein eigenes Proberkonto.** Die Restkontingente, die der Prober
       beobachtet, sind seine eigenen. Mit den Schlüsseln des Autors gemessen
       wären es dessen Kontingente — und der Prober verbrauchte sie mit.
-- [ ] Danach `FEED_URL` und `FEED_PUBLIC_KEY_B64` in `feed.py` setzen. Bis
-      dahin ist der Feed nicht abgeschaltet, sondern nicht vorhanden.
+- [ ] **Signierschlüssel erzeugen** (`tools/feed_keys.py neu`), den privaten
+      Teil als Secret `FAR_FEED_PRIVATE_KEY` hinterlegen, den öffentlichen als
+      `FEED_PUBLIC_KEY_B64` in `feed.py`. Erst dann ist der Feed vorhanden —
+      vorher ist er nicht abgeschaltet, sondern es gibt ihn nicht.
+- [ ] Zuletzt die beiden `cron`-Zeilen in `.github/workflows/prober.yml`
+      wieder aktivieren.
 
 ---
 
 ## Kleinkram, notiert damit er nicht verlorengeht
 
-- Die vier API-Keys standen im Klartext in einem Chatverlauf. **Neu ausrollen.**
-- `.env` ist gitignoriert und war nie im Repo.
+- `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der
+  Veröffentlichung auf Schlüsselmuster durchsucht worden und sauber.
 - Der `anthropic`-Adapter ist implementiert, aber von keinem Anbieter benutzt
   und daher ungetestet gegen einen echten Endpunkt.
 - Die Auslegung „kein Kanal übrig → `HomeAssistantError`" statt stillem
