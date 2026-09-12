@@ -1,14 +1,39 @@
-"""Gemeinsame Basis der Entities: ein Geraet, ein Blick auf die Laufzeit."""
+"""Gemeinsame Basis der Entities: ein Blick auf die Laufzeit.
+
+Kein gemeinsames Geraet mehr. Fruehr trugen alle Router-Entities (die drei
+``ai_task``-Profile, Assist, die vier Gesamtzaehler) ein gemeinsames Geraet
+"Free AI Router". Sobald Anbieter zu eigenen Untereintraegen wurden (siehe
+``AnbieterSubentryFlow``), stand dieses eine Geraet als einziges ausserhalb
+jedes Untereintrags — und Home Assistant zeigt dafuer auf der
+Integrationsseite die Ueberschrift "Geraete, die nicht zu einem Untereintrag
+gehoeren". Ein eigener Fake-Untereintrag nur fuer dieses Geraet wurde gebaut
+und wieder verworfen: er gehoerte nicht auf die Ebene, weil er sich weder
+hinzufuegen noch entfernen liess wie ein echter Anbieter.
+
+Die sauberere Loesung, die Home Assistants eigene KI-Integrationen (etwa
+Google Generative AI, OpenAI Conversation) fuer genau diesen Fall nutzen:
+Entities ohne Geraetebezug auf Ebene des Config Entry. Sie tauchen dann unter
+Einstellungen -> Entitaeten auf und in den jeweiligen Fachbereichen (AI-Task-
+und Assist-Einstellungen), aber nicht als eigene Geraetezeile auf der
+Integrationsseite — und loesen die Ueberschrift damit gar nicht erst aus.
+
+Folge: der Anzeigename verliert den Geraete-Praefix. "Free AI Router Schnell"
+wird zu "Schnell", weil Home Assistant den Geraetenamen nur voranstellt, wenn
+die Entity ueberhaupt ein Geraet hat (siehe
+``entity_registry._async_get_full_entity_name``). Die Entity-IDs aendern sich
+dadurch nicht — sie sind laengst vergeben und explizit gesetzt.
+
+Anbieter-Entities (``RouterAnbieterSensor``) setzen ihr eigenes Geraet direkt
+nach diesem Konstruktor und sind von alldem nicht betroffen.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import Entity
 
 from . import FreeAIRouterConfigEntry, RouterRuntime
-from .const import DOMAIN
 
 MANUFACTURER = "Free AI Router"
 
@@ -21,12 +46,6 @@ class RouterEntity(Entity):
 
     def __init__(self, entry: FreeAIRouterConfigEntry) -> None:
         self._entry = entry
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=MANUFACTURER,
-            manufacturer=MANUFACTURER,
-            entry_type=DeviceEntryType.SERVICE,
-        )
         self._last_channel: str | None = None
         self._last_reserve_used: bool = False
 

@@ -94,6 +94,14 @@ Messung, Ergebnis. Ein anderer Schlüssel kann ein anderes Konto sein, und was
 das Konto darf, ist damit offen. Der alte Schlüssel wird nirgends angezeigt;
 zum Ersetzen braucht es ohnehin einen neuen.
 
+Die vier Router-Entities (die drei `ai_task`-Profile, Assist) und die vier
+Gesamtzähler stehen bewusst **nicht** auf dieser Seite — sie tragen kein
+eigenes Gerät. Genauso macht es Home Assistants eigene Google-Generative-AI-
+und OpenAI-Conversation-Integration: der Config Entry ist der Zugang, jedes
+sichtbare Gerät gehört zu einem Untereintrag. Zu finden sind sie unter
+**Einstellungen → Geräte & Dienste → Entitäten** (nach `free_ai_router`
+filtern) oder direkt in den AI-Task- und Assist-Einstellungen.
+
 ---
 
 ## Anbieterlage, gemessen am 11.09.2026

@@ -403,6 +403,57 @@ als ein Untereintrag, der nur da ist, um sie zu vermeiden.
 **Lehre:** eine UI-Kosmetik, die einen fiktiven Datensatz braucht, um sich
 einzustellen, ist der falsche Preis für die Kosmetik.
 
+**Der richtige Weg, gefunden am 12.09.2026:** kein Gerät für die Router-
+Entities. Im Frontend-Bundle nachgesehen, was die Überschrift wirklich
+auslöst — `r = [...devices, ...services]` außerhalb der Untereinträge, nicht
+leer, während Untereinträge existieren. Unser gemeinsames Geräteobjekt war
+`entry_type: service` und landete in `r`. Am eigenen System nachgesehen, wie
+HA das bei Integrationen löst, die genau dieses Muster haben:
+`llama_conversation` legt auf Config-Entry-Ebene gar kein Gerät an, nur der
+`ai_task`-Subentry hat eins. Google Generative AI und OpenAI Conversation
+machen es genauso.
+
+Umgesetzt: `RouterEntity` (in `entity.py`) setzt kein `_attr_device_info` mehr.
+Die drei `ai_task`-Profile, Assist und die vier Gesamtzähler haben damit gar
+kein Gerät — `r` bleibt leer, die Überschrift erscheint nicht. In HA-Core
+nachgelesen (`entity_registry._async_get_full_entity_name`), was das für den
+Anzeigenamen bedeutet: der Geräte-Präfix entfällt, weil er nur gesetzt wird,
+wenn `device_id is not None`. „Free AI Router Schnell" wird zu „Schnell".
+Die Entity-IDs bleiben (`ai_task.free_ai_router_schnell` usw.) — die sind
+längst vergeben und ändern sich nicht mit dem Anzeigenamen.
+
+`RouterAnbieterSensor` setzt sein eigenes Geräteobjekt weiterhin selbst, direkt
+nach dem Konstruktoraufruf — davon unberührt.
+
+**Zwei Stolperfallen live entdeckt, keine davon vorhersehbar aus dem Quelltext
+allein:**
+
+1. **Die Registry-Datei zeigte nach dem Neustart noch die alte `device_id`.**
+   Sah zunächst nach einem Fehlschlag aus — im HA-Core-Quelltext nachgelesen
+   (`entity_platform.py`, `entity_registry.py`) bestätigt, dass
+   `device_id=None` bei fehlendem `device_info` korrekt durchgereicht wird.
+   Des Rätsels Lösung: die Entity-Registry speichert verzögert (debounced),
+   die Datei auf der Freigabe war schlicht noch nicht geschrieben. Ein paar
+   Minuten später (durch andere Arbeit an der Doku) war sie es.
+2. **Das verwaiste Gerät verschwand nicht von selbst — auch nicht nach dem
+   Neustart.** In `device_registry.py` nachgelesen: `async_cleanup()` entfernt
+   nur Geräte, deren Config Entry komplett weg ist (`device.config_entry_id
+   not in config_entry_ids`), nicht Geräte ohne Entities. Das Gerät blieb
+   also stehen, obwohl keine Entity mehr darauf zeigte — und wäre in der
+   Integrationsseite wieder als "Geräte, die nicht zu einem Untereintrag
+   gehören" aufgetaucht, weil diese Gruppierung rein aus der
+   Geräteregistrierung kommt, nicht aus tatsächlich vorhandenen Entities.
+   Musste von Hand aus `core.device_registry` entfernt werden — Sicherung
+   vorher, danach per Neustart bestätigt: keine Entity referenziert es mehr,
+   und HA legt es beim Setup nicht neu an, weil keine Entity mehr danach
+   fragt.
+
+Live verifiziert: `core.device_registry` zeigt nur noch die drei
+Anbieter-Geräte, alle 11 Entities stehen weiter (`device_id=None` bei den
+acht Router-Entities, unverändert bei den drei Anbietersensoren), Anzeigenamen
+jetzt ohne Präfix (`Schnell`, `Bildanalyse`, `Reasoning`, `Assist`,
+`Anfragen heute`, …), kein Eintrag im Log, `ai_task.generate_data` antwortet.
+
 ---
 
 ## Kleinkram, notiert damit er nicht verlorengeht
