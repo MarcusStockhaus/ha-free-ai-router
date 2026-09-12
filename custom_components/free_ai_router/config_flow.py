@@ -278,7 +278,7 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
     Am Ende entsteht ein Config Entry mit je einem Subentry pro Anbieter.
     """
 
-    VERSION = 3
+    VERSION = 2
 
     # ------------------------------------------------------- Anbieterauswahl
     async def async_step_user(
@@ -374,24 +374,17 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
             # Je Anbieter ein Subentry. Der Config Entry selbst haelt keine
             # Anbieterdaten mehr — sonst gaebe es zwei Wahrheiten, und die
             # Integrationsseite zeigte die falsche.
-            from . import router_subentry_data  # lokal: sonst Zirkelimport
-
             return self.async_create_entry(
                 title=TITLE,
                 data={},
                 subentries=[
-                    # Der Router zuerst — er steht in der Liste oben, und dort
-                    # gehoert er auch hin: er ist das, was man benutzt.
-                    router_subentry_data(),
-                    *[
-                        ConfigSubentryData(
-                            data={CONF_PROVIDER: provider_id, **daten},
-                            subentry_type=SUBENTRY_TYPE_ANBIETER,
-                            title=registry.require(provider_id).name,
-                            unique_id=provider_id,
-                        )
-                        for provider_id, daten in self._providers.items()
-                    ],
+                    ConfigSubentryData(
+                        data={CONF_PROVIDER: provider_id, **daten},
+                        subentry_type=SUBENTRY_TYPE_ANBIETER,
+                        title=registry.require(provider_id).name,
+                        unique_id=provider_id,
+                    )
+                    for provider_id, daten in self._providers.items()
                 ],
             )
 
@@ -428,12 +421,7 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
     def async_get_supported_subentry_types(
         cls, config_entry: ConfigEntry
     ) -> dict[str, type[ConfigSubentryFlow]]:
-        """Nur Anbieter lassen sich hinzufuegen.
-
-        Den Router-Untereintrag legt die Integration selbst an. Waere sein Typ
-        hier aufgefuehrt, boete Home Assistant einen "Router hinzufuegen"-Knopf
-        fuer etwas an, das es genau einmal gibt.
-        """
+        """Ein Anbieter ist ein Subentry — damit gibt es ihn als eigene Zeile."""
         return {SUBENTRY_TYPE_ANBIETER: AnbieterSubentryFlow}
 
 

@@ -42,13 +42,7 @@ async def async_setup_entry(
     entry: FreeAIRouterConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    from . import router_subentry
-
-    subentry = router_subentry(entry)
-    async_add_entities(
-        (FreeAITaskEntity(entry, profile) for profile in PROFILES),
-        config_subentry_id=subentry.subentry_id if subentry else None,
-    )
+    async_add_entities(FreeAITaskEntity(entry, profile) for profile in PROFILES)
 
 
 class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):

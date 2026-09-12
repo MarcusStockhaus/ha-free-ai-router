@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import ast
 import json
-import re
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent.parent / "custom_components" / "free_ai_router"
@@ -174,25 +173,6 @@ def test_der_anbieter_subentry_ist_beschriftet() -> None:
     assert block["entry_type"], "entry_type fehlt — die Zeile haette keine Bezeichnung"
     for quelle in ("user", "reconfigure"):
         assert block["initiate_flow"].get(quelle), f"initiate_flow.{quelle} fehlt"
-
-
-def test_jeder_subentry_typ_im_code_hat_eine_bezeichnung() -> None:
-    """Auch der Router-Typ, den niemand hinzufuegen kann.
-
-    Home Assistant holt die Bezeichnung einer Untereintrag-Zeile aus
-    ``component.<domain>.config_subentries.<typ>.entry_type`` — unabhaengig
-    davon, ob der Typ zum Hinzufuegen angeboten wird. Fehlt sie, steht in der
-    Oberflaeche der rohe Schluessel.
-    """
-    const = (WURZEL / "const.py").read_text(encoding="utf-8")
-    typen = set(re.findall(r'SUBENTRY_TYPE_\w+: Final = "(\w+)"', const))
-    assert typen, "keine Subentry-Typen gefunden — Test trifft nicht mehr zu"
-
-    beschriftet = set(_texte()["config_subentries"])
-    fehlend = sorted(typen - beschriftet)
-    assert not fehlend, f"ohne entry_type in config_subentries: {fehlend}"
-    for typ in sorted(typen):
-        assert _texte()["config_subentries"][typ].get("entry_type"), f"{typ}: entry_type leer"
 
 
 def test_platzhalter_werden_auch_gefuellt() -> None:

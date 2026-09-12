@@ -27,13 +27,11 @@ from .const import (
     CONF_PROVIDER,
     DOMAIN,
     PROFILES,
-    ROUTER_TITEL,
     STORAGE_KEY_FEED,
     STORAGE_KEY_LEDGER,
     STORAGE_VERSION_FEED,
     STORAGE_VERSION_LEDGER,
     SUBENTRY_TYPE_ANBIETER,
-    SUBENTRY_TYPE_ROUTER,
 )
 from .ledger import Ledger
 from .registry import (
@@ -129,26 +127,6 @@ def configured_providers(entry: FreeAIRouterConfigEntry) -> dict[str, dict[str, 
     if aus_subentries:
         return aus_subentries
     return dict(entry.data.get("providers") or {})
-
-
-def router_subentry(entry: FreeAIRouterConfigEntry) -> Any | None:
-    """Der Subentry, an dem die Profile und Assist haengen."""
-    for subentry in entry.subentries.values():
-        if subentry.subentry_type == SUBENTRY_TYPE_ROUTER:
-            return subentry
-    return None
-
-
-def router_subentry_data() -> Any:
-    """Der Router-Subentry, wie er anzulegen ist."""
-    from homeassistant.config_entries import ConfigSubentryData
-
-    return ConfigSubentryData(
-        data={},
-        subentry_type=SUBENTRY_TYPE_ROUTER,
-        title=ROUTER_TITEL,
-        unique_id=SUBENTRY_TYPE_ROUTER,
-    )
 
 
 def subentry_of(entry: FreeAIRouterConfigEntry, provider_id: str) -> Any | None:
@@ -353,20 +331,9 @@ async def async_migrate_entry(
     """
     from homeassistant.config_entries import ConfigSubentry
 
-    if entry.version > 3:
+    if entry.version > 2:
         return False
-
     if entry.version == 2:
-        # Fassung 3 gibt dem Router einen eigenen Untereintrag. Ohne ihn steht
-        # sein Geraet ausserhalb aller Untereintraege, und die Integrationsseite
-        # sortiert die taeglich benutzten Entities unter eine Ueberschrift, die
-        # nach Rest klingt.
-        if router_subentry(entry) is None:
-            hass.config_entries.async_add_subentry(
-                entry, ConfigSubentry(**router_subentry_data())
-            )
-        hass.config_entries.async_update_entry(entry, version=3)
-        _LOGGER.info("Config Entry auf Fassung 3 gehoben: Router als Untereintrag")
         return True
 
     providers: dict[str, Any] = dict(entry.data.get("providers") or {})
@@ -390,13 +357,9 @@ async def async_migrate_entry(
             ),
         )
 
-    if router_subentry(entry) is None:
-        hass.config_entries.async_add_subentry(entry, ConfigSubentry(**router_subentry_data()))
-
-    hass.config_entries.async_update_entry(entry, data={}, version=3)
+    hass.config_entries.async_update_entry(entry, data={}, version=2)
     _LOGGER.info(
-        "Config Entry auf Fassung 3 gehoben: %s Anbieter und der Router als Untereintraege",
-        len(providers),
+        "Config Entry auf Fassung 2 gehoben: %s Anbieter als Subentries", len(providers)
     )
     return True
 
@@ -434,7 +397,6 @@ async def async_reload_entry(
 __all__ = [
     "CONF_API_KEY",
     "configured_providers",
-    "router_subentry",
     "subentry_of",
     "CONF_MODELS",
     "CONF_PROVIDER",

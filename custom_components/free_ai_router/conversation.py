@@ -51,13 +51,7 @@ async def async_setup_entry(
     entry: FreeAIRouterConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    from . import router_subentry
-
-    subentry = router_subentry(entry)
-    async_add_entities(
-        [FreeAIRouterConversationEntity(entry)],
-        config_subentry_id=subentry.subentry_id if subentry else None,
-    )
+    async_add_entities([FreeAIRouterConversationEntity(entry)])
 
 
 class FreeAIRouterConversationEntity(

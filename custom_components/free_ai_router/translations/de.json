@@ -158,9 +158,6 @@
         "alle_eingerichtet": "Alle bekannten Anbieter sind schon eingerichtet.",
         "unbekannter_anbieter": "Diesen Anbieter gibt es in der Registry nicht mehr."
       }
-    },
-    "router": {
-      "entry_type": "Router"
     }
   }
 }
