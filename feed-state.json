@@ -7,12 +7,12 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.5928891129999982,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 1.236293671999988,
       "limits": {},
-      "ttft_s": 0.5627412179999993
+      "ttft_s": 1.2159880730000054
     },
     "google_ai_studio/gemini-3.5-flash": {
       "alive": true,
@@ -33,12 +33,12 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.8054634719999996,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.80512819300003,
       "limits": {},
-      "ttft_s": 0.8011271709999903
+      "ttft_s": 0.8010343940000553
     },
     "google_ai_studio/gemini-3.8-flash": {
       "alive": true,
@@ -56,27 +56,26 @@
     "google_ai_studio/gemma-4-26b-a4b-it": {
       "alive": true,
       "capabilities": {
-        "structured_output": true,
+        "structured_output": false,
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
-      "latency_total_s": 3.881459561,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 2.384162991999972,
       "limits": {},
-      "ttft_s": 0.8966302489999975
+      "ttft_s": 0.6814658789999726
     },
     "google_ai_studio/gemma-4-31b-it": {
-      "alive": false,
+      "alive": true,
       "capabilities": {},
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
-      "consecutive_failures": 1,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "last_status": null,
-      "latency_total_s": 19.80063153799999,
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 24.786951511999973,
       "limits": {},
-      "ttft_s": 18.560586920999995
+      "ttft_s": 23.011033274
     },
     "groq/openai/gpt-oss-120b": {
       "alive": true,
@@ -85,15 +84,15 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.3868046420000155,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.33715345199999547,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.38386668000001123
+      "ttft_s": 0.3345311729999594
     },
     "groq/openai/gpt-oss-20b": {
       "alive": true,
@@ -102,30 +101,31 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.4887001840000096,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.33717337099994893,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.4868703070000038
+      "ttft_s": 0.3347208399999886
     },
     "groq/qwen/qwen3.8-27b": {
       "alive": true,
       "capabilities": {
-        "structured_output": true
+        "structured_output": true,
+        "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 0.1538514879999866,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.18167401699997754,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.1519329250000112
+      "ttft_s": 0.17948371500000349
     },
     "mistral/codestral-2508": {
       "alive": true,
@@ -134,12 +134,12 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
-      "latency_total_s": 0.31438256399999887,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.3067319580000003,
       "limits": {},
-      "ttft_s": 0.3070524750000061
+      "ttft_s": 0.28188111999998
     },
     "mistral/ministral-3b-2512": {
       "alive": true,
@@ -148,30 +148,30 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
-      "latency_total_s": 0.42755784599999913,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.7137444709999841,
       "limits": {},
-      "ttft_s": 0.42494934600000533
+      "ttft_s": 0.7038580499999512
     },
     "mistral/ministral-8b-2512": {
       "alive": true,
       "capabilities": {
         "structured_output": true,
         "tools": true,
-        "vision": true
+        "vision": false
       },
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:39:09.183927+00:00",
-      "latency_total_s": 0.41603820800000335,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.6559148370000116,
       "limits": {},
-      "ttft_s": 0.3894609550000041
+      "ttft_s": 0.5972785380000118
     },
     "mistral/mistral-small-2603": {
       "capabilities": {},
-      "checked_at": "2026-09-11T09:39:09.183927+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
       "last_status": 429,
       "limits": {}
@@ -179,25 +179,31 @@
     "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
       "alive": true,
       "capabilities": {
-        "structured_output": true,
-        "tools": true
+        "structured_output": false,
+        "tools": false,
+        "vision": true
       },
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "latency_total_s": 1.9608427459999973,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 0.4713314459999651,
       "limits": {},
-      "ttft_s": 1.942132106999992
+      "ttft_s": null
     },
     "openrouter/nvidia/nemotron-3.5-lightning:free": {
-      "alive": false,
-      "capabilities": {},
-      "checked_at": "2026-09-11T09:32:05.572631+00:00",
-      "consecutive_failures": 1,
-      "last_status": null,
-      "limits": {}
+      "alive": true,
+      "capabilities": {
+        "tools": true,
+        "vision": false
+      },
+      "checked_at": "2026-09-12T07:51:08.128098+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-12T07:51:08.128098+00:00",
+      "latency_total_s": 7.069962375999978,
+      "limits": {},
+      "ttft_s": 7.042700943999989
     }
   },
-  "updated_at": "2026-09-11T09:39:09.183927+00:00",
+  "updated_at": "2026-09-12T07:51:08.128098+00:00",
   "version": 2
 }
