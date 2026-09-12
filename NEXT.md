@@ -375,6 +375,36 @@ klären.
 
 ---
 
+## 9. Anbieter als Subentries — gebaut, teilweise zurückgenommen (12.09.2026)
+
+Wunsch: eingerichtete Anbieter im Frontend sehen und ändern, statt nur über
+den Config Flow hinzuzufügen. Home Assistant bringt dafür **Subentries**
+mit — zwei bereits installierte Integrationen (`mqtt`, `llama_conversation`)
+nutzen sie, die API wurde am Wheel zu 2026.8.3 nachgelesen statt geraten.
+
+**Geblieben:** jeder Anbieter ist ein Subentry, Fassung 2 mit Migration von
+`data["providers"]`. Eigene Zeile auf der Integrationsseite, eigenes Gerät,
+eigener Verbrauchssensor, `configuration_url` auf die Key-Seite. Hinzufügen,
+Schlüssel ersetzen, Entfernen sind HA-eigene Knöpfe — kein selbstgebautes
+Verwaltungsmenü mehr. `_MessSchritte` teilt Schlüsseltest, Messung und
+Ergebnis zwischen Einrichtungsassistent und Subentry-Flow.
+
+**Zurückgenommen:** ein zusätzlicher Subentry nur für den Router (die
+ai_task-Profile, Assist, die vier Zähler), um die HA-Überschrift „Geräte, die
+nicht zu einem Untereintrag gehören" verschwinden zu lassen. Technisch sauber
+(Fassung 3, live verifiziert, kein Log-Eintrag mehr) — aber ein erfundener
+Eintrag für etwas, das kein Anbieter ist, sich nicht hinzufügen oder entfernen
+lässt und im selben Muster steht wie die echten Anbieter. Auf Ansage
+zurückgebaut: reiner `git revert`, dazu die Live-Installation über die
+`.vor-fassung3`-Sicherungen von Config Entry und Geräteregister auf Fassung 2
+zurückgesetzt. Die Überschrift ist wieder da — das ist der ehrlichere Zustand
+als ein Untereintrag, der nur da ist, um sie zu vermeiden.
+
+**Lehre:** eine UI-Kosmetik, die einen fiktiven Datensatz braucht, um sich
+einzustellen, ist der falsche Preis für die Kosmetik.
+
+---
+
 ## Kleinkram, notiert damit er nicht verlorengeht
 
 - `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der
