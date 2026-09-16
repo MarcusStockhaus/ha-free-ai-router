@@ -276,7 +276,7 @@ class ProviderAdapter(abc.ABC):
             # Beides wie einen abgelehnten Schluessel behandeln — Wiederholen
             # hilft nie, der Kanal muss sofort ausfallen.
             raise ProviderError(
-                f"Schluessel abgelehnt — {snippet}",
+                f"Schlüssel abgelehnt — {snippet}",
                 status=status,
                 is_auth=True,
                 rate_limit=info,

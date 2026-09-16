@@ -95,6 +95,7 @@ class Endpunkt:
 
     def __init__(self) -> None:
         self.status = 200
+        self.headers: dict[str, str] = {}
         self.kann_bilder = True
         self.sieht_richtig = True
         self.kann_schema = True
@@ -111,7 +112,9 @@ class Endpunkt:
         payload = await request.json()
         self.anfragen += 1
         if self.status >= 400:
-            return web.json_response({"error": {"message": "kaputt"}}, status=self.status)
+            return web.json_response(
+                {"error": {"message": "kaputt"}}, status=self.status, headers=self.headers
+            )
         if self.stoerung_ab is not None and self.anfragen >= self.stoerung_ab:
             return web.json_response(
                 {"error": {"message": "Internal error encountered."}},
@@ -459,14 +462,39 @@ async def test_anbieter_messung_und_modellabgleich(umgebung) -> None:
 
 
 async def test_schnelltest_fuer_die_key_eingabe(umgebung) -> None:
-    ok, meldung = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
+    ok, meldung, art = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
     assert ok
     assert "antwortet" in meldung
+    assert art == ""
 
     umgebung["endpunkt"].status = 401
-    ok, meldung = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
+    ok, meldung, art = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
     assert not ok
     assert "401" in meldung
+    assert art == "auth"
+
+
+async def test_schnelltest_erkennt_fehlendes_abonnement(umgebung) -> None:
+    """x-ratelimit-limit-req-minute: 0 ist kein Limit, sondern kein Abo (Mistral)."""
+    umgebung["endpunkt"].status = 429
+    umgebung["endpunkt"].headers = {"x-ratelimit-limit-req-minute": "0"}
+    ok, _meldung, art = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
+    assert not ok
+    assert art == "no_subscription"
+
+
+async def test_schnelltest_erkennt_echtes_limit(umgebung) -> None:
+    umgebung["endpunkt"].status = 429
+    ok, _meldung, art = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
+    assert not ok
+    assert art == "rate_limited"
+
+
+async def test_schnelltest_erkennt_serverfehler(umgebung) -> None:
+    umgebung["endpunkt"].status = 503
+    ok, _meldung, art = await quick_key_check(umgebung["session"], umgebung["provider"], "key")
+    assert not ok
+    assert art == "unreachable"
 
 
 async def test_fortschritt_wird_gemeldet(umgebung) -> None:

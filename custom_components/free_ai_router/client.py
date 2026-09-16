@@ -66,7 +66,7 @@ class NoChannelAvailable(RuntimeError):
         self.attempts = attempts
 
     def report(self) -> str:
-        lines = "; ".join(self.attempts) if self.attempts else "keine Kanaele eingerichtet"
+        lines = "; ".join(self.attempts) if self.attempts else "keine Kanäle eingerichtet"
         return f"{self.args[0]} — {lines}"
 
 
@@ -129,7 +129,7 @@ class RouterClient:
             model = candidate.model
             api_key = self.keys.get(provider.id)
             if not api_key:
-                attempts.append(f"{candidate.key}: kein Schluessel hinterlegt")
+                attempts.append(f"{candidate.key}: kein Schlüssel hinterlegt")
                 continue
 
             availability = candidate.availability
@@ -190,8 +190,8 @@ class RouterClient:
                 self._note_failure(candidate, err, attempts)
                 continue
             except TimeoutError:
-                self.ledger.record_failure(provider, model, reason="Zeitueberschreitung")
-                attempts.append(f"{candidate.key}: Zeitueberschreitung")
+                self.ledger.record_failure(provider, model, reason="Zeitüberschreitung")
+                attempts.append(f"{candidate.key}: Zeitüberschreitung")
                 _LOGGER.warning("%s: Zeitueberschreitung, wechsle auf Reserve", candidate.key)
                 continue
             except aiohttp.ClientError as err:
@@ -228,7 +228,7 @@ class RouterClient:
         self.ledger.note_discarded()
         await self.ledger.async_save()
         raise NoChannelAvailable(
-            f"Alle Kanaele fuer Profil {requirements.profile!r} ausgefallen oder am Limit",
+            f"Alle Kanäle für Profil {requirements.profile!r} ausgefallen oder am Limit",
             attempts=attempts,
         )
 
@@ -245,9 +245,9 @@ class RouterClient:
             return
         if err.is_auth:
             self.ledger.record_failure(
-                provider, model, fatal=True, auth=True, reason="Schluessel abgelehnt"
+                provider, model, fatal=True, auth=True, reason="Schlüssel abgelehnt"
             )
-            attempts.append(f"{candidate.key}: Schluessel abgelehnt")
+            attempts.append(f"{candidate.key}: Schlüssel abgelehnt")
             _LOGGER.warning(
                 "%s: Schluessel abgelehnt (%s), wechsle auf Reserve",
                 candidate.key,

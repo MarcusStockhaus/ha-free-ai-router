@@ -54,7 +54,16 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
-from .capabilities import ProviderProbe, merge_into_registry, probe_provider, quick_key_check
+from .capabilities import (
+    FEHLERART_KEIN_ABO,
+    FEHLERART_LIMIT,
+    FEHLERART_UNBEKANNT,
+    FEHLERART_UNERREICHBAR,
+    ProviderProbe,
+    merge_into_registry,
+    probe_provider,
+    quick_key_check,
+)
 from .const import (
     CONF_API_KEY,
     CONF_MODELS,
@@ -86,7 +95,10 @@ def _provider_card(provider: Provider) -> str:
     if any(model.capabilities.tools for model in provider.models):
         can.append("Werkzeuge")
     biggest = max(model.capabilities.context_tokens for model in provider.models)
-    parts = [f"**{provider.name}**"]
+    titel = f"**{provider.name}**"
+    if provider.onboarding.empfohlen:
+        titel += " — empfohlen für den Anfang"
+    parts = [titel]
     if provider.onboarding.summary_de:
         parts.append(provider.onboarding.summary_de)
     parts.append(
@@ -95,7 +107,7 @@ def _provider_card(provider: Provider) -> str:
     )
     parts.append(f"Daten: {provider.onboarding.data_note_de}")
     if provider.onboarding.credit_card_required:
-        parts.append("Zahlungsdaten erforderlich, auch fuer die kostenlose Stufe.")
+        parts.append("Zahlungsdaten erforderlich, auch für die kostenlose Stufe.")
     return "\n".join(f"  {line}" if index else f"- {line}" for index, line in enumerate(parts))
 
 
@@ -149,7 +161,7 @@ def _probe_report(provider: Provider, probe: ProviderProbe) -> str:
     stale = probe.stale_registry_entries
     if stale:
         lines.append(
-            f"- Hinweis: {provider.name} fuehrt diese Modelle nicht mehr: {', '.join(stale)}"
+            f"- Hinweis: {provider.name} führt diese Modelle nicht mehr: {', '.join(stale)}"
         )
     return "\n".join(lines) or "- keine Messwerte"
 
@@ -188,7 +200,7 @@ class _MessSchritte:
         errors: dict[str, str] = {}
         placeholders = {
             "name": provider.name,
-            "signup_url": provider.onboarding.signup_url,
+            "signup_link": f"[{provider.onboarding.signup_url}]({provider.onboarding.signup_url})",
             "steps": "\n".join(
                 f"{index}. {step}" for index, step in enumerate(provider.onboarding.steps_de, 1)
             ),
@@ -200,10 +212,10 @@ class _MessSchritte:
             api_key = str(user_input[CONF_API_KEY]).strip()
             session = async_get_clientsession(self.hass)
             try:
-                ok, message = await quick_key_check(session, provider, api_key)
+                ok, message, art = await quick_key_check(session, provider, api_key)
             except Exception as err:  # noqa: BLE001 - Netzfehler jeder Art
                 _LOGGER.debug("Key-Test fehlgeschlagen: %r", err)
-                ok, message = False, repr(err)
+                ok, message, art = False, repr(err), FEHLERART_UNBEKANNT
 
             if ok:
                 self._pending_key = api_key
@@ -211,7 +223,17 @@ class _MessSchritte:
                 self._probe_result = None
                 return await self.async_step_probe()
 
-            errors["base"] = "key_rejected"
+            # Vier Fehlerarten statt einer: "abgelehnt" ist nicht dasselbe wie
+            # "kein Abo aktiviert" (Mistral) oder "Anbieter gerade gestoert" —
+            # jede verlangt eine andere naechste Handlung vom Nutzer.
+            if art == FEHLERART_KEIN_ABO:
+                errors["base"] = "key_no_subscription"
+            elif art == FEHLERART_LIMIT:
+                errors["base"] = "key_rate_limited"
+            elif art == FEHLERART_UNERREICHBAR:
+                errors["base"] = "key_unreachable"
+            else:
+                errors["base"] = "key_rejected"
             placeholders["error_detail"] = message[:200]
 
         return self.async_show_form(
@@ -266,8 +288,21 @@ class _MessSchritte:
         provider = self._pending_provider
         assert provider is not None
         session = async_get_clientsession(self.hass)
+
+        def _fortschritt(done: int, total: int, _label: str) -> None:
+            # Zwei Minuten "einen Moment" wirken wie ein Absturz. Der Balken
+            # braucht dafuer kein eigenes Protokoll: probe_provider ruft das
+            # hier nach jedem fertigen Modell auf, HA kuemmert sich um den Rest.
+            if total:
+                self.async_update_progress(done / total)
+
         return await probe_provider(
-            session, provider, self._pending_key, discover=True, concurrency=1
+            session,
+            provider,
+            self._pending_key,
+            discover=True,
+            concurrency=1,
+            on_progress=_fortschritt,
         )
 
 
@@ -406,7 +441,7 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
             entry = entries[profile]
             label = PROFILE_LABELS_DE[profile]
             if not entry.covered:
-                lines.append(f"- **{label}** — keine Abdeckung. Hier bleibt eine Luecke.")
+                lines.append(f"- **{label}** — keine Abdeckung. Hier bleibt eine Lücke.")
                 continue
             reserve = (
                 f", Reserve: {entry.reserves[0].key}"

@@ -116,6 +116,17 @@ blueprint:
                 message: "{{ ergebnis.beschreibung }}"
           selector:
             action: {}
+        fehler_melden:
+          name: Fehler melden
+          description: >-
+            Meldet per Benachrichtigung, wenn die Analyse keine Antwort
+            geliefert hat — meist, weil die Kamera kein Standbild liefert oder
+            alle eingerichteten Kanäle gerade am Limit sind. Ohne das läuft
+            die Automation in diesem Fall lautlos ins Leere: sie tut nichts,
+            ohne dass irgendwo eine Meldung erscheint.
+          default: true
+          selector:
+            boolean: {}
 
 mode: single
 max_exceeded: silent
@@ -124,6 +135,7 @@ variables:
   sperrzeit: !input sperrzeit
   nur_bei_person: !input nur_bei_person
   kamera: !input kamera
+  fehler_melden: !input fehler_melden
 
 triggers:
   - trigger: state
@@ -176,20 +188,38 @@ actions:
     response_variable: befund
     # Fällt jeder Kanal aus, endet der Aufruf mit einem Fehler. Die Automation
     # soll deswegen nicht als defekt gelten — der Router hat es dann bereits
-    # über alle Reserven versucht und es steht im Log.
+    # über alle Reserven versucht und es steht im Log. continue_on_error
+    # allein macht daraus aber ein stilles Nichts: ohne den else-Zweig unten
+    # tut die Automation dann einfach gar nichts, ohne dass das irgendwo
+    # auffällt — der Fall, der beim Testen mit einer Kamera ohne Standbild
+    # zuerst auffiel.
     continue_on_error: true
 
   # ai_task.generate_data antwortet als {conversation_id, data}. Das eine
   # Feld auszupacken erspart jedem Nutzer das `befund.data.` vor jedem Zugriff
   # — und mir den Fehler, den ich hier beim ersten Anlauf gemacht habe.
-  - condition: template
-    value_template: "{{ befund is defined and befund.data is defined }}"
-
-  - variables:
-      ergebnis: "{{ befund.data }}"
-
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ not nur_bei_person or ergebnis.person }}"
-        sequence: !input aktion
+            value_template: "{{ befund is defined and befund.data is defined }}"
+        sequence:
+          - variables:
+              ergebnis: "{{ befund.data }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not nur_bei_person or ergebnis.person }}"
+                sequence: !input aktion
+    default:
+      - if:
+          - condition: template
+            value_template: "{{ fehler_melden }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Kameraanalyse fehlgeschlagen
+              message: >-
+                Free AI Router hat für {{ kamera }} keine Antwort geliefert.
+                Häufigste Ursache: die Kamera liefert gerade kein Standbild,
+                oder alle eingerichteten Kanäle sind am Limit. Details unter
+                Einstellungen → Geräte & Dienste → Free AI Router.

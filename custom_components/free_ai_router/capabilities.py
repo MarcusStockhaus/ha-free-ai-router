@@ -547,16 +547,48 @@ async def probe_provider(
     return result
 
 
+#: Grobe Einordnung eines gescheiterten Schluesseltests. Der Dialog braucht
+#: mehr als "abgelehnt": ein Netzausfall, ein gestoerter Anbieter und ein
+#: fehlendes Abonnement (Mistrals ``x-ratelimit-limit-req-minute: 0``, siehe
+#: NEXT.md) sind drei verschiedene naechste Schritte fuer den Nutzer.
+FEHLERART_AUTH = "auth"
+FEHLERART_KEIN_ABO = "no_subscription"
+FEHLERART_LIMIT = "rate_limited"
+FEHLERART_UNERREICHBAR = "unreachable"
+FEHLERART_UNBEKANNT = "unknown"
+
+
+def _fehlerart(probe: ModelProbe) -> str:
+    """Warum ein Schluesseltest gescheitert ist — fuer eine passende Meldung.
+
+    ``rate_limit.limit_requests == 0`` ist kein Limit, sondern ein fehlendes
+    Abonnement: bei Mistral etwa antwortet ein technisch gueltiger Schluessel
+    ohne aktiviertes API-Abo genau so. Das darf nicht als "Schluessel falsch"
+    ankommen, sonst probiert der Nutzer denselben Schluessel ein zweites Mal.
+    """
+    if probe.rate_limit.limit_requests == 0:
+        return FEHLERART_KEIN_ABO
+    fehler = probe.error.lower()
+    if "schlüssel abgelehnt" in fehler:
+        return FEHLERART_AUTH
+    if probe.status == 429 or "limit erreicht" in fehler:
+        return FEHLERART_LIMIT
+    if probe.status is None or probe.status >= 500:
+        return FEHLERART_UNERREICHBAR
+    return FEHLERART_UNBEKANNT
+
+
 async def quick_key_check(
     session: aiohttp.ClientSession,
     provider: Provider,
     api_key: str,
     *,
     timeout: float = PROBE_TIMEOUT_S,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, str]:
     """Ein einzelner Aufruf, der sofort nach der Key-Eingabe Rueckmeldung gibt.
 
-    Nimmt das erste Modell des Anbieters. Ergebnis: (gueltig, Meldung).
+    Nimmt das erste Modell des Anbieters. Ergebnis: (gueltig, Meldung, Fehlerart).
+    Die Fehlerart ist nur aussagekraeftig, wenn ``gueltig`` falsch ist.
     """
     model = provider.models[0]
     probe = await probe_model(
@@ -564,8 +596,8 @@ async def quick_key_check(
     )
     if probe.alive:
         latency = f"{probe.latency_total_s:.1f} s" if probe.latency_total_s else "?"
-        return True, f"{model.display_name} antwortet ({latency})"
-    return False, probe.error or "keine Antwort"
+        return True, f"{model.display_name} antwortet ({latency})", ""
+    return False, probe.error or "keine Antwort", _fehlerart(probe)
 
 
 def merge_into_registry(
@@ -694,6 +726,11 @@ __all__ = [
     "CHECK_STRUCTURED",
     "CHECK_TOOLS",
     "CHECK_VISION",
+    "FEHLERART_AUTH",
+    "FEHLERART_KEIN_ABO",
+    "FEHLERART_LIMIT",
+    "FEHLERART_UNBEKANNT",
+    "FEHLERART_UNERREICHBAR",
     "CheckResult",
     "ModelProbe",
     "ProviderProbe",

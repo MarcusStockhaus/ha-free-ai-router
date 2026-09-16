@@ -99,6 +99,16 @@ blueprint:
                 message: "{{ ergebnis.beschreibung }}"
           selector:
             action: {}
+        fehler_melden:
+          name: Fehler melden
+          description: >-
+            Meldet per Benachrichtigung, wenn die Analyse keine Antwort
+            geliefert hat — meist, weil die Kamera kein Standbild liefert oder
+            alle eingerichteten Kanäle gerade am Limit sind. Ohne das läuft
+            die Automation in diesem Fall lautlos ins Leere.
+          default: true
+          selector:
+            boolean: {}
 
 mode: single
 max_exceeded: silent
@@ -106,6 +116,7 @@ max_exceeded: silent
 variables:
   sperrzeit: !input sperrzeit
   kamera: !input kamera
+  fehler_melden: !input fehler_melden
 
 triggers:
   # Ein Zustandswechsel ohne Filter, damit beide Bauarten greifen: ein
@@ -165,10 +176,24 @@ actions:
     response_variable: befund
     continue_on_error: true
 
-  - condition: template
-    value_template: "{{ befund is defined and befund.data is defined }}"
-
-  - variables:
-      ergebnis: "{{ befund.data }}"
-
-  - sequence: !input aktion
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ befund is defined and befund.data is defined }}"
+        sequence:
+          - variables:
+              ergebnis: "{{ befund.data }}"
+          - sequence: !input aktion
+    default:
+      - if:
+          - condition: template
+            value_template: "{{ fehler_melden }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Türklingel-Analyse fehlgeschlagen
+              message: >-
+                Free AI Router hat für {{ kamera }} keine Antwort geliefert.
+                Häufigste Ursache: die Kamera liefert gerade kein Standbild,
+                oder alle eingerichteten Kanäle sind am Limit. Details unter
+                Einstellungen → Geräte & Dienste → Free AI Router.

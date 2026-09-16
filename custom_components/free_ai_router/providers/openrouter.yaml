@@ -16,16 +16,16 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://openrouter.ai/settings/keys
   summary_de: >-
-    Vision-Reserve ausserhalb von Google. Ohne einmalige 10-Dollar-Aufladung
-    nur 50 Anfragen pro Tag — als tragende Saeule zu wenig, als Ausweichkanal
+    Vision-Reserve außerhalb von Google. Ohne einmalige 10-Dollar-Aufladung
+    nur 50 Anfragen pro Tag — als tragende Säule zu wenig, als Ausweichkanal
     brauchbar.
   steps_de:
     - Konto anlegen und anmelden
     - '"Create Key" klicken, Limit leer lassen'
-    - Key kopieren und hier einfuegen
+    - Key kopieren und hier einfügen
   data_note_de: >-
     Kein Training auf Inhalten, sofern in den Kontoeinstellungen nicht
-    ausdruecklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.
+    ausdrücklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.
   credit_card_required: false
 
 # Modellbestand am 09.09.2026 ueber /models abgeglichen: von 430 Modellen

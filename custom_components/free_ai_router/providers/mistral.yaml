@@ -13,17 +13,17 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://console.mistral.ai/api-keys
   summary_de: >-
-    Sehr grosses Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar
+    Sehr großes Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar
     API-Nutzung im Monat. Schnell und schemafest, sieht auch Bilder.
   steps_de:
     - Auf console.mistral.ai anmelden
-    - Telefonnummer bestaetigen — ohne das bleibt die kostenlose Stufe zu
-    - 'Das *API*-Abonnement mit Plan FREE aktivieren. Nicht zu verwechseln mit Le Chat oder Labs: Mistral fuehrt drei getrennte Produktlinien, und nur das API-Abo schaltet die Chat-Modelle frei'
+    - Telefonnummer bestätigen — ohne das bleibt die kostenlose Stufe zu
+    - 'Das *API*-Abonnement mit Plan FREE aktivieren. Nicht zu verwechseln mit Le Chat oder Labs: Mistral führt drei getrennte Produktlinien, und nur das API-Abo schaltet die Chat-Modelle frei'
     - 'Unter "API Keys" auf "Create new key", Ablaufdatum setzen, Key kopieren'
   data_note_de: >-
     Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
-    Die Nutzung ist ausserdem auf 10 Dollar im Monat gedeckelt.
+    Die Nutzung ist außerdem auf 10 Dollar im Monat gedeckelt.
   credit_card_required: false
 
 # Limits am 10.09.2026 aus admin.mistral.ai/plateforme/limits abgelesen,

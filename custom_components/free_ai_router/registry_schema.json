@@ -110,6 +110,11 @@
         },
         "summary_de": {
           "type": "string"
+        },
+        "empfohlen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Rein redaktionell: fuer den Anfang markiert, kein Messwert."
         }
       }
     },

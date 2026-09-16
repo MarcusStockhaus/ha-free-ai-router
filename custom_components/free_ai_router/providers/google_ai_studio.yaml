@@ -14,16 +14,17 @@ daily_reset_timezone: America/Los_Angeles
 onboarding:
   signup_url: https://aistudio.google.com/apikey
   summary_de: >-
-    Traegt die Bildanalyse. Achtung: nur die Flash-Lite-Modelle haben ein
-    brauchbares Tagesbudget, die grossen Flash-Modelle nur 20 Anfragen/Tag.
+    Trägt die Bildanalyse. Achtung: nur die Flash-Lite-Modelle haben ein
+    brauchbares Tagesbudget, die großen Flash-Modelle nur 20 Anfragen/Tag.
   steps_de:
     - Mit Google-Konto anmelden
     - '"Create API key" klicken'
-    - Key kopieren und hier einfuegen
+    - Key kopieren und hier einfügen
   data_note_de: >-
     Kostenlose Stufe: Inhalte werden zur Produktverbesserung genutzt.
     Kamerabilder verlassen damit die EU.
   credit_card_required: false
+  empfohlen: true
 
 # Alle Limits am 09.09.2026 aus dem AI-Studio-Dashboard eines echten Kontos
 # abgelesen, nicht aus der Dokumentation. Google nennt dort selbst keine

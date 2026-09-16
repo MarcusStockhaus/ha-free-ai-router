@@ -13,8 +13,9 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://console.groq.com/keys
   summary_de: >-
-    Latenz-Koenig, erste Wahl fuer Assist. Qwen3.8 kann entgegen der
+    Latenz-König, erste Wahl für Assist. Qwen3.8 kann entgegen der
     verbreiteten Annahme auch Bilder.
+  empfohlen: true
   steps_de:
     - Mit GitHub- oder Google-Konto anmelden
     - '"Create API Key" klicken und einen Namen vergeben'

@@ -75,7 +75,10 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         icon="mdi:backup-restore",
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement="Wechsel",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        # Bewusst *nicht* diagnostisch: das ist laut README "der Sensor, auf
+        # den es ankommt" — ein still dauerhaft ausgefallener Erstkanal faellt
+        # sonst nicht auf. In der Diagnose-Kategorie fehlt er auf jedem
+        # automatisch erzeugten Dashboard, genau dort, wo er hingehoert.
         wert=lambda runtime: runtime.ledger.stats.fallbacks,
     ),
     RouterSensorDescription(

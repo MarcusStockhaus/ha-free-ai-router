@@ -175,6 +175,64 @@ def test_der_anbieter_subentry_ist_beschriftet() -> None:
         assert block["initiate_flow"].get(quelle), f"initiate_flow.{quelle} fehlt"
 
 
+def test_englische_uebersetzung_ist_identisch_zur_deutschen() -> None:
+    """Halb uebersetzt ist schlechter als konsistent deutsch.
+
+    Ein Einsteiger mit englischem Home Assistant soll denselben, vollstaendig
+    durchdachten Text sehen wie mit deutschem — nicht eine Mischung aus
+    uebersetzten und liegengebliebenen deutschen Saetzen. Solange es keine
+    echte englische Fassung gibt, ist ``en.json`` bewusst eine Kopie von
+    ``de.json``. Weicht sie ab, ist entweder eine Uebersetzung begonnen und
+    nicht zu Ende gefuehrt worden, oder die deutsche Fassung wurde geaendert
+    und die englische vergessen — beides soll aufgefallen sein, bevor es das
+    Frontend erreicht.
+    """
+    de = json.loads((WURZEL / "translations" / "de.json").read_text(encoding="utf-8"))
+    en = json.loads((WURZEL / "translations" / "en.json").read_text(encoding="utf-8"))
+    assert en == de
+
+
+def test_router_entities_ohne_geraet_tragen_den_integrationsnamen() -> None:
+    """Ohne Geraet gibt es keinen Namenspraefix von Home Assistant.
+
+    Die Router-Entities (die drei ``ai_task``-Profile, Assist, die vier
+    Gesamtzaehler) haben seit Fassung 2 bewusst kein eigenes Geraet — siehe
+    ``entity.py``. Der Anzeigename kommt dann ausschliesslich aus dieser
+    Datei; ohne "Free AI Router" davor stehen sie unbeschriftet neben jeder
+    anderen Integration in jeder Entity-Auswahl. Der Anbietersensor ist die
+    Ausnahme: er haengt an seinem eigenen Anbieter-Geraet, das den Praefix
+    liefert — ihn hier zu wiederholen ergaebe "Google AI Studio Google AI
+    Studio Anfragen heute".
+    """
+    texte = _texte()["entity"]
+    ohne_geraet = [
+        texte["ai_task"]["schnell"]["name"],
+        texte["ai_task"]["vision"]["name"],
+        texte["ai_task"]["reasoning"]["name"],
+        texte["conversation"]["assist"]["name"],
+        texte["sensor"]["anfragen_heute"]["name"],
+        texte["sensor"]["token_heute"]["name"],
+        texte["sensor"]["reserve_heute"]["name"],
+        texte["sensor"]["verworfen_heute"]["name"],
+    ]
+    for name in ohne_geraet:
+        assert name.startswith("Free AI Router "), name
+
+    # Der Anbietersensor bekommt den Praefix vom Geraet, nicht vom Text.
+    assert not texte["sensor"]["anbieter_anfragen"]["name"].startswith("Free AI Router")
+
+
+def test_keine_verweise_auf_einen_konfigurieren_knopf() -> None:
+    """Seit dem Subentry-Umbau gibt es weder Options-Flow noch Reconfigure
+    auf Ebene des Config Entry — nur die beiden Anbieter-Aktionen in der
+    jeweiligen Subentry-Zeile. Ein Text, der auf "Konfigurieren" verweist,
+    fuehrt in eine Sackgasse: den Knopf gibt es nicht.
+    """
+    for pfad in (WURZEL / "strings.json", WURZEL / "translations" / "de.json"):
+        text = pfad.read_text(encoding="utf-8")
+        assert "Konfigurieren" not in text, pfad.name
+
+
 def test_platzhalter_werden_auch_gefuellt() -> None:
     """Ein ``{report}`` im Text ohne Wert im Code bliebe als Klammer stehen."""
     import re

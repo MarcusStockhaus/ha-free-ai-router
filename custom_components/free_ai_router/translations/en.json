@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "Anbieter auswählen",
-        "description": "Du kannst mehrere Anbieter nacheinander einrichten. Der Router verteilt die Anfragen später selbst und weicht auf die Reserve aus, wenn ein Kanal ausfällt.\n\n{cards}\n\nBereits eingerichtet: {configured}",
+        "description": "Du kannst mehrere Anbieter nacheinander einrichten. Der Router verteilt die Anfragen später selbst und weicht auf die Reserve aus, wenn ein Kanal ausfällt. Für den Anfang reichen die als „empfohlen“ markierten Anbieter.\n\n{cards}\n\nBereits eingerichtet: {configured}",
         "data": {
           "provider": "Anbieter"
         }
       },
       "key": {
         "title": "Schlüssel für {name}",
-        "description": "Key-Seite öffnen: {signup_url}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+        "description": "Key-Seite öffnen: {signup_link}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
         "data": {
           "api_key": "API-Schlüssel"
         },
@@ -28,14 +28,17 @@
       },
       "summary": {
         "title": "Übersicht",
-        "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht."
+        "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht.\n\n### Weiter geht's\n\n- **Assist verbinden:** [Sprachassistenten öffnen](https://my.home-assistant.io/redirect/voice_assistants/) und Free AI Router als Gesprächsagenten wählen — auf derselben Seite steht auch die bevorzugte KI-Aufgaben-Entity.\n- **Kameraanalyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml)\n- **Türklingel-Analyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml)"
       }
     },
     "progress": {
       "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
     },
     "error": {
-      "key_rejected": "Der Schlüssel wurde nicht angenommen."
+      "key_rejected": "Der Schlüssel wurde nicht angenommen.",
+      "key_no_subscription": "Der Schlüssel ist gültig, aber für dieses Modell ist kein Kontingent freigeschaltet. Bei Mistral zum Beispiel reicht ein neuer Schlüssel allein nicht — nötig ist zusätzlich das API-Abonnement mit Plan FREE, das ist etwas anderes als Le Chat oder Labs.",
+      "key_rate_limited": "Der Anbieter meldet gerade ein erreichtes Limit. Das kann am Schlüssel liegen oder schlicht am Zeitpunkt — ein erneuter Versuch in ein paar Minuten klärt das.",
+      "key_unreachable": "Der Anbieter antwortet gerade nicht oder mit einem Serverfehler. Das liegt in aller Regel nicht am Schlüssel — ein erneuter Versuch in ein paar Minuten klärt das."
     },
     "abort": {
       "already_configured": "Free AI Router ist bereits eingerichtet.",
@@ -46,35 +49,35 @@
   "entity": {
     "ai_task": {
       "schnell": {
-        "name": "Schnell"
+        "name": "Free AI Router Schnell"
       },
       "vision": {
-        "name": "Bildanalyse"
+        "name": "Free AI Router Bildanalyse"
       },
       "reasoning": {
-        "name": "Reasoning"
+        "name": "Free AI Router Reasoning"
       }
     },
     "conversation": {
       "assist": {
-        "name": "Assist"
+        "name": "Free AI Router Assist"
       }
     },
     "sensor": {
       "anfragen_heute": {
-        "name": "Anfragen heute"
+        "name": "Free AI Router Anfragen heute"
       },
       "token_heute": {
-        "name": "Token heute"
+        "name": "Free AI Router Token heute"
       },
       "reserve_heute": {
-        "name": "Reserve gegriffen heute"
+        "name": "Free AI Router Reserve gegriffen heute"
       },
       "verworfen_heute": {
-        "name": "Verworfen heute"
+        "name": "Free AI Router Verworfen heute"
       },
       "anbieter_anfragen": {
-        "name": "Requests today"
+        "name": "Anfragen heute"
       }
     }
   },
@@ -86,33 +89,33 @@
   "issues": {
     "kein_anbieter": {
       "title": "Kein KI-Anbieter eingerichtet",
-      "description": "Free AI Router hat keinen einzigen Anbieter, über den er Anfragen schicken könnte. Die Entities existieren, aber jeder Aufruf scheitert.\n\nUnter Einstellungen → Geräte & Dienste → Free AI Router → Konfigurieren lässt sich ein Anbieter hinzufügen."
+      "description": "Free AI Router hat keinen einzigen Anbieter, über den er Anfragen schicken könnte. Die Entities existieren, aber jeder Aufruf scheitert.\n\nUnter Einstellungen → Geräte & Dienste → Free AI Router → Anbieter hinzufügen lässt sich einer einrichten."
     },
     "schluessel_abgelehnt": {
       "title": "{anbieter} lehnt den Schlüssel ab",
-      "description": "{anbieter} hat den hinterlegten API-Schlüssel zurückgewiesen. Anfragen laufen zurzeit über die Reserve weiter — das fällt im Betrieb nicht auf, bis auch die Reserve wegbricht.\n\nEin neuer Schlüssel lässt sich hier erzeugen: {signup_url}\n\nDanach unter Einstellungen → Geräte & Dienste → Free AI Router → Konfigurieren eintragen. Der Hinweis verschwindet von selbst, sobald wieder ein Aufruf durchgeht."
+      "description": "{anbieter} hat den hinterlegten API-Schlüssel zurückgewiesen. Anfragen laufen zurzeit über die Reserve weiter — das fällt im Betrieb nicht auf, bis auch die Reserve wegbricht.\n\nEin neuer Schlüssel lässt sich hier erzeugen: {signup_url}\n\nDanach in der Zeile von {anbieter} auf der Integrationsseite auf „Schlüssel ersetzen“. Der Hinweis verschwindet von selbst, sobald wieder ein Aufruf durchgeht."
     },
     "profil_ohne_abdeckung": {
       "title": "Profil „{profil}“ hat keinen Kanal",
       "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Fähigkeitserkennung beim Einrichten, und was sie misst, gewinnt über die Registry."
     },
     "budget_aufgebraucht": {
-      "title": "{anbieter}: monthly budget spent",
-      "description": "{anbieter} has used {ausgegeben} of {budget} US dollars this month. The free tier is closed until the first of next month.\n\nRequests keep running through the other providers — you will only notice when their quota runs short. Add another provider if you need the buffer, or wait for the month to roll over.\n\nThe amount is calculated here, from the measured tokens and the price list in the provider file. The provider's own billing is what counts."
+      "title": "{anbieter}: Monatsbudget aufgebraucht",
+      "description": "{anbieter} hat in diesem Monat {ausgegeben} von {budget} US-Dollar verbraucht. Die kostenlose Stufe ist damit bis zum Monatsersten zu.\n\nAnfragen laufen weiter über die übrigen Anbieter — bemerkt wird es erst, wenn dort das Kontingent knapp wird. Wer den Puffer braucht, richtet einen weiteren Anbieter ein oder wartet den Monatswechsel ab.\n\nDer Betrag ist selbst gerechnet, aus den gemessenen Token und der Preisliste in der Anbieterdatei. Die Abrechnung des Anbieters ist maßgeblich."
     }
   },
   "services": {
     "neu_vermessen": {
-      "name": "Measure again",
-      "description": "Measures again what the configured providers can actually do and takes the result. Needed because the values otherwise date from the moment of setup and stay there. A measurement that reaches nothing overwrites nothing.",
+      "name": "Neu vermessen",
+      "description": "Misst noch einmal, was die eingerichteten Anbieter tatsächlich können, und übernimmt das Ergebnis. Nötig, weil die Werte sonst aus dem Moment des Einrichtens stammen und dort stehenbleiben. Eine Messung, die nichts erreicht, überschreibt nichts.",
       "fields": {
         "anbieter": {
-          "name": "Providers",
-          "description": "Leave empty for all configured providers."
+          "name": "Anbieter",
+          "description": "Leer lassen für alle eingerichteten Anbieter."
         },
         "nur_lebendigkeit": {
-          "name": "Liveness only",
-          "description": "One call per model instead of the expensive checks for images, schemas and tools. Fast and frugal, leaves the capabilities measured so far untouched."
+          "name": "Nur Lebendigkeit",
+          "description": "Ein Aufruf je Modell statt der teuren Prüfungen auf Bilder, Schemata und Werkzeuge. Schnell und sparsam, lässt die bisher gemessenen Fähigkeiten unangetastet."
         }
       }
     }
@@ -120,21 +123,21 @@
   "config_subentries": {
     "anbieter": {
       "initiate_flow": {
-        "user": "Add provider",
-        "reconfigure": "Replace key"
+        "user": "Anbieter hinzufügen",
+        "reconfigure": "Schlüssel ersetzen"
       },
-      "entry_type": "Provider",
+      "entry_type": "Anbieter",
       "step": {
         "user": {
-          "title": "Select provider",
-          "description": "Not configured yet:\n\n{cards}",
+          "title": "Anbieter auswählen",
+          "description": "Noch nicht eingerichtet:\n\n{cards}",
           "data": {
-            "provider": "Provider"
+            "provider": "Anbieter"
           }
         },
         "key": {
           "title": "Schlüssel für {name}",
-          "description": "Key-Seite öffnen: {signup_url}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+          "description": "Key-Seite öffnen: {signup_link}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
           "data": {
             "api_key": "API-Schlüssel"
           },
@@ -143,20 +146,23 @@
           }
         },
         "result": {
-          "title": "{name}: {working} of {total} models reachable",
-          "description": "Measured, not copied:\n\n{report}"
+          "title": "{name}: {working} von {total} Modellen erreichbar",
+          "description": "Gemessen, nicht abgeschrieben:\n\n{report}"
         }
       },
       "progress": {
         "probing": "Fähigkeiten von {name} werden gemessen — Bilder, Schema, Werkzeuge, Latenz. Das dauert einen Moment, weil dafür echte Aufrufe nötig sind."
       },
       "error": {
-        "key_rejected": "Der Schlüssel wurde nicht angenommen."
+        "key_rejected": "Der Schlüssel wurde nicht angenommen.",
+        "key_no_subscription": "Der Schlüssel ist gültig, aber für dieses Modell ist kein Kontingent freigeschaltet. Bei Mistral zum Beispiel reicht ein neuer Schlüssel allein nicht — nötig ist zusätzlich das API-Abonnement mit Plan FREE, das ist etwas anderes als Le Chat oder Labs.",
+        "key_rate_limited": "Der Anbieter meldet gerade ein erreichtes Limit. Das kann am Schlüssel liegen oder schlicht am Zeitpunkt — ein erneuter Versuch in ein paar Minuten klärt das.",
+        "key_unreachable": "Der Anbieter antwortet gerade nicht oder mit einem Serverfehler. Das liegt in aller Regel nicht am Schlüssel — ein erneuter Versuch in ein paar Minuten klärt das."
       },
       "abort": {
         "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
-        "alle_eingerichtet": "Every known provider is already configured.",
-        "unbekannter_anbieter": "This provider is no longer in the registry."
+        "alle_eingerichtet": "Alle bekannten Anbieter sind schon eingerichtet.",
+        "unbekannter_anbieter": "Diesen Anbieter gibt es in der Registry nicht mehr."
       }
     }
   }

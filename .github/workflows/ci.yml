@@ -10,6 +10,15 @@ on:
   pull_request:
 
 jobs:
+  hacs:
+    name: HACS-Validierung
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hacs/action@main
+        with:
+          category: integration
+
   registry:
     name: Anbieterdateien
     runs-on: ubuntu-latest

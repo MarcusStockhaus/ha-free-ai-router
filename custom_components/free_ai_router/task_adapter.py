@@ -54,7 +54,7 @@ def structure_to_json_schema(
             structure, custom_serializer=custom_serializer or llm.selector_serializer
         )
     except Exception as err:  # pragma: no cover - defensiv, Schema kommt von HA
-        raise HomeAssistantError(f"Antwortschema nicht uebersetzbar: {err}") from err
+        raise HomeAssistantError(f"Antwortschema nicht übersetzbar: {err}") from err
     if not isinstance(schema, dict):
         raise HomeAssistantError("Antwortschema ergab kein Objekt")
     schema.setdefault("type", "object")
@@ -83,7 +83,7 @@ async def attachments_to_images(
         path = getattr(attachment, "path", None)
         if not mime_type.startswith(_IMAGE_MIME_PREFIXES):
             raise HomeAssistantError(
-                f"Anhang vom Typ {mime_type or 'unbekannt'} wird nicht unterstuetzt — "
+                f"Anhang vom Typ {mime_type or 'unbekannt'} wird nicht unterstützt — "
                 "in Phase 1 nur Bilder."
             )
         if path is None:
@@ -122,7 +122,7 @@ def normalize_result(response: ChatResponse, *, has_structure: bool) -> Any:
         return response.parsed
 
     raise HomeAssistantError(
-        "Der Anbieter hat kein gueltiges JSON zum verlangten Schema geliefert: "
+        "Der Anbieter hat kein gültiges JSON zum verlangten Schema geliefert: "
         f"{response.text.strip()[:200]!r}"
     )
 

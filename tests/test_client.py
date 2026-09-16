@@ -364,7 +364,7 @@ async def test_402_gilt_als_abgelehnter_schluessel(welt) -> None:
     assert execution.candidate.key == "reserve/modell-b"
     gesperrt = welt["ledger"].availability(welt["provider_a"], welt["model_a"])
     assert not gesperrt.ok
-    assert "Schluessel" in gesperrt.reason
+    assert "Schlüssel" in gesperrt.reason
 
 
 async def test_googles_400_bei_ungueltigem_key_gilt_als_abgelehnt(welt) -> None:
@@ -384,7 +384,7 @@ async def test_googles_400_bei_ungueltigem_key_gilt_als_abgelehnt(welt) -> None:
     assert execution.candidate.key == "reserve/modell-b"
     gesperrt = welt["ledger"].availability(welt["provider_a"], welt["model_a"])
     assert not gesperrt.ok, "ein abgelehnter Schluessel muss sofort ausscheiden"
-    assert "Schluessel" in gesperrt.reason
+    assert "Schlüssel" in gesperrt.reason
 
 
 async def test_gewoehnlicher_400_bleibt_ein_normaler_fehlschlag(welt) -> None:

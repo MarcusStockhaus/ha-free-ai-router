@@ -177,13 +177,28 @@ class Onboarding:
     data_note_de: str
     credit_card_required: bool
     summary_de: str = ""
+    empfohlen: bool = False
+    """Fuer den Anfang markiert. Rein redaktionell, kein Messwert.
+
+    Ein Einsteiger vor einer Liste von vier gleichrangigen Anbietern trifft
+    die erste Entscheidung ohne Anhaltspunkt. Dieses Feld traegt die Antwort,
+    die das README ohnehin gibt (Google AI Studio + Groq reichen), direkt in
+    die Anbieterkarte.
+    """
 
     @classmethod
     def parse(cls, data: Any, where: str) -> Onboarding:
         data = _as_mapping(data, where)
         _reject_unknown(
             data,
-            {"signup_url", "steps_de", "data_note_de", "credit_card_required", "summary_de"},
+            {
+                "signup_url",
+                "steps_de",
+                "data_note_de",
+                "credit_card_required",
+                "summary_de",
+                "empfohlen",
+            },
             where,
         )
         url = _req_str(data, "signup_url", where)
@@ -195,12 +210,16 @@ class Onboarding:
         note = _req_str(data, "data_note_de", where).strip()
         if not note:
             raise RegistryError(f"{where}.data_note_de: darf nicht leer sein")
+        empfohlen = data.get("empfohlen", False)
+        if not isinstance(empfohlen, bool):
+            raise RegistryError(f"{where}.empfohlen: true/false erwartet")
         return cls(
             signup_url=url,
             steps_de=tuple(step.strip() for step in steps),
             data_note_de=note,
             credit_card_required=_req_bool(data, "credit_card_required", where),
             summary_de=str(data.get("summary_de", "")).strip(),
+            empfohlen=empfohlen,
         )
 
 

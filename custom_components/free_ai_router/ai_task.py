@@ -33,7 +33,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "Du bist Teil einer Home-Assistant-Automation. Antworte knapp und "
-    "ausschliesslich mit dem Verlangten, ohne Einleitung und ohne Rueckfrage."
+    "ausschließlich mit dem Verlangten, ohne Einleitung und ohne Rückfrage."
 )
 
 

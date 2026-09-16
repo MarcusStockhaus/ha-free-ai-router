@@ -456,6 +456,129 @@ jetzt ohne Präfix (`Schnell`, `Bildanalyse`, `Reasoning`, `Assist`,
 
 ---
 
+## 10. UX-Durchgang für Einsteiger, gebaut am 16.09.2026
+
+Auslöser: eine Analyse aus Sicht eines kompletten Einsteigers ("wie würde
+jemand ohne Vorwissen hier scheitern") hat 13 konkrete Punkte gefunden, dazu
+den ausdrücklichen Wunsch nach HACS. Das Einrichten selbst wollte der Autor
+erst in der fertigen Fassung ausgiebig selbst testen — dieser Durchgang deckt
+alles davor und danach ab.
+
+**Entity-Namen ohne Gerät tragen jetzt den Integrationsnamen im Text selbst**
+(`entity.py` hat seit Abschnitt 9 kein `_attr_device_info` mehr): „Free AI
+Router Schnell" statt „Schnell". Ohne Gerät gibt es keinen anderen Hinweis,
+welche Integration eine Entity wie `ai_task.free_ai_router_schnell` in einer
+Auswahlliste neben denen anderer Integrationen überhaupt anbietet — genau das
+fiel live auf, als die Sprachassistenten-Auswahl „Home Assistant" und
+„Assist" unbeschriftet nebeneinander zeigte. Der Anbietersensor bleibt
+unverändert: sein Gerät liefert den Präfix bereits.
+
+**Vier Fehlerarten beim Schlüsseltest statt einer.** `quick_key_check` in
+`capabilities.py` gibt jetzt `(gültig, meldung, fehlerart)` zurück,
+`_fehlerart()` liest sie aus `ModelProbe.status` und `.rate_limit`:
+abgelehnt, kein Abonnement (`rate_limit.limit_requests == 0` — Mistrals
+`x-ratelimit-limit-req-minute: 0`, siehe Abschnitt 5), Limit erreicht,
+Anbieter nicht erreichbar. Der Config Flow zeigt vier unterschiedene
+`errors["base"]`-Texte statt eines pauschalen „nicht angenommen".
+
+**Fortschrittsbalken bei der Fähigkeitsmessung.** `probe_provider` hatte
+schon einen `on_progress`-Callback, nur `_async_probe` im Config Flow rief ihn
+nie auf. Jetzt ruft er `self.async_update_progress(done/total)` — die Methode
+existiert auf `FlowHandler` seit HA 2024.8 laut dessen eigener
+Warnmeldung im Quelltext, unser Minimum liegt deutlich darüber. Zwei Minuten
+„einen Moment" sahen vorher aus wie ein Absturz.
+
+**Reparaturtexte zeigen auf echte Knöpfe.** „Kein Anbieter eingerichtet" und
+„Schlüssel abgelehnt" verwiesen auf „Free AI Router → Konfigurieren" — den
+gibt es seit dem Subentry-Umbau nicht mehr. Zeigen jetzt auf „Anbieter
+hinzufügen" bzw. auf „Schlüssel ersetzen" in der Anbieterzeile. Ein Test
+(`test_keine_verweise_auf_einen_konfigurieren_knopf`) hält das fest, indem er
+das Wort „Konfigurieren" aus beiden Textdateien verbannt.
+
+**Empfehlung in der Anbieterauswahl.** Neues optionales Registry-Feld
+`onboarding.empfohlen` (`registry.py`, `registry_schema.json`), gesetzt bei
+Google AI Studio und Groq — dieselben zwei, die das README ohnehin als
+tragende Kombination nennt. Die Anbieterkarte zeigt „— empfohlen für den
+Anfang", die Anbieterauswahl einen erklärenden Satz.
+
+**Schlüssel-Seite als klickbarer Link** statt nackter URL in beiden
+Schlüssel-Schritten (`{signup_link}` statt `{signup_url}`).
+
+**Umlaute in jedem Text, den ein Nutzer sieht.** Betroffen waren die
+Onboarding-Felder aller vier Anbieter-Dateien, drei Stellen im Config Flow,
+jede `HomeAssistantError`- bzw. `NoChannelAvailable`-Meldung in `client.py`
+und `task_adapter.py`, sowie die beiden `ProviderError`-Meldungen in
+`adapters/base.py` — die landen über `ModelProbe.error` direkt im
+`error_detail`-Platzhalter des Schlüssel-Schritts, sind also trotz des
+unauffälligen Dateinamens echter Dialogtext. Interne Log-Zeilen
+(`_LOGGER.warning`/`.info` in `client.py`) blieben absichtlich unangetastet
+— ein Test (`test_client.py`) pinnt ihre ASCII-Schreibweise, und ein Log ist
+kein Text, den ein Nutzer im Dialog sieht. Wo dieselbe Zeichenkette an
+mehreren Stellen stand (`"Schlüssel abgelehnt"` als `ProviderError`-Text,
+als `block_reason` in der Anbietersensor-Attribut `gesperrt`, und als
+Literal in einer Log-Zeile), wurde nur die tatsächlich nutzersichtbare
+Fassung korrigiert und `_fehlerart()` in `capabilities.py` auf dieselbe
+Schreibweise abgestimmt; zwei Tests in `test_client.py` sind entsprechend
+auf die korrekte Schreibweise umgestellt.
+
+**Der Reserve-Sensor hat seine Diagnose-Kategorie verloren** (`sensor.py`) —
+laut README „der Sensor, auf den es ankommt", vorher aber auf keinem
+automatisch erzeugten Dashboard sichtbar.
+
+**Blueprints melden einen Fehlschlag** statt lautlos nichts zu tun. Neues
+Eingabefeld „Fehler melden" (Vorgabe an) in beiden Blueprints; die
+`continue_on_error: true`-Vorlage endete vorher einfach, wenn
+`ai_task.generate_data` keine Antwort lieferte — der Fall, der beim
+Einrichten mit einer Ring-Kamera ohne funktionierendes Standbild live
+auffiel (siehe `zugang.md`, Abschnitt Kameras).
+
+**Diagnose-Export** (`diagnostics.py`, neu): `async_get_config_entry_diagnostics`
+liest `configured_providers()`, `runtime.diagnostics()`, `ledger.snapshot()`
+und `feed.diagnostics()` und schwärzt `api_key` über HAs eigenen
+`async_redact_data`-Helfer. Lokal nicht testbar — importiert
+`homeassistant.components.diagnostics`, das im Dev-Umfeld dieses Projekts
+bewusst nicht installiert ist (siehe `__init__.py`-Docstring); Verifikation
+folgt live, zusammen mit dem angekündigten ausgiebigen Test der ganzen
+Einrichtung.
+
+**README:** HACS als Installationsweg (Abschnitt „Installation") mit
+Begründung, warum als benutzerdefiniertes statt Standard-Repository; neuer
+Abschnitt „Anschließen" (Assist verbinden, KI-Aufgaben-Vorgabe, beide
+Blueprints, jeweils mit My-Home-Assistant-Deep-Link); Entities-Karten-Beispiel
+im Abschnitt „Sensoren"; neuer Abschnitt „Fehlersuche" (Diagnose-Export, die
+vier Fehlerarten).
+
+**HACS-Anbindung:** `hacs.json` neu (Minimum-HA-Version `2025.6.0` — recherchiert
+über die Config-Subentry-Änderungen vom März 2025, mit Sicherheitsabstand
+nach oben, da HA selbst kein exaktes Versionsdatum für die Subentry-Einführung
+nennt), Manifest-Version auf `0.2.0`, neuer CI-Job `hacs` mit dem offiziellen
+`hacs/action`. Bewusst **kein** GitHub-Release/Tag gesetzt — HACS kann ein
+benutzerdefiniertes Repository auch ohne Releases vom Standard-Branch
+installieren, und ein erster Release ist eine Entscheidung des Autors über
+Changelog und Zeitpunkt, keine, die sich nebenbei mit erledigen lässt.
+
+**Nicht lokal verifizierbar:** ob `hacs/action` beim ersten CI-Lauf wirklich
+grün wird. Die Aktion prüft unter anderem gegen das `home-assistant/brands`-
+Repository (Icon/Logo) — für ein reines Custom-Repository ohne Aufnahme in
+den Standardkatalog ist das nach HACS-eigener Doku keine Voraussetzung, aber
+das ist Dokumentationswissen, kein Testlauf. Beim ersten Push auf `main`
+zeigt sich, ob der Job durchläuft oder ein Feld nachgetragen werden muss.
+
+**Bewusst nicht angefasst:** die eigentliche Einrichtung — der Autor testet
+sie in der fertigen Fassung selbst, ausgiebig. Englische Übersetzung bleibt
+in der Minimalvariante (siehe `test_englische_uebersetzung_ist_identisch_zur_deutschen`):
+`en.json` ist jetzt eine exakte Kopie von `de.json`, statt der vorher
+zufälligen Mischung aus übersetzten und liegengebliebenen Zeilen. Eine echte
+englische Fassung wäre die nächste, deutlich größere Baustelle — rund 60
+Strings plus die Onboarding-Felder aller vier Anbieterdateien.
+
+240 Tests vorher, 246 danach (neue Tests fürs Schlüssel-Fehlerarten-Mapping in
+`test_capabilities.py`, die Entity-Namensregel, die en=de-Identität und den
+verbannten Konfigurieren-Verweis in `test_texte.py`). `ruff check` und
+`tools/validate_registry.py` sauber.
+
+---
+
 ## Kleinkram, notiert damit er nicht verlorengeht
 
 - `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der

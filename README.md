@@ -47,9 +47,20 @@ sie stellt sich hinter die Andockstelle, die Home Assistant selbst mitbringt.
 
 ## Installation
 
-Bewusst **nicht über HACS**. Der Unterschied zwischen einem GitHub-Repo und
-einem HACS-Eintrag ist kein technischer, sondern ein Erwartungsanspruch. Die
-manuelle Installation filtert genau die Nutzer, die Betreuung erwarten.
+**Über HACS**, als benutzerdefiniertes Repository — nicht im Standardkatalog,
+das ist bewusst so: Aufnahme dort verspricht eine Pflege, die dieses Projekt
+mit seiner „Läuft bei mir"-Zeile in der Kopfzeile nicht geben will. Wer die
+URL selbst einträgt, weiß, worauf er sich einlässt.
+
+1. HACS → oben rechts die drei Punkte → **Benutzerdefinierte Repositories**
+2. URL `https://github.com/MarcusStockhaus/ha-free-ai-router`, Kategorie
+   **Integration**
+3. Free AI Router suchen und herunterladen, Home Assistant neu starten
+
+Die beiden Blueprints liegen nicht in diesem HACS-Eintrag — sie kommen im
+Abschnitt [Blueprints](#blueprints) über einen Ein-Klick-Import.
+
+### Ohne HACS
 
 Auf einem System mit Shell-Zugang (SSH-Add-on oder Terminal):
 
@@ -60,17 +71,27 @@ cp -r ha-free-ai-router/blueprints/automation/free_ai_router /config/blueprints/
 ```
 
 Ohne Shell: das Repo als ZIP herunterladen und die beiden Ordner über das
-File-Editor- oder Samba-Add-on an dieselben Stellen legen.
+File-Editor- oder Samba-Add-on an dieselben Stellen legen. Danach Home
+Assistant neu starten.
 
-Danach Home Assistant neu starten, dann **Einstellungen → Geräte & Dienste →
-Integration hinzufügen → Free AI Router**.
+### Einrichten
+
+**Einstellungen → Geräte & Dienste → Integration hinzufügen → Free AI
+Router**, oder direkt per Klick:
+[Einrichtungsassistenten öffnen](https://my.home-assistant.io/redirect/config_flow_start/?domain=free_ai_router).
 
 Der Assistent zeigt je Anbieter eine Karte: was er kann, was er mit den Daten
-macht, ob Zahlungsdaten verlangt werden — und einen Deep-Link direkt zur
-Key-Seite, nicht zur Startseite. Nach der Eingabe läuft sofort ein echter
-Testaufruf, danach die Fähigkeitsmessung. Die dauert ein bis zwei Minuten, weil
-sie je Modell mehrere echte Aufrufe macht. Am Ende steht, welches Profil von
-welchem Kanal bedient wird und wo eine Lücke bleibt.
+macht, ob Zahlungsdaten verlangt werden, ob er für den Anfang empfohlen ist —
+und einen Deep-Link direkt zur Key-Seite, nicht zur Startseite. Nach der
+Eingabe läuft sofort ein echter Testaufruf, danach die Fähigkeitsmessung, mit
+Fortschrittsbalken. Die dauert ein bis zwei Minuten, weil sie je Modell
+mehrere echte Aufrufe macht. Am Ende steht, welches Profil von welchem Kanal
+bedient wird, wo eine Lücke bleibt — und drei Links zu den nächsten Schritten
+(Assist verbinden, beide Blueprints importieren).
+
+Für den Anfang reichen **Google AI Studio und Groq**: zusammen tragen sie alle
+drei Profile mit Reserve, ohne Zahlungsdaten und ohne Ausgabendeckel. Mistral
+und OpenRouter sind zusätzliche Reserve, kein Ersatz für die beiden.
 
 ### Zugänge verwalten
 
@@ -100,7 +121,42 @@ eigenes Gerät. Genauso macht es Home Assistants eigene Google-Generative-AI-
 und OpenAI-Conversation-Integration: der Config Entry ist der Zugang, jedes
 sichtbare Gerät gehört zu einem Untereintrag. Zu finden sind sie unter
 **Einstellungen → Geräte & Dienste → Entitäten** (nach `free_ai_router`
-filtern) oder direkt in den AI-Task- und Assist-Einstellungen.
+filtern) oder direkt in den AI-Task- und Assist-Einstellungen. Ihr
+Anzeigename trägt deshalb den Namen der Integration im Text selbst
+(„Free AI Router Schnell" statt nur „Schnell") — ohne Gerät gäbe es sonst
+keinen Hinweis, welche Integration eine Entity wie `ai_task.free_ai_router_schnell`
+überhaupt anbietet, wenn sie neben denen anderer Integrationen in einer
+Auswahlliste steht.
+
+---
+
+## Anschließen
+
+Die eingerichteten Entities tun erst dann etwas, wenn sie irgendwo
+angeschlossen sind. Die Übersicht am Ende des Einrichtungsassistenten
+verlinkt dieselben drei Schritte direkt.
+
+**Assist als Sprachassistent.** [Einstellungen → Sprachassistenten
+öffnen](https://my.home-assistant.io/redirect/voice_assistants/), Free AI
+Router als Gesprächsagenten wählen. Auf derselben Seite steht auch die
+bevorzugte KI-Aufgaben-Entity — die, die eine Automation ohne eigene Angabe
+einer `entity_id` benutzt.
+
+**Kameraanalyse.** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml),
+Kamera und Bewegungsmelder wählen, Sperrzeit setzen.
+
+**Türklingel.** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml),
+Klingelsensor und Kamera wählen.
+
+Ohne eigene Blueprint- oder Automationsidee reicht auch ein einzelner
+Diensteaufruf, etwa in den Entwicklerwerkzeugen zum Ausprobieren:
+
+```yaml
+action: ai_task.generate_data
+data:
+  entity_id: ai_task.free_ai_router_schnell
+  instructions: Fasse in einem Satz zusammen, wie das Wetter heute wird.
+```
 
 ---
 
@@ -183,6 +239,12 @@ Zusatzbedingung Eingabefelder und keine Fußnoten. Ein Bewegungsmelder an der
 Straße kommt leicht auf 2.000 Auslösungen am Tag; ohne Sperrzeit ist das
 Tagesbudget vor dem Mittagessen weg.
 
+Beide Blueprints haben außerdem **„Fehler melden"** (Vorgabe: an). Liefert
+`ai_task.generate_data` keine Antwort — meist eine Kamera ohne Standbild oder
+alle Kanäle am Limit — läuft die Automation sonst lautlos ins Leere: sie tut
+nichts, ohne dass irgendwo eine Meldung erscheint. Mit dem Feld kommt
+stattdessen eine Benachrichtigung, die sagt, woran es lag.
+
 ## Sensoren
 
 ```
@@ -198,6 +260,19 @@ Bei einem Anbieter mit Ausgabendeckel stehen in denselben Attributen
 meldet sich das zusätzlich unter **Einstellungen → Reparaturen** — nicht als
 Störung, sondern weil es die Erwartung ändert: der Puffer ist bis zum
 Monatsersten weg.
+
+Als Entities-Karte für ein Dashboard, ohne YAML-Vorwissen über
+**Einstellungen → Dashboards → Karte hinzufügen → Entitäten** nachzubauen:
+
+```yaml
+type: entities
+title: Free AI Router
+entities:
+  - sensor.free_ai_router_anfragen_heute
+  - sensor.free_ai_router_token_heute
+  - sensor.free_ai_router_reserve_gegriffen_heute
+  - sensor.free_ai_router_verworfen_heute
+```
 
 *Reserve gegriffen heute* ist der Sensor, auf den es ankommt. Ein Erstkanal,
 der still dauerhaft ausfällt, fällt sonst erst auf, wenn auch die Reserve weg
@@ -273,6 +348,21 @@ durchgeht. Die Zählerstände überleben Neustarts.
 
 Der Tageszähler läuft in der Zeitzone des Anbieters, nicht in der lokalen:
 Googles kostenlose Stufe setzt um Mitternacht Pacific zurück.
+
+---
+
+## Fehlersuche
+
+**Diagnose herunterladen** steht auf der Integrationsseite unter dem
+Drei-Punkte-Menü. Die Datei enthält Laufzeitzustand, Ledger-Zählerstände und
+Feed-Status — ohne API-Schlüssel, die werden vor dem Export geschwärzt. Das
+ist der erste Anhang für ein Issue, nicht zehn Rückfragen.
+
+Ein abgelehnter Schlüssel beim Einrichten unterscheidet jetzt vier Fälle
+statt eines Satzes „nicht angenommen": abgelehnt, kein Kontingent
+freigeschaltet (bei Mistral zum Beispiel ein fehlendes API-Abonnement),
+Limit erreicht, oder der Anbieter antwortet gerade nicht. Jeder Fall sagt,
+was als Nächstes zu tun ist.
 
 ---
 
