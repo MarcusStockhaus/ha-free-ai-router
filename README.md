@@ -396,3 +396,7 @@ dass jede Empfehlung gekauft ist.
 [CONTRIBUTING.md](CONTRIBUTING.md) — mit einem echten Beispiel-Diff.
 
 Entwicklung, Probe-CLI und Tests: [ENTWICKLUNG.md](ENTWICKLUNG.md).
+
+## Lizenz
+
+[MIT](LICENSE).

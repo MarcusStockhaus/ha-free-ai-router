@@ -18,6 +18,11 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          # brands: die Aufnahme ins home-assistant/brands-Repo ist ein
+          # eigener PR dort und nur fuer den HACS-Standardkatalog Pflicht --
+          # dieses Projekt will bewusst nicht in den Standardkatalog (siehe
+          # README, Abschnitt Installation).
+          ignore: brands
 
   registry:
     name: Anbieterdateien

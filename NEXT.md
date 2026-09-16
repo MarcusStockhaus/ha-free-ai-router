@@ -557,12 +557,24 @@ benutzerdefiniertes Repository auch ohne Releases vom Standard-Branch
 installieren, und ein erster Release ist eine Entscheidung des Autors über
 Changelog und Zeitpunkt, keine, die sich nebenbei mit erledigen lässt.
 
-**Nicht lokal verifizierbar:** ob `hacs/action` beim ersten CI-Lauf wirklich
-grün wird. Die Aktion prüft unter anderem gegen das `home-assistant/brands`-
-Repository (Icon/Logo) — für ein reines Custom-Repository ohne Aufnahme in
-den Standardkatalog ist das nach HACS-eigener Doku keine Voraussetzung, aber
-das ist Dokumentationswissen, kein Testlauf. Beim ersten Push auf `main`
-zeigt sich, ob der Job durchläuft oder ein Feld nachgetragen werden muss.
+**Der erste CI-Lauf des `hacs`-Jobs war rot** — genau die drei Punkte, die
+sich lokal nicht prüfen ließen: `brands` (kein Eintrag im
+`home-assistant/brands`-Repo), `topics` (das GitHub-Repo hatte keine
+Themen), `license` (keine `LICENSE`-Datei). Behoben:
+
+- `brands` steht jetzt in `ignore:` des CI-Jobs — die Aufnahme dort ist ein
+  eigener PR in einem fremden Repo und laut HACS-Doku nur für den
+  Standardkatalog Pflicht, den dieses Projekt bewusst nicht will.
+- `topics` sind gesetzt (`gh repo edit --add-topic`): `home-assistant`,
+  `hacs-integration`, `home-assistant-integration`, `ai`,
+  `conversation-agent`.
+- `license` ließ sich nicht ignorieren (steht nicht auf der Ignore-Liste der
+  Aktion) und war ohnehin eine echte Lücke — eine `LICENSE`-Datei (MIT) ist
+  jetzt da. MIT ist die in der HA-Custom-Component-Szene übliche Wahl und
+  passt zum geringen Anspruch des Projekts; wer eine andere Lizenz will,
+  tauscht die Datei aus.
+
+Zweiter CI-Lauf steht noch aus.
 
 **Bewusst nicht angefasst:** die eigentliche Einrichtung — der Autor testet
 sie in der fertigen Fassung selbst, ausgiebig. Englische Übersetzung bleibt
