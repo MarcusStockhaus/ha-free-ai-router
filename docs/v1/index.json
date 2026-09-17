@@ -2,7 +2,7 @@
   "schema_version": 1,
   "current": "providers.json",
   "signature": "providers.json.sig",
-  "generated_at": "2026-09-16T08:29:42.369635+00:00",
+  "generated_at": "2026-09-17T08:34:39.893800+00:00",
   "history": [
     "2026-09-11T08-30-10Z.json",
     "2026-09-11T09-26-39Z.json",
@@ -12,7 +12,8 @@
     "2026-09-13T08-13-13Z.json",
     "2026-09-14T08-48-20Z.json",
     "2026-09-15T08-35-28Z.json",
-    "2026-09-16T08-29-42Z.json"
+    "2026-09-16T08-29-42Z.json",
+    "2026-09-17T08-34-39Z.json"
   ],
   "hinweis": "Clients lesen providers.json und pruefen providers.json.sig. Diese Indexdatei ist unsigniert und nur zum Nachsehen."
 }

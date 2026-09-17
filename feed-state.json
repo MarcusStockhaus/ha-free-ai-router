@@ -7,23 +7,24 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 1.063721582999996,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.6767843709999966,
       "limits": {},
-      "ttft_s": 1.0420016849999953
+      "ttft_s": 0.6316054789999725
     },
     "google_ai_studio/gemini-3.5-flash": {
-      "alive": true,
+      "alive": false,
       "capabilities": {
         "structured_output": true,
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-14T08:48:20.766462+00:00",
-      "consecutive_failures": 0,
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
+      "consecutive_failures": 1,
       "last_full_at": "2026-09-14T08:48:20.766462+00:00",
+      "last_status": 503,
       "latency_total_s": 0.7916044970000016,
       "limits": {},
       "ttft_s": 0.7346219820000002
@@ -35,26 +36,25 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.8974971409999952,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.6746966800000109,
       "limits": {},
-      "ttft_s": 0.890034883999995
+      "ttft_s": 0.6704662049999683
     },
     "google_ai_studio/gemini-3.8-flash": {
-      "alive": false,
+      "alive": true,
       "capabilities": {
         "structured_output": true,
         "vision": true
       },
-      "checked_at": "2026-09-14T08:48:20.766462+00:00",
-      "consecutive_failures": 1,
-      "last_full_at": "2026-09-11T09:32:05.572631+00:00",
-      "last_status": null,
-      "latency_total_s": 18.38198556200001,
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
+      "consecutive_failures": 0,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 6.574676451000016,
       "limits": {},
-      "ttft_s": 18.372573552000006
+      "ttft_s": 6.563989755000023
     },
     "google_ai_studio/gemma-4-26b-a4b-it": {
       "alive": true,
@@ -63,12 +63,12 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 2.567370670999999,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 2.5269150170000216,
       "limits": {},
-      "ttft_s": 0.7329013160000031
+      "ttft_s": 0.7290490350000027
     },
     "google_ai_studio/gemma-4-31b-it": {
       "alive": true,
@@ -76,12 +76,12 @@
         "structured_output": true,
         "tools": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 33.944521318,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 23.05501518799997,
       "limits": {},
-      "ttft_s": 31.886183724999995
+      "ttft_s": 23.01859903799999
     },
     "groq/openai/gpt-oss-120b": {
       "alive": true,
@@ -90,15 +90,15 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.32164451100001656,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.35423184899997295,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.3175642239999945
+      "ttft_s": 0.3515048360000037
     },
     "groq/openai/gpt-oss-20b": {
       "alive": true,
@@ -107,15 +107,15 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.24701564899999084,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.4515431219999755,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.2437989029999983
+      "ttft_s": 0.44964658599997165
     },
     "groq/qwen/qwen3.8-27b": {
       "alive": true,
@@ -124,15 +124,15 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.11037394100000597,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.14931740399998716,
       "limits": {
         "rpm": 1000,
         "tpm": 8000
       },
-      "ttft_s": 0.10807808399999885
+      "ttft_s": 0.14521381899999142
     },
     "mistral/codestral-2508": {
       "alive": true,
@@ -141,12 +141,12 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.4867208120000157,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.6574132519999694,
       "limits": {},
-      "ttft_s": 0.4523020430000031
+      "ttft_s": 0.5009096079999722
     },
     "mistral/ministral-3b-2512": {
       "alive": true,
@@ -155,30 +155,30 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.31012400999998135,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.4189787490000185,
       "limits": {},
-      "ttft_s": 0.30639645899998413
+      "ttft_s": 0.41578703300001507
     },
     "mistral/ministral-8b-2512": {
       "alive": true,
       "capabilities": {
         "structured_output": true,
         "tools": true,
-        "vision": false
+        "vision": true
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-16T08:29:42.369635+00:00",
-      "latency_total_s": 0.39353764999998475,
+      "last_full_at": "2026-09-17T08:34:39.893800+00:00",
+      "latency_total_s": 0.726713425000014,
       "limits": {},
-      "ttft_s": 0.36622195600000396
+      "ttft_s": 0.7171279020000156
     },
     "mistral/mistral-small-2603": {
       "capabilities": {},
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
       "last_status": 429,
       "limits": {}
@@ -190,9 +190,10 @@
         "tools": false,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-16T08:29:42.369635+00:00",
+      "last_status": 401,
       "latency_total_s": 0.44050145200000657,
       "limits": {},
       "ttft_s": null
@@ -204,14 +205,15 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-16T08:29:42.369635+00:00",
+      "checked_at": "2026-09-17T08:34:39.893800+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-16T08:29:42.369635+00:00",
+      "last_status": 401,
       "latency_total_s": 28.61459263499998,
       "limits": {},
       "ttft_s": 28.612786814999993
     }
   },
-  "updated_at": "2026-09-16T08:29:42.369635+00:00",
+  "updated_at": "2026-09-17T08:34:39.893800+00:00",
   "version": 2
 }
