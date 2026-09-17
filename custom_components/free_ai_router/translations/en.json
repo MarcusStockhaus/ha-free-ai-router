@@ -19,8 +19,8 @@
         }
       },
       "result": {
-        "title": "{name}: {working} von {total} Modellen erreichbar",
-        "description": "Gemessen, nicht abgeschrieben:\n\n{report}",
+        "title": "Messergebnis",
+        "description": "**{name}**: {working} von {total} Modellen erreichbar\n\nGemessen, nicht abgeschrieben:\n\n{report}",
         "menu_options": {
           "add_another": "Weiteren Anbieter hinzufügen",
           "summary": "Fertig, Übersicht anzeigen"

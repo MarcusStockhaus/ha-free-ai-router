@@ -167,6 +167,71 @@ def test_jeder_fehlerschluessel_hat_einen_text() -> None:
     assert not fehlend, f"ohne Text in config.error: {fehlend}"
 
 
+def _menu_schritte_je_klasse() -> dict[str, set[str]]:
+    """``step_id`` von ``async_show_menu``-Aufrufen, nach Klasse getrennt.
+
+    Klassengetrennt und nicht global, weil derselbe Schrittname in
+    verschiedenen Fluessen unterschiedlich gerendert wird: der
+    Ergebnis-Schritt ist im Haupt-Flow ein Menue (Platzhalter im Titel
+    bleiben leer), im Subentry-Flow aber ein Formular (dort funktionieren
+    sie). Ueber ``_BLOECKE`` weiss :func:`test_menue_titel_haben_keine_platzhalter`
+    danach, welcher Textblock zu welcher Klasse gehoert.
+    """
+    ergebnis: dict[str, set[str]] = {}
+    for knoten in ast.walk(_baum()):
+        if not isinstance(knoten, ast.ClassDef):
+            continue
+        schritte: set[str] = set()
+        for unter in ast.walk(knoten):
+            if not isinstance(unter, ast.Call):
+                continue
+            aufgerufen = unter.func.attr if isinstance(unter.func, ast.Attribute) else None
+            if aufgerufen != "async_show_menu":
+                continue
+            for arg in unter.keywords:
+                if (
+                    arg.arg == "step_id"
+                    and isinstance(arg.value, ast.Constant)
+                    and isinstance(arg.value.value, str)
+                ):
+                    schritte.add(arg.value.value)
+        if schritte:
+            ergebnis[knoten.name] = schritte
+    return ergebnis
+
+
+def test_menue_titel_haben_keine_platzhalter() -> None:
+    """``async_show_menu`` gibt seinen Titel ohne ``description_placeholders``
+    an ``localize()`` weiter — im Home-Assistant-Frontend nachgelesen
+    (``renderMenuHeader`` in ``dialog-data-entry-flow``): anders als
+    ``renderShowFormStepHeader`` fehlt dort schlicht das zweite Argument. Ein
+    ``{name}`` im Titel eines Menu-Schritts bleibt deshalb fuer immer ein
+    ``[formatjs Error: MISSING_VALUE]``, egal wie sorgfaeltig der Python-Code
+    seine Platzhalter befuellt — live am 17.09.2026 beim Ergebnis-Schritt
+    des Haupt-Flows aufgefallen. Die Beschreibung ist davon nicht betroffen,
+    dort werden Platzhalter nachweislich ausgewertet; dynamischer Inhalt
+    gehoert bei einem Menu-Schritt also dorthin, nicht in den Titel.
+
+    Klassengetrennt geprueft: derselbe Schrittname "result" ist im
+    Subentry-Flow ein Formular, nicht ein Menue, und darf dort seinen
+    informativen, platzhalterhaltigen Titel behalten.
+    """
+    import re
+
+    je_klasse = _menu_schritte_je_klasse()
+    assert je_klasse, "kein async_show_menu-Schritt gefunden — Test trifft nicht mehr zu"
+
+    fehlend: list[str] = []
+    for klasse, schritte in je_klasse.items():
+        for pfad in _BLOECKE.get(klasse, ()):
+            texte = _block(pfad)["step"]
+            for schritt in schritte:
+                titel = (texte.get(schritt) or {}).get("title", "")
+                if re.search(r"\{\w+\}", titel):
+                    fehlend.append(f"{pfad}.step.{schritt}.title: {titel!r}")
+    assert not fehlend, f"Platzhalter in einem Menu-Titel bleiben im Frontend leer: {fehlend}"
+
+
 def test_der_anbieter_subentry_ist_beschriftet() -> None:
     """Ohne diese Texte heisst der Knopf auf der Integrationsseite „anbieter"."""
     block = _block("config_subentries.anbieter")
