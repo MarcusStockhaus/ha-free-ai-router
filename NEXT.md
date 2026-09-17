@@ -653,6 +653,58 @@ werden kann.
 
 249 Tests, `ruff check` sauber.
 
+### Dritter Fund: fehlendes Requirement, live erst nach der ersten echten HACS-Installation sichtbar (18.09.2026)
+
+Nach dem HACS-Update auf die Fixes von oben scheiterte das Setup komplett:
+
+```
+ModuleNotFoundError: No module named 'voluptuous_openapi'
+  File ".../ai_task.py", line 24, in <module>
+    from .task_adapter import (...)
+  File ".../task_adapter.py", line 24, in <module>
+    from voluptuous_openapi import convert
+```
+
+`voluptuous_openapi` wird in `conversation.py` und `task_adapter.py`
+unversion importiert (kein try/except), beide Module liegen im
+Pflicht-Ladepfad (`ai_task`, `conversation` — beide immer in `PLATFORMS`).
+Home Assistant installiert fuer eine Custom Component aber nur, was ihr
+eigenes `manifest.json` unter `requirements` nennt — nicht, was zufaellig
+schon auf dem System steht, weil eine andere Integration dasselbe Paket
+mitgebracht hat. Genau das ist die ganze Zeit passiert: jeder fruehere
+Testlauf lief auf einem System, das `voluptuous_openapi` schon aus anderem
+Grund installiert hatte, und deshalb fiel das fehlende Requirement nie auf
+— bis zur ersten Installation ueber HACS auf frischem Boden.
+
+Fix: `manifest.json` bekommt `voluptuous-openapi>=0.0.5` (dieselbe Version
+wie in `requirements-dev.txt`).
+
+**Zwei andere Fremdimporte extra gegengeprueft, um dieselbe Fehlerklasse
+nicht zweimal zu uebersehen** — beide stellten sich als bereits richtig
+behandelt heraus:
+
+- `PIL` (Pillow) in `imaging.py` — steht in einem try/except, faellt ohne
+  Pillow auf unveraendertes Durchreichen des Bildes zurueck. Kommentar im
+  Code sagt schon "in HA immer vorhanden".
+- `cryptography` in `feed.py` (Ed25519-Signaturpruefung) — ebenso per
+  try/except abgesichert, und der Codepfad laeuft ohnehin nur, wenn der
+  Feed eingeschaltet ist (in dieser Fassung nicht der Fall).
+
+Beide sind echte HA-Core-Abhaengigkeiten (Home Assistant selbst braucht
+Pillow fuer Kamerabilder und cryptography fuer TLS/Tokens), deshalb
+absichtlich nicht im eigenen `manifest.json` dupliziert — dieselbe
+Unterscheidung, die der neue Test unten trifft.
+
+**Neuer Test, `tests/test_manifest.py`:** prueft jeden Fremdimport im
+ganzen Paket per AST. Ungeschuetzt (kein try/except) und ohne passendes
+`requirements`-Feld — durchfaellt. Gegenprobe gefahren: mit dem
+`voluptuous-openapi`-Eintrag testweise entfernt, findet der Test beide
+betroffenen Dateien exakt. `PIL`, `cryptography`, `aiohttp` und
+`voluptuous` stehen auf einer expliziten Ausnahmeliste mit Begruendung im
+Testdocstring.
+
+250 Tests, `ruff check` sauber.
+
 ---
 
 ## Kleinkram, notiert damit er nicht verlorengeht
