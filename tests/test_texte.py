@@ -298,15 +298,38 @@ def test_keine_verweise_auf_einen_konfigurieren_knopf() -> None:
         assert "Konfigurieren" not in text, pfad.name
 
 
-def test_die_uebersicht_hat_eine_eindeutige_absende_beschriftung() -> None:
-    """Der Uebersichts-Schritt ist ein leeres Formular — nur Text, ein Knopf.
+def test_die_uebersicht_erstellt_sofort_ohne_eigenen_bestaetigungsschritt() -> None:
+    """Kein separates Formular mehr fuer "summary" — der Schritt legt den
+    Eintrag direkt an.
 
-    Ohne eigenes ``submit`` zeigt HA dort den generischen Weiter-Text. Live
-    am 17.09.2026 aufgefallen: vier Anbieter eingerichtet, aber kein Config
-    Entry entstanden — der letzte Klick auf der Uebersicht war offenbar
-    nicht als "jetzt wirklich fertig" zu erkennen.
+    Fruehere Fassung zeigte hier ein leeres Formular mit nur einem Knopf,
+    um vor dem Abschluss noch einmal zu bestaetigen. Live am 17.09.2026
+    aufgefallen: genau dieser zusaetzliche, unauffaellige Knopf wurde
+    uebersehen — vier Anbieter eingerichtet, aber kein Config Entry
+    entstanden. "Fertig" in der Menue-Auswahl davor war die Bestaetigung
+    schon; ein zweiter Klick bot nur eine weitere Gelegenheit, den Dialog
+    versehentlich zu schliessen. Dieser Test haelt fest, dass "summary" nie
+    wieder ein eigener sichtbarer Formular- oder Menue-Schritt wird.
     """
-    assert _block("config")["step"]["summary"].get("submit")
+    je_klasse = _schritte_je_klasse()
+    assert "summary" not in je_klasse.get("FreeAIRouterConfigFlow", set())
+    assert "summary" not in _texte()["config"]["step"]
+
+
+def test_create_entry_platzhalter_werden_gefuellt() -> None:
+    """``config.create_entry`` bekommt keinen eigenen Test wie ``step`` —
+    ohne diesen wuerde ein vergessener Platzhalter dort erst live auffallen,
+    genau wie beim Menue-Titel-Fehler zuvor.
+    """
+    import re
+
+    quelle = QUELLE.read_text(encoding="utf-8")
+    fehlend: list[str] = []
+    for name, text in _block("config")["create_entry"].items():
+        for platzhalter in re.findall(r"\{(\w+)\}", text):
+            if f'"{platzhalter}"' not in quelle:
+                fehlend.append(f"config.create_entry.{name}: {{{platzhalter}}}")
+    assert not fehlend, f"im Code nicht gesetzt: {fehlend}"
 
 
 def test_platzhalter_werden_auch_gefuellt() -> None:

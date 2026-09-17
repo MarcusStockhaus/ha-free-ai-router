@@ -589,6 +589,70 @@ Strings plus die Onboarding-Felder aller vier Anbieterdateien.
 verbannten Konfigurieren-Verweis in `test_texte.py`). `ruff check` und
 `tools/validate_registry.py` sauber.
 
+### Zwei echte Bugs aus dem ersten Live-Durchgang (17.09.2026)
+
+Der Autor hat nach der HACS-Installation den Assistenten wirklich als
+Einsteiger durchgespielt — genau der Test, der in Abschnitt 2 seit Phase 2
+offensteht. Zwei echte Fehler dabei gefunden, beide vorher nicht sichtbar,
+weil dieser Teil des Flows lokal nicht testbar ist (`config_flow.py`
+importiert `homeassistant`, siehe `__init__.py`-Docstring):
+
+1. **Menü-Titel mit Platzhaltern bleiben im Frontend leer.** Der
+   Ergebnis-Schritt (Menü: weiterer Anbieter / fertig) zeigte bei jedem der
+   vier Anbieter `[formatjs Error: MISSING_VALUE]` statt eines Titels. Im
+   Frontend-Bundle nachgelesen (`hass_frontend`, Chunk mit `menu_options`):
+
+   ```js
+   renderMenuHeader:        (e,o) => e.localize(`...${step_id}.title`)
+   renderShowFormStepHeader:(e,o) => e.localize(`...${step_id}.title`, o.description_placeholders)
+   ```
+
+   `renderMenuHeader` reicht `description_placeholders` gar nicht an
+   `localize()` weiter — ein `{name}` im Titel eines Menü-Schritts bleibt
+   damit strukturell fuer immer leer, unabhängig vom Python-Code. Der
+   gleichnamige `result`-Schritt im Subentry-Flow ist dagegen ein echtes
+   `async_show_form` und war nie betroffen. Fix: Titel des Menü-Schritts
+   fest auf „Messergebnis", die dynamische Zeile wandert in die
+   Beschreibung (dort funktionieren Platzhalter nachweislich — der
+   `{report}`-Teil hat schon immer richtig gerendert). Test
+   `test_menue_titel_haben_keine_platzhalter`, klassengetrennt über die
+   bestehende `_BLOECKE`-Zuordnung, damit der zu Recht platzhalterhaltige
+   Formular-Titel im Subentry-Flow nicht fälschlich angemeckert wird.
+
+2. **Der schwerere Fund:** vier Anbieter im Assistenten eingerichtet, aber
+   kein Config Entry entstanden — nichts unter Geräte, `ai_task`-Aufruf
+   scheitert mit „entity not found". Ursache: der Übersichts-Schritt
+   (`async_step_summary`) war ein Formular ganz ohne Felder, nur Text und
+   ein Knopf mit dem generischen HA-Standardtext. "Fertig, Übersicht
+   anzeigen" im Menü davor sah bereits wie die Bestätigung aus — der
+   zweite, unauffällige Knopf danach wurde übersehen, der Dialog vermutlich
+   geschlossen, ohne dass je `async_create_entry` lief.
+
+   Erst mit einer eigenen Beschriftung „Einrichtung abschließen" behoben,
+   dann noch einmal grundsätzlicher: der ganze zweite Bestätigungsschritt
+   ist unnötig. `async_step_summary` legt den Eintrag jetzt **sofort** an,
+   sobald „Fertig" gewählt wird — kein eigenes Formular mehr, keine zweite
+   Gelegenheit, den Dialog versehentlich zu schließen. Die Übersicht
+   (welches Profil wird bedient, wo bleibt eine Lücke, die
+   „Weiter geht's"-Links zu Assist und den Blueprints) steht jetzt im Text
+   des Abschluss-Bildschirms, den Home Assistant nach jedem
+   `async_create_entry` ohnehin selbst zeigt (`config.create_entry.default`
+   statt `config.step.summary`). Test
+   `test_die_uebersicht_erstellt_sofort_ohne_eigenen_bestaetigungsschritt`
+   haelt fest, dass „summary" nie wieder ein eigener sichtbarer Schritt
+   wird, dazu `test_create_entry_platzhalter_werden_gefuellt` fuer die
+   `{overview}`-Platzhalter im neuen Block — dieselbe Art Test, die den
+   ersten Fehler oben schon haette verhindern koennen, hier von Anfang an
+   mitgebaut.
+
+Beide Funde stammen aus demselben Mechanismus: eine Fehlerklasse, die nur
+im echten Frontend sichtbar wird, weil sie dort rendert, nicht im
+Python-Code. Genau der Grund, warum der Einsteiger-Test in Abschnitt 2 als
+eigenes Akzeptanzkriterium steht und nicht durch mehr Unit-Tests ersetzt
+werden kann.
+
+249 Tests, `ruff check` sauber.
+
 ---
 
 ## Kleinkram, notiert damit er nicht verlorengeht

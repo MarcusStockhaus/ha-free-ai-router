@@ -12,7 +12,15 @@ Ablauf:
    API-Aufrufe je Modell und laeuft je nach Anbieter deutlich laenger, als ein
    Formularschritt stehenbleiben darf.
 4. ``result`` — Messergebnis, dann Menue: weiterer Anbieter oder fertig.
-5. ``summary`` — welches Profil bedient wer, wo bleibt eine Luecke.
+5. ``summary`` — erstellt den Eintrag sofort, ohne eigenen Formularschritt.
+   Welches Profil wer bedient und wo eine Luecke bleibt steht auf dem
+   Abschluss-Bildschirm, den Home Assistant nach ``async_create_entry``
+   selbst zeigt. Fruehere Fassung hatte hier noch ein leeres Formular mit
+   nur einem Knopf zur Bestaetigung — "Fertig" im Menue der Stufe 4 war
+   die Bestaetigung schon, ein zweiter Klick bot nur eine weitere
+   Gelegenheit, den Dialog versehentlich zu schliessen. Live am
+   17.09.2026 aufgefallen: vier Anbieter eingerichtet, aber kein Config
+   Entry entstanden.
 
 Danach ist jeder eingerichtete Anbieter ein **Subentry** und damit eine eigene
 Zeile auf der Integrationsseite. Hinzufuegen, Schluessel ersetzen und
@@ -403,30 +411,33 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
     async def async_step_summary(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Eintrag sofort anlegen — kein eigener Bestaetigungsschritt mehr.
+
+        "Fertig, Uebersicht anzeigen" im Menue der Stufe 4 war die
+        Bestaetigung schon; ein zweites leeres Formular mit nur einem Knopf
+        bot nur eine weitere Gelegenheit, den Dialog versehentlich zu
+        schliessen, ohne dass etwas gespeichert wurde (live am 17.09.2026
+        so passiert). Die Uebersicht steht jetzt auf dem Abschluss-Bildschirm,
+        den Home Assistant nach jedem ``async_create_entry`` selbst zeigt.
+        """
         registry = await self._async_registry()
 
-        if user_input is not None:
-            # Je Anbieter ein Subentry. Der Config Entry selbst haelt keine
-            # Anbieterdaten mehr — sonst gaebe es zwei Wahrheiten, und die
-            # Integrationsseite zeigte die falsche.
-            return self.async_create_entry(
-                title=TITLE,
-                data={},
-                subentries=[
-                    ConfigSubentryData(
-                        data={CONF_PROVIDER: provider_id, **daten},
-                        subentry_type=SUBENTRY_TYPE_ANBIETER,
-                        title=registry.require(provider_id).name,
-                        unique_id=provider_id,
-                    )
-                    for provider_id, daten in self._providers.items()
-                ],
-            )
-
-        return self.async_show_form(
-            step_id="summary",
-            data_schema=vol.Schema({}),
+        # Je Anbieter ein Subentry. Der Config Entry selbst haelt keine
+        # Anbieterdaten mehr — sonst gaebe es zwei Wahrheiten, und die
+        # Integrationsseite zeigte die falsche.
+        return self.async_create_entry(
+            title=TITLE,
+            data={},
             description_placeholders={"overview": self._coverage_text(registry)},
+            subentries=[
+                ConfigSubentryData(
+                    data={CONF_PROVIDER: provider_id, **daten},
+                    subentry_type=SUBENTRY_TYPE_ANBIETER,
+                    title=registry.require(provider_id).name,
+                    unique_id=provider_id,
+                )
+                for provider_id, daten in self._providers.items()
+            ],
         )
 
     def _coverage_text(self, registry: Registry) -> str:

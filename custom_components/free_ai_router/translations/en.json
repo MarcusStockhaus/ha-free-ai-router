@@ -25,11 +25,6 @@
           "add_another": "Weiteren Anbieter hinzufügen",
           "summary": "Fertig, Übersicht anzeigen"
         }
-      },
-      "summary": {
-        "title": "Übersicht",
-        "description": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht.\n\n### Weiter geht's\n\n- **Assist verbinden:** [Sprachassistenten öffnen](https://my.home-assistant.io/redirect/voice_assistants/) und Free AI Router als Gesprächsagenten wählen — auf derselben Seite steht auch die bevorzugte KI-Aufgaben-Entity.\n- **Kameraanalyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml)\n- **Türklingel-Analyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml)",
-        "submit": "Einrichtung abschließen"
       }
     },
     "progress": {
@@ -45,6 +40,9 @@
       "already_configured": "Free AI Router ist bereits eingerichtet.",
       "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
       "reconfigure_successful": "Anbieter übernommen."
+    },
+    "create_entry": {
+      "default": "So werden die Profile bedient:\n\n{overview}\n\nEin Profil ohne Reserve fällt aus, sobald sein einziger Kanal wegbricht.\n\n### Weiter geht's\n\n- **Assist verbinden:** [Sprachassistenten öffnen](https://my.home-assistant.io/redirect/voice_assistants/) und Free AI Router als Gesprächsagenten wählen — auf derselben Seite steht auch die bevorzugte KI-Aufgaben-Entity.\n- **Kameraanalyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml)\n- **Türklingel-Analyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml)"
     }
   },
   "entity": {
