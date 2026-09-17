@@ -298,6 +298,17 @@ def test_keine_verweise_auf_einen_konfigurieren_knopf() -> None:
         assert "Konfigurieren" not in text, pfad.name
 
 
+def test_die_uebersicht_hat_eine_eindeutige_absende_beschriftung() -> None:
+    """Der Uebersichts-Schritt ist ein leeres Formular — nur Text, ein Knopf.
+
+    Ohne eigenes ``submit`` zeigt HA dort den generischen Weiter-Text. Live
+    am 17.09.2026 aufgefallen: vier Anbieter eingerichtet, aber kein Config
+    Entry entstanden — der letzte Klick auf der Uebersicht war offenbar
+    nicht als "jetzt wirklich fertig" zu erkennen.
+    """
+    assert _block("config")["step"]["summary"].get("submit")
+
+
 def test_platzhalter_werden_auch_gefuellt() -> None:
     """Ein ``{report}`` im Text ohne Wert im Code bliebe als Klammer stehen."""
     import re
