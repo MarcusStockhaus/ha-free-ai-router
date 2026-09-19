@@ -7,12 +7,12 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-18T08:09:30.250217+00:00",
-      "latency_total_s": 0.618852504000003,
+      "last_full_at": "2026-09-19T07:58:13.747346+00:00",
+      "latency_total_s": 0.9797137309999897,
       "limits": {},
-      "ttft_s": 0.6077843919999992
+      "ttft_s": 0.9541047429999878
     },
     "google_ai_studio/gemini-3.5-flash": {
       "alive": false,
@@ -36,12 +36,12 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-18T08:09:30.250217+00:00",
-      "latency_total_s": 0.6245765799999958,
+      "last_full_at": "2026-09-19T07:58:13.747346+00:00",
+      "latency_total_s": 0.6203532979999977,
       "limits": {},
-      "ttft_s": 0.620841022999997
+      "ttft_s": 0.6177501810000052
     },
     "google_ai_studio/gemini-3.8-flash": {
       "alive": true,
@@ -63,12 +63,12 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-18T08:09:30.250217+00:00",
-      "latency_total_s": 4.802673095999992,
+      "last_full_at": "2026-09-19T07:58:13.747346+00:00",
+      "latency_total_s": 2.5281328860000087,
       "limits": {},
-      "ttft_s": 0.7592036519999965
+      "ttft_s": 0.6644387219999999
     },
     "google_ai_studio/gemma-4-31b-it": {
       "alive": true,
@@ -76,12 +76,12 @@
         "structured_output": true,
         "tools": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
-      "last_full_at": "2026-09-18T08:09:30.250217+00:00",
-      "latency_total_s": 10.240600591000003,
+      "last_full_at": "2026-09-19T07:58:13.747346+00:00",
+      "latency_total_s": 41.861709453,
       "limits": {},
-      "ttft_s": 9.093551538
+      "ttft_s": 6.762852568000014
     },
     "groq/openai/gpt-oss-120b": {
       "alive": true,
@@ -90,7 +90,7 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -108,7 +108,7 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -126,7 +126,7 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -144,7 +144,7 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -159,7 +159,7 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -174,7 +174,7 @@
         "tools": true,
         "vision": true
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-17T08:34:39.893800+00:00",
       "last_status": 401,
@@ -184,7 +184,7 @@
     },
     "mistral/mistral-small-2603": {
       "capabilities": {},
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_status": 401,
       "limits": {}
@@ -196,7 +196,7 @@
         "tools": false,
         "vision": false
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-16T08:29:42.369635+00:00",
       "last_status": 401,
@@ -211,7 +211,7 @@
         "tools": true,
         "vision": false
       },
-      "checked_at": "2026-09-18T08:09:30.250217+00:00",
+      "checked_at": "2026-09-19T07:58:13.747346+00:00",
       "consecutive_failures": 0,
       "last_full_at": "2026-09-16T08:29:42.369635+00:00",
       "last_status": 401,
@@ -220,6 +220,6 @@
       "ttft_s": 28.612786814999993
     }
   },
-  "updated_at": "2026-09-18T08:09:30.250217+00:00",
+  "updated_at": "2026-09-19T07:58:13.747346+00:00",
   "version": 2
 }
