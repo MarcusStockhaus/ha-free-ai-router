@@ -44,5 +44,4 @@ async def async_get_config_entry_diagnostics(
         },
         "laufzeit": runtime.diagnostics(),
         "ledger": runtime.ledger.snapshot(),
-        "feed": runtime.feed.diagnostics() if runtime.feed is not None else None,
     }

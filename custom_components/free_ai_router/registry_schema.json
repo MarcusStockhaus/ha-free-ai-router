@@ -83,7 +83,9 @@
       "required": [
         "signup_url",
         "steps_de",
+        "steps_en",
         "data_note_de",
+        "data_note_en",
         "credit_card_required"
       ],
       "properties": {
@@ -104,6 +106,22 @@
           "type": "string",
           "minLength": 1,
           "description": "Eine ehrliche Zeile, kein Rechtstext."
+        },
+        "steps_en": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Dieselben Schritte auf Englisch, gleiche Anzahl."
+        },
+        "data_note_en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary_en": {
+          "type": "string"
         },
         "credit_card_required": {
           "type": "boolean"

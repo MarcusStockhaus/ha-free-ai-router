@@ -99,6 +99,7 @@ def test_mistral_kodiert_das_fenster_im_headernamen() -> None:
     assert info.limit_requests == 60
     assert info.remaining_requests == 59
     assert info.reset_requests_s == 60.0
+    assert info.requests_window_s == 60.0
 
 
 def test_limit_null_bedeutet_kein_kontingent() -> None:

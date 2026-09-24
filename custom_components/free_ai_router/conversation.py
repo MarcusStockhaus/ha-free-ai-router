@@ -34,9 +34,10 @@ from .adapters.base import (
     ToolSpec,
 )
 from .client import NoChannelAvailable
-from .const import PROFILE_SCHNELL
+from .const import DOMAIN, PROFILE_SCHNELL
 from .entity import RouterEntity
 from .router import Requirements
+from .sprache import sprache_aus, t
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +66,8 @@ class FreeAIRouterConversationEntity(
         RouterEntity.__init__(self, entry)
         self._attr_translation_key = "assist"
         self._attr_unique_id = f"{entry.entry_id}_conversation"
+        # Feste ID, unabhaengig von der Systemsprache — siehe ai_task.OBJEKT_IDS.
+        self.entity_id = f"conversation.{DOMAIN}_assist"
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -94,10 +97,14 @@ class FreeAIRouterConversationEntity(
                 )
         except NoChannelAvailable as err:
             _LOGGER.warning("Assist: %s", err.report())
-            raise HomeAssistantError(err.report()) from err
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="no_channel",
+                translation_placeholders={"detail": err.report()},
+            ) from err
 
         response = intent.IntentResponse(language=user_input.language)
-        response.async_set_speech(self._last_text(chat_log))
+        response.async_set_speech(self._last_text(chat_log, user_input.language))
         return conversation.ConversationResult(
             response=response,
             conversation_id=chat_log.conversation_id,
@@ -152,11 +159,13 @@ class FreeAIRouterConversationEntity(
             pass
 
     @staticmethod
-    def _last_text(chat_log: conversation.ChatLog) -> str:
+    def _last_text(chat_log: conversation.ChatLog, language: str | None) -> str:
         for content in reversed(chat_log.content):
             if content.role == "assistant" and content.content:
                 return str(content.content)
-        return "Dazu habe ich keine Antwort bekommen."
+        # In der Sprache der Anfrage, nicht der des Systems: Assist spricht mit
+        # der Person, die gefragt hat.
+        return t(sprache_aus(language), "assist_keine_antwort")
 
 
 def _tool_specs(chat_log: conversation.ChatLog) -> tuple[ToolSpec, ...]:

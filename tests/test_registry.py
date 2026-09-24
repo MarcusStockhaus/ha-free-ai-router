@@ -1,6 +1,6 @@
 """Registry- und Allowlist-Tests.
 
-Die Allowlist ist die zweite Sicherheitslinie hinter der Feed-Signatur
+Die Allowlist ist die Sicherheitslinie hinter dem Review von Anbieterdateien
 (Phase 3). Sie muss auch dann halten, wenn eine Registry-Datei manipuliert
 ist — deshalb steht sie im Python-Code und wird hier scharf geprueft.
 """
@@ -38,7 +38,9 @@ MINIMAL = {
     "onboarding": {
         "signup_url": "https://console.groq.com/keys",
         "steps_de": ["anmelden"],
+        "steps_en": ["sign in"],
         "data_note_de": "kein Training",
+        "data_note_en": "no training",
         "credit_card_required": False,
     },
     "models": [
@@ -89,8 +91,8 @@ def test_allowlist_weist_alles_andere_ab(url: str) -> None:
 
 
 def test_registry_datei_kann_keinen_fremden_endpunkt_einfuehren() -> None:
-    """Der Kern der Sache: ein kompromittierter Feed darf Modelle und Texte
-    aendern, aber nicht, wohin die Kamerabilder fliessen."""
+    """Der Kern der Sache: eine manipulierte Anbieterdatei darf Modelle und
+    Texte aendern, aber nicht, wohin die Kamerabilder fliessen."""
     with pytest.raises(HostNotAllowedError):
         Provider.parse(variant(base_url="https://angreifer.example/v1"), "test")
 
@@ -321,3 +323,23 @@ def test_gedeckelte_anbieter_fuehren_preise() -> None:
         for model in provider.models:
             assert model.pricing.input_per_mtok is not None, model.key
             assert model.pricing.output_per_mtok is not None, model.key
+
+
+def test_anbieterkarte_braucht_beide_sprachen() -> None:
+    """Eine Karte, die auf einem englischen System deutsch erscheint, waere
+    nur halb eingerichtet — deshalb faellt schon das Einlesen durch."""
+    onboarding = dict(MINIMAL["onboarding"])
+    del onboarding["steps_en"]
+    with pytest.raises(RegistryError, match="steps_en"):
+        Provider.parse(variant(onboarding=onboarding), "test")
+
+    onboarding = dict(MINIMAL["onboarding"], steps_en=["one", "two"])
+    with pytest.raises(RegistryError, match="gleich viele"):
+        Provider.parse(variant(onboarding=onboarding), "test")
+
+
+def test_jede_mitgelieferte_anbieterdatei_ist_zweisprachig() -> None:
+    for provider in load_registry():
+        ob = provider.onboarding
+        assert ob.schritte("en") and ob.datenhinweis("en"), provider.id
+        assert bool(ob.zusammenfassung("de")) == bool(ob.zusammenfassung("en")), provider.id

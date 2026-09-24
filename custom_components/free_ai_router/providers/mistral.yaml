@@ -15,15 +15,28 @@ onboarding:
   summary_de: >-
     Sehr großes Minutenkontingent gegen Datenfreigabe, gedeckelt auf 10 Dollar
     API-Nutzung im Monat. Schnell und schemafest, sieht auch Bilder.
+  summary_en: >-
+    Very large per-minute quota in exchange for data sharing, capped at
+    10 dollars of API usage per month. Fast, reliable with schemas, accepts
+    images.
   steps_de:
     - Auf console.mistral.ai anmelden
     - Telefonnummer bestätigen — ohne das bleibt die kostenlose Stufe zu
     - 'Das *API*-Abonnement mit Plan FREE aktivieren. Nicht zu verwechseln mit Le Chat oder Labs: Mistral führt drei getrennte Produktlinien, und nur das API-Abo schaltet die Chat-Modelle frei'
     - 'Unter "API Keys" auf "Create new key", Ablaufdatum setzen, Key kopieren'
+  steps_en:
+    - Sign in at console.mistral.ai
+    - Verify your phone number — the free tier stays closed without it
+    - 'Activate the *API* subscription with the FREE plan. Not to be confused with Le Chat or Labs: Mistral runs three separate product lines, and only the API subscription unlocks the chat models'
+    - 'Under "API Keys", click "Create new key", set an expiry date and copy the key'
   data_note_de: >-
     Die kostenlose Stufe verlangt die Zustimmung, dass Inhalte zum Training
     verwendet werden. Kamerabilder gehen damit in die Modellentwicklung ein.
     Die Nutzung ist außerdem auf 10 Dollar im Monat gedeckelt.
+  data_note_en: >-
+    The free tier requires consent to use content for training. Camera
+    images therefore become part of model development. Usage is also capped
+    at 10 dollars per month.
   credit_card_required: false
 
 # Limits am 10.09.2026 aus admin.mistral.ai/plateforme/limits abgelesen,

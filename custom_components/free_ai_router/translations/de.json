@@ -71,6 +71,30 @@
   "exceptions": {
     "no_channel": {
       "message": "Kein Anbieter konnte die Anfrage übernehmen: {detail}"
+    },
+    "schema_unuebersetzbar": {
+      "message": "Das Antwortschema lässt sich nicht übersetzen: {fehler}"
+    },
+    "schema_kein_objekt": {
+      "message": "Das Antwortschema ergibt kein Objekt."
+    },
+    "anhang_typ": {
+      "message": "Anhänge vom Typ {typ} werden nicht unterstützt, nur Bilder."
+    },
+    "anhang_ohne_datei": {
+      "message": "Der Anhang kam ohne Datei an."
+    },
+    "anhang_unlesbar": {
+      "message": "Der Anhang ist nicht lesbar: {fehler}"
+    },
+    "json_ungueltig": {
+      "message": "Der Anbieter hat kein gültiges JSON zum verlangten Schema geliefert: {antwort}"
+    },
+    "nicht_geladen": {
+      "message": "Free AI Router ist nicht geladen — nichts zu vermessen."
+    },
+    "nicht_eingerichtet": {
+      "message": "Nicht eingerichtet: {unbekannt}. Eingerichtet sind: {eingerichtet}."
     }
   },
   "issues": {
@@ -84,7 +108,7 @@
     },
     "profil_ohne_abdeckung": {
       "title": "Profil „{profil}“ hat keinen Kanal",
-      "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Fähigkeitserkennung beim Einrichten, und was sie misst, gewinnt über die Registry."
+      "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Integration mit dem eigenen Schlüssel, und die Messung gilt vor den Angaben der Anbieterdatei."
     },
     "budget_aufgebraucht": {
       "title": "{anbieter}: Monatsbudget aufgebraucht",
@@ -98,7 +122,7 @@
       "fields": {
         "anbieter": {
           "name": "Anbieter",
-          "description": "Leer lassen für alle eingerichteten Anbieter."
+          "description": "Anbieter-IDs, etwa google_ai_studio oder groq. Leer lassen für alle eingerichteten Anbieter."
         },
         "nur_lebendigkeit": {
           "name": "Nur Lebendigkeit",

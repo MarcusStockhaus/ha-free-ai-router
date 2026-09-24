@@ -1,10 +1,11 @@
 """Fest eincompilierte Host-Allowlist.
 
-Der Feed-Dienst (Phase 3) darf Registry-Dateien aktualisieren. Er darf damit
-Modelle, Limits und Texte aendern — aber niemals, *wohin* Daten fliessen.
-Deshalb steht die Liste erlaubter Hosts hier im Python-Code und nicht in den
-Datendateien. Ein kompromittierter Feed koennte sonst Kamerabilder umleiten,
-ohne dass es irgendwo auffaellt.
+Anbieterdateien sind YAML und sollen per Pull Request ohne Python-Kenntnisse
+aenderbar sein. Sie duerfen damit Modelle, Limits und Texte aendern — aber
+niemals, *wohin* Daten fliessen. Deshalb steht die Liste erlaubter Hosts hier
+im Python-Code und nicht in den Datendateien. Eine manipulierte Anbieterdatei
+koennte sonst Kamerabilder umleiten, ohne dass es beim Durchsehen des Diffs
+auffaellt.
 
 Aenderungen an dieser Liste sind ein Code-Review-Vorgang, kein Datenupdate.
 """
@@ -14,9 +15,9 @@ from __future__ import annotations
 from urllib.parse import urlsplit
 
 # Hosts, die eine Registry-Datei als ``base_url`` verwenden darf.
-# Bewusst breiter als die vier mitgelieferten Anbieter, damit der Feed neue
-# Anbieter aus dieser bekannten Menge nachliefern kann, ohne dass ein
-# Integrations-Update noetig ist.
+# Bewusst breiter als die vier mitgelieferten Anbieter: auch schon gepruefte,
+# aber derzeit nicht aufgenommene Anbieter stehen hier, damit ihre Wiederaufnahme
+# eine reine Datenaenderung bleibt.
 ALLOWED_HOSTS: frozenset[str] = frozenset(
     {
         "generativelanguage.googleapis.com",  # Google AI Studio

@@ -2,44 +2,44 @@
   "config": {
     "step": {
       "user": {
-        "title": "Anbieter auswählen",
-        "description": "Ein Anbieter mit Schlüssel reicht, dann ist die Integration eingerichtet. Weitere kommen danach auf der Integrationsseite über „Anbieter hinzufügen“ dazu — jeder gibt den Profilen eine Reserve. Für den Anfang reichen die als „empfohlen“ markierten.\n\n{cards}",
+        "title": "Choose a provider",
+        "description": "One provider with a key is enough to set up the integration. More can be added afterwards on the integration page via “Add provider” — each one gives the profiles a fallback. The providers marked “recommended” are enough to start with.\n\n{cards}",
         "data": {
-          "provider": "Anbieter"
+          "provider": "Provider"
         }
       },
       "key": {
-        "title": "Schlüssel für {name}",
-        "description": "Key-Seite öffnen: {signup_link}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+        "title": "Key for {name}",
+        "description": "Open the key page: {signup_link}\n\n{steps}\n\nData: {data_note}\n\n{error_detail}",
         "data": {
-          "api_key": "API-Schlüssel"
+          "api_key": "API key"
         },
         "data_description": {
-          "api_key": "Wird sofort mit einem echten Aufruf geprüft. Geht er durch, ist alles gespeichert — welche Modelle genau was können, misst die Integration danach im Hintergrund."
+          "api_key": "Checked right away with a real request. If it succeeds, everything is saved — the integration then measures in the background what each model can do."
         }
       }
     },
     "error": {
-      "key_rejected": "Der Schlüssel wurde nicht angenommen.",
-      "key_no_subscription": "Der Schlüssel ist gültig, aber für dieses Modell ist kein Kontingent freigeschaltet. Bei Mistral zum Beispiel reicht ein neuer Schlüssel allein nicht — nötig ist zusätzlich das API-Abonnement mit Plan FREE, das ist etwas anderes als Le Chat oder Labs.",
-      "key_rate_limited": "Der Anbieter meldet gerade ein erreichtes Limit. Das kann am Schlüssel liegen oder schlicht am Zeitpunkt — ein erneuter Versuch in ein paar Minuten klärt das.",
-      "key_unreachable": "Der Anbieter antwortet gerade nicht oder mit einem Serverfehler. Das liegt in aller Regel nicht am Schlüssel — ein erneuter Versuch in ein paar Minuten klärt das."
+      "key_rejected": "The key was not accepted.",
+      "key_no_subscription": "The key is valid, but no quota is enabled for this model. With Mistral, for example, a new key alone is not enough — the API subscription with the FREE plan is required as well, which is separate from Le Chat and Labs.",
+      "key_rate_limited": "The provider reports a reached limit. This may be the key or simply the timing — trying again in a few minutes will tell.",
+      "key_unreachable": "The provider is not responding or returns a server error. This is usually not caused by the key — trying again in a few minutes will tell."
     },
     "abort": {
-      "already_configured": "Free AI Router ist bereits eingerichtet. Weitere Anbieter kommen auf der Integrationsseite über „Anbieter hinzufügen“ dazu.",
-      "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}"
+      "already_configured": "Free AI Router is already set up. Additional providers can be added on the integration page via “Add provider”.",
+      "registry_invalid": "The provider registry is unusable: {error}"
     },
     "create_entry": {
-      "default": "**Schlüssel geprüft:** {check}\n\nFree AI Router ist eingerichtet und sofort nutzbar. Welche Modelle von {name} genau was können, wird jetzt im Hintergrund gemessen — das dauert ein bis zwei Minuten, das Ergebnis kommt als Benachrichtigung. Bis dahin gelten die Angaben aus der Anbieterdatei.\n\nSo werden die Profile voraussichtlich bedient:\n\n{overview}\n\n{empfehlung} Weitere Anbieter kommen auf der Integrationsseite über „Anbieter hinzufügen“ dazu.\n\n### Weiter geht's\n\n- **Assist verbinden:** [Sprachassistenten öffnen](https://my.home-assistant.io/redirect/voice_assistants/) und Free AI Router als Gesprächsagenten wählen — auf derselben Seite steht auch die bevorzugte KI-Aufgaben-Entity.\n- **Kameraanalyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml)\n- **Türklingel-Analyse einrichten:** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml)"
+      "default": "**Key checked:** {check}\n\nFree AI Router is set up and ready to use. What each {name} model can do is now being measured in the background — this takes one to two minutes, and the result arrives as a notification. Until then, the values from the provider file apply.\n\nExpected profile coverage:\n\n{overview}\n\n{empfehlung} Additional providers can be added on the integration page via “Add provider”.\n\n### Next steps\n\n- **Connect Assist:** [Open voice assistants](https://my.home-assistant.io/redirect/voice_assistants/) and select Free AI Router as the conversation agent — the preferred AI task entity is set on the same page.\n- **Set up camera analysis:** [Import blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fcamera_analysis.yaml)\n- **Set up doorbell analysis:** [Import blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fdoorbell.yaml)"
     }
   },
   "entity": {
     "ai_task": {
       "schnell": {
-        "name": "Free AI Router Schnell"
+        "name": "Free AI Router Fast"
       },
       "vision": {
-        "name": "Free AI Router Bildanalyse"
+        "name": "Free AI Router Image analysis"
       },
       "reasoning": {
         "name": "Free AI Router Reasoning"
@@ -52,57 +52,81 @@
     },
     "sensor": {
       "anfragen_heute": {
-        "name": "Free AI Router Anfragen heute"
+        "name": "Free AI Router Requests today"
       },
       "token_heute": {
-        "name": "Free AI Router Token heute"
+        "name": "Free AI Router Tokens today"
       },
       "reserve_heute": {
-        "name": "Free AI Router Reserve gegriffen heute"
+        "name": "Free AI Router Fallbacks today"
       },
       "verworfen_heute": {
-        "name": "Free AI Router Verworfen heute"
+        "name": "Free AI Router Failed requests today"
       },
       "anbieter_anfragen": {
-        "name": "Anfragen heute"
+        "name": "Requests today"
       }
     }
   },
   "exceptions": {
     "no_channel": {
-      "message": "Kein Anbieter konnte die Anfrage übernehmen: {detail}"
+      "message": "No provider could handle the request: {detail}"
+    },
+    "schema_unuebersetzbar": {
+      "message": "The response schema cannot be converted: {fehler}"
+    },
+    "schema_kein_objekt": {
+      "message": "The response schema does not describe an object."
+    },
+    "anhang_typ": {
+      "message": "Attachments of type {typ} are not supported, only images."
+    },
+    "anhang_ohne_datei": {
+      "message": "The attachment arrived without a file."
+    },
+    "anhang_unlesbar": {
+      "message": "The attachment cannot be read: {fehler}"
+    },
+    "json_ungueltig": {
+      "message": "The provider did not return valid JSON for the requested schema: {antwort}"
+    },
+    "nicht_geladen": {
+      "message": "Free AI Router is not loaded — nothing to measure."
+    },
+    "nicht_eingerichtet": {
+      "message": "Not set up: {unbekannt}. Set up are: {eingerichtet}."
     }
   },
   "issues": {
     "kein_anbieter": {
-      "title": "Kein KI-Anbieter eingerichtet",
-      "description": "Free AI Router hat keinen einzigen Anbieter, über den er Anfragen schicken könnte. Die Entities existieren, aber jeder Aufruf scheitert.\n\nUnter Einstellungen → Geräte & Dienste → Free AI Router → Anbieter hinzufügen lässt sich einer einrichten."
+      "title": "No AI provider set up",
+      "description": "Free AI Router has no provider to send requests to. The entities exist, but every call fails.\n\nAdd one under Settings → Devices & services → Free AI Router → Add provider."
     },
     "schluessel_abgelehnt": {
-      "title": "{anbieter} lehnt den Schlüssel ab",
-      "description": "{anbieter} hat den hinterlegten API-Schlüssel zurückgewiesen. Anfragen laufen zurzeit über die Reserve weiter — das fällt im Betrieb nicht auf, bis auch die Reserve wegbricht.\n\nEin neuer Schlüssel lässt sich hier erzeugen: {signup_url}\n\nDanach in der Zeile von {anbieter} auf der Integrationsseite auf „Schlüssel ersetzen“. Der Hinweis verschwindet von selbst, sobald wieder ein Aufruf durchgeht."
+      "title": "{anbieter} rejects the key",
+      "description": "{anbieter} rejected the stored API key. Requests currently continue through the fallback — this goes unnoticed in operation until the fallback fails as well.\n\nA new key can be created here: {signup_url}\n\nThen select “Replace key” in the {anbieter} row on the integration page. This notice disappears on its own as soon as a request succeeds again."
     },
     "profil_ohne_abdeckung": {
-      "title": "Profil „{profil}“ hat keinen Kanal",
-      "description": "Für das Profil „{profil}“ gibt es kein Modell, das die Anforderung erfüllt. Die zugehörige Entity existiert, aber jeder Aufruf scheitert.\n\nMeist hilft ein weiterer Anbieter. Bei der Bildanalyse ist die Ursache fast immer, dass kein eingerichtetes Modell Bilder annimmt — das misst die Fähigkeitserkennung beim Einrichten, und was sie misst, gewinnt über die Registry."
+      "title": "Profile “{profil}” has no channel",
+      "description": "No model meets the requirements of the profile “{profil}”. The corresponding entity exists, but every call fails.\n\nAnother provider usually helps. For image analysis the cause is almost always that no configured model accepts images — the integration measures this with your own key, and the measurement takes precedence over the provider file."
     },
     "budget_aufgebraucht": {
-      "title": "{anbieter}: Monatsbudget aufgebraucht",
-      "description": "{anbieter} hat in diesem Monat {ausgegeben} von {budget} US-Dollar verbraucht. Die kostenlose Stufe ist damit bis zum Monatsersten zu.\n\nAnfragen laufen weiter über die übrigen Anbieter — bemerkt wird es erst, wenn dort das Kontingent knapp wird. Wer den Puffer braucht, richtet einen weiteren Anbieter ein oder wartet den Monatswechsel ab.\n\nDer Betrag ist selbst gerechnet, aus den gemessenen Token und der Preisliste in der Anbieterdatei. Die Abrechnung des Anbieters ist maßgeblich."
+      "title": "{anbieter}: monthly budget used up",
+      "description": "{anbieter} has used {ausgegeben} of {budget} US dollars this month. The free tier is closed until the first of next month.\n\nRequests continue through the other providers — this only becomes noticeable when their quota runs short. Add another provider if you need the buffer, or wait for the new month.\n\nThe amount is calculated locally from the measured tokens and the price list in the provider file. The provider's own billing is authoritative."
     }
   },
   "services": {
     "neu_vermessen": {
-      "name": "Neu vermessen",
-      "description": "Misst alle Modelle der eingerichteten Anbieter neu, auch die, die schon funktionieren. Im Hintergrund werden nur neue, bisher gestörte und seit einer Woche tote Modelle gemessen. Was bei dieser Messung nur vorübergehend gestört ist, überschreibt nichts.",
+      "name": "Measure again",
+      "description": "Measures all models of the configured providers again, including those that already work. In the background only new, previously disrupted and week-old unusable models are measured. Anything that is only temporarily disrupted during this measurement does not overwrite existing results.",
       "fields": {
         "anbieter": {
-          "name": "Anbieter",
-          "description": "Leer lassen für alle eingerichteten Anbieter."
+          "name": "Providers",
+          "description": "Provider IDs such as google_ai_studio or groq. Leave empty for all configured providers."
         },
         "nur_lebendigkeit": {
-          "name": "Nur Lebendigkeit",
-          "description": "Ein Aufruf je Modell statt der teuren Prüfungen auf Bilder, Schemata und Werkzeuge. Schnell und sparsam, lässt die bisher gemessenen Fähigkeiten unangetastet."
+          "name": "Liveness only",
+          "description": "One request per model instead of the costly checks for images, schemas and tools. Fast and economical, keeps the capabilities measured so far."
         }
       }
     }
@@ -110,43 +134,43 @@
   "config_subentries": {
     "anbieter": {
       "initiate_flow": {
-        "user": "Anbieter hinzufügen",
-        "reconfigure": "Schlüssel ersetzen"
+        "user": "Add provider",
+        "reconfigure": "Replace key"
       },
-      "entry_type": "Anbieter",
+      "entry_type": "Provider",
       "step": {
         "user": {
-          "title": "Anbieter auswählen",
-          "description": "Noch nicht eingerichtet:\n\n{cards}",
+          "title": "Choose a provider",
+          "description": "Not set up yet:\n\n{cards}",
           "data": {
-            "provider": "Anbieter"
+            "provider": "Provider"
           }
         },
         "key": {
-          "title": "Schlüssel für {name}",
-          "description": "Key-Seite öffnen: {signup_link}\n\n{steps}\n\nDaten: {data_note}\n\n{error_detail}",
+          "title": "Key for {name}",
+          "description": "Open the key page: {signup_link}\n\n{steps}\n\nData: {data_note}\n\n{error_detail}",
           "data": {
-            "api_key": "API-Schlüssel"
+            "api_key": "API key"
           },
           "data_description": {
-            "api_key": "Wird sofort mit einem echten Aufruf geprüft. Geht er durch, ist alles gespeichert — welche Modelle genau was können, misst die Integration danach im Hintergrund."
+            "api_key": "Checked right away with a real request. If it succeeds, everything is saved — the integration then measures in the background what each model can do."
           }
         }
       },
       "error": {
-        "key_rejected": "Der Schlüssel wurde nicht angenommen.",
-        "key_no_subscription": "Der Schlüssel ist gültig, aber für dieses Modell ist kein Kontingent freigeschaltet. Bei Mistral zum Beispiel reicht ein neuer Schlüssel allein nicht — nötig ist zusätzlich das API-Abonnement mit Plan FREE, das ist etwas anderes als Le Chat oder Labs.",
-        "key_rate_limited": "Der Anbieter meldet gerade ein erreichtes Limit. Das kann am Schlüssel liegen oder schlicht am Zeitpunkt — ein erneuter Versuch in ein paar Minuten klärt das.",
-        "key_unreachable": "Der Anbieter antwortet gerade nicht oder mit einem Serverfehler. Das liegt in aller Regel nicht am Schlüssel — ein erneuter Versuch in ein paar Minuten klärt das."
+        "key_rejected": "The key was not accepted.",
+        "key_no_subscription": "The key is valid, but no quota is enabled for this model. With Mistral, for example, a new key alone is not enough — the API subscription with the FREE plan is required as well, which is separate from Le Chat and Labs.",
+        "key_rate_limited": "The provider reports a reached limit. This may be the key or simply the timing — trying again in a few minutes will tell.",
+        "key_unreachable": "The provider is not responding or returns a server error. This is usually not caused by the key — trying again in a few minutes will tell."
       },
       "abort": {
-        "registry_invalid": "Die Anbieter-Registry ist unbrauchbar: {error}",
-        "alle_eingerichtet": "Alle bekannten Anbieter sind schon eingerichtet.",
-        "unbekannter_anbieter": "Diesen Anbieter gibt es in der Registry nicht mehr.",
-        "reconfigure_successful": "Neuer Schlüssel übernommen. Die Modelle werden im Hintergrund neu gemessen, das Ergebnis kommt als Benachrichtigung."
+        "registry_invalid": "The provider registry is unusable: {error}",
+        "alle_eingerichtet": "All known providers are already set up.",
+        "unbekannter_anbieter": "This provider no longer exists in the registry.",
+        "reconfigure_successful": "New key saved. The models are measured again in the background, and the result arrives as a notification."
       },
       "create_entry": {
-        "default": "**Schlüssel geprüft:** {check}\n\n{name} ist eingerichtet und wird ab sofort mitgenutzt. Welche Modelle genau was können, wird jetzt im Hintergrund gemessen — das Ergebnis kommt als Benachrichtigung."
+        "default": "**Key checked:** {check}\n\n{name} is set up and used from now on. What each model can do is now being measured in the background — the result arrives as a notification."
       }
     }
   }

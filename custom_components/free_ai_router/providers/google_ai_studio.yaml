@@ -16,13 +16,23 @@ onboarding:
   summary_de: >-
     Trägt die Bildanalyse. Achtung: nur die Flash-Lite-Modelle haben ein
     brauchbares Tagesbudget, die großen Flash-Modelle nur 20 Anfragen/Tag.
+  summary_en: >-
+    Carries image analysis. Note: only the Flash-Lite models have a usable
+    daily budget; the larger Flash models allow just 20 requests per day.
   steps_de:
     - Mit Google-Konto anmelden
     - '"Create API key" klicken'
     - Key kopieren und hier einfügen
+  steps_en:
+    - Sign in with a Google account
+    - Click "Create API key"
+    - Copy the key and paste it here
   data_note_de: >-
     Kostenlose Stufe: Inhalte werden zur Produktverbesserung genutzt.
     Kamerabilder verlassen damit die EU.
+  data_note_en: >-
+    Free tier: content is used to improve Google's products. Camera images
+    therefore leave the EU.
   credit_card_required: false
   empfohlen: true
 
@@ -61,21 +71,21 @@ models:
       tpm: 250000
 
   # --- Tiefenpuffer: 14.400 Anfragen/Tag, dafuer nur 16k Token/Minute ----
-  # Gemma nimmt Bilder an und erkennt sie richtig — aber es kann *kein*
-  # responseSchema. Zweimal gemessen, am 09. und 10.09.2026, jeweils leere
-  # Antwort statt JSON. Damit taugt Gemma als Reserve fuer freie
-  # Bildbeschreibung, nicht fuer die uebliche Kameraanalyse mit Schema:
-  # dort filtert der Router es korrekt heraus.
-  # Unzuverlaessig: in drei Messlaeufen zweimal HTTP 500 bzw. eine
-  # Zeitueberschreitung. Die 26B-Variante lief jedes Mal.
+  # Gemma nimmt Bilder an und erkennt sie richtig. Schema lieferte es am 09.
+  # und 10.09.2026 nicht (leere Antwort statt JSON); am 24.09.2026 meldeten der
+  # taegliche Prober und die eigene Messung in Home Assistant uebereinstimmend
+  # Schema und Werkzeuge fuer die 31B-Variante. Die
+  # 26B-Variante kann Werkzeuge, Schema weiterhin nicht.
+  # Unzuverlaessig: die 31B-Variante braucht bis zu 30 s und faellt oefter mit
+  # HTTP 500 aus. Im Profil "schnell" ordnet der Router sie deshalb nach hinten.
   - id: gemma-4-31b-it
     label: Gemma 4 31B
     profiles: [vision, schnell]
-    latency_class: normal
+    latency_class: langsam
     capabilities:
       vision: true
-      tools: false
-      structured_output: false
+      tools: true
+      structured_output: true
       context_tokens: 262144
     limits:
       rpm: 30
@@ -88,7 +98,7 @@ models:
     latency_class: schnell
     capabilities:
       vision: true
-      tools: false
+      tools: true
       structured_output: false
       context_tokens: 262144
     limits:

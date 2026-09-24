@@ -34,12 +34,11 @@ _PAKETNAME = {
 #: Was Home Assistant selbst als Abhaengigkeit garantiert (``aiohttp``,
 #: ``voluptuous``) oder was im Code bewusst per try/except abgesichert ist
 #: und deshalb ohne das Paket sauber degradiert statt den Start zu
-#: verhindern (``PIL`` in ``imaging.py``, ``cryptography`` in ``feed.py`` —
-#: beide schon im Quelltext mit ``# pragma: no cover - in HA immer
-#: vorhanden`` kommentiert). Diese Faelle brauchen kein eigenes
+#: verhindern (``PIL`` in ``imaging.py``, im Quelltext mit ``# pragma: no
+#: cover - in HA immer vorhanden`` kommentiert). Diese Faelle brauchen kein eigenes
 #: Requirement, unabhaengig davon, ob der jeweilige Import zufaellig
 #: innerhalb eines try-Blocks im selben File steht.
-_AUSGENOMMEN = {"aiohttp", "voluptuous", "pil", "cryptography"}
+_AUSGENOMMEN = {"aiohttp", "voluptuous", "pil"}
 
 
 def _geschuetzte_importe(baum: ast.Module) -> set[str]:

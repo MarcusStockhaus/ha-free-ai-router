@@ -47,6 +47,7 @@ from .capabilities import (
 from .const import CONF_API_KEY, CONF_MODELS, DOMAIN
 from .registry import Provider
 from .router import abdeckung_text, coverage
+from .sprache import t
 
 if TYPE_CHECKING:
     from . import FreeAIRouterConfigEntry
@@ -147,7 +148,7 @@ def async_speichern(
         return None
 
     vorher: dict[str, Any] = dict(subentry.data.get(CONF_MODELS) or {})
-    nachher = uebernehmen(vorher, probe.models)
+    nachher = uebernehmen(vorher, probe.models, entry.runtime_data.sprache)
     aenderungen = describe_changes(vorher, nachher)
 
     if nachher != vorher:
@@ -175,6 +176,7 @@ def _async_melden(
     from . import build_channels, configured_providers  # lokal: sonst Zirkelimport
 
     runtime = entry.runtime_data
+    sprache = runtime.sprache
     erreichbar = offen = 0
     for model in provider.models:
         eintrag = gespeichert.get(model.key) or gespeichert.get(model.id)
@@ -183,27 +185,30 @@ def _async_melden(
         elif eintrag.get("alive", True):
             erreichbar += 1
 
-    kopf = f"**{provider.name}**: {erreichbar} von {len(provider.models)} Modellen erreichbar"
+    kopf = t(
+        sprache, "meldung_kopf",
+        anbieter=provider.name, erreichbar=erreichbar, gesamt=len(provider.models),
+    )
     if offen:
-        kopf += f", {offen} noch offen"
+        kopf += t(sprache, "meldung_offen", anzahl=offen)
 
     # Die Kanaele direkt aus dem gespeicherten Stand bauen: der Update-Listener,
     # der runtime.channels nachzieht, laeuft erst nach diesem Aufruf.
     kanaele = build_channels(runtime.registry, configured_providers(entry))
-    uebersicht = abdeckung_text(coverage(kanaele, runtime.ledger.availability))
+    uebersicht = abdeckung_text(coverage(kanaele, runtime.ledger.availability), sprache)
 
     text = "\n\n".join(
         [
             kopf,
-            "\n".join(bericht_zeilen(probe.models)),
-            "So werden die Profile jetzt bedient:",
+            "\n".join(bericht_zeilen(probe.models, sprache=sprache)),
+            t(sprache, "meldung_abdeckung"),
             uebersicht,
         ]
     )
     persistent_notification.async_create(
         hass,
         text,
-        title=f"Free AI Router: {provider.name} vermessen",
+        title=t(sprache, "meldung_titel", anbieter=provider.name),
         notification_id=f"{DOMAIN}_messung_{provider.id}",
     )
 

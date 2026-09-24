@@ -8,8 +8,8 @@ blueprint:
     **Warum das wichtig ist:** Eine Analyse kostet rund 1.100 Token. Bei Groqs
     8.000 Token pro Minute sind das sechs bis sieben Analysen in der Minute,
     bei Googles Flash-Lite 500 am Tag. Ein Bewegungsmelder an einer Straße
-    löst leicht 2.000 Mal am Tag aus. Ohne Sperrzeit ist das Tagesbudget vor
-    dem Mittagessen weg.
+    löst leicht 2.000 Mal am Tag aus. Ohne Sperrzeit ist das Tagesbudget
+    nach wenigen Stunden aufgebraucht.
 
 
     Das Bild vorher zu verkleinern hilft übrigens **nicht** — gemessen kostet
@@ -196,8 +196,7 @@ actions:
     continue_on_error: true
 
   # ai_task.generate_data antwortet als {conversation_id, data}. Das eine
-  # Feld auszupacken erspart jedem Nutzer das `befund.data.` vor jedem Zugriff
-  # — und mir den Fehler, den ich hier beim ersten Anlauf gemacht habe.
+  # Feld auszupacken erspart jeder Aktion das `befund.data.` vor dem Zugriff.
   - choose:
       - conditions:
           - condition: template

@@ -24,11 +24,21 @@ from homeassistant.helpers import llm
 from voluptuous_openapi import convert
 
 from .adapters import ChatResponse, ImageAttachment
+from .const import DOMAIN
 from .imaging import PreparedImage, estimate_text_tokens, prepare
 
 _LOGGER = logging.getLogger(__name__)
 
 _IMAGE_MIME_PREFIXES = ("image/",)
+
+
+def _fehler(schluessel: str, **platzhalter: str) -> HomeAssistantError:
+    """Eine Fehlermeldung, die Home Assistant in der Sprache des Nutzers zeigt."""
+    return HomeAssistantError(
+        translation_domain=DOMAIN,
+        translation_key=schluessel,
+        translation_placeholders=platzhalter or None,
+    )
 
 
 def structure_to_json_schema(
@@ -54,9 +64,9 @@ def structure_to_json_schema(
             structure, custom_serializer=custom_serializer or llm.selector_serializer
         )
     except Exception as err:  # pragma: no cover - defensiv, Schema kommt von HA
-        raise HomeAssistantError(f"Antwortschema nicht übersetzbar: {err}") from err
+        raise _fehler("schema_unuebersetzbar", fehler=str(err)) from err
     if not isinstance(schema, dict):
-        raise HomeAssistantError("Antwortschema ergab kein Objekt")
+        raise _fehler("schema_kein_objekt")
     schema.setdefault("type", "object")
     return schema
 
@@ -82,12 +92,9 @@ async def attachments_to_images(
         mime_type = str(getattr(attachment, "mime_type", "") or "")
         path = getattr(attachment, "path", None)
         if not mime_type.startswith(_IMAGE_MIME_PREFIXES):
-            raise HomeAssistantError(
-                f"Anhang vom Typ {mime_type or 'unbekannt'} wird nicht unterstützt — "
-                "in Phase 1 nur Bilder."
-            )
+            raise _fehler("anhang_typ", typ=mime_type or "?")
         if path is None:
-            raise HomeAssistantError("Anhang ohne Datei erhalten")
+            raise _fehler("anhang_ohne_datei")
 
         bild = await hass.async_add_executor_job(
             _lesen_und_vorbereiten, Path(path), mime_type
@@ -102,7 +109,7 @@ def _lesen_und_vorbereiten(path: Path, mime_type: str) -> PreparedImage:
     try:
         data = path.read_bytes()
     except OSError as err:
-        raise HomeAssistantError(f"Anhang nicht lesbar: {err}") from err
+        raise _fehler("anhang_unlesbar", fehler=str(err)) from err
     return prepare(data, mime_type)
 
 
@@ -121,10 +128,7 @@ def normalize_result(response: ChatResponse, *, has_structure: bool) -> Any:
     if isinstance(response.parsed, (dict, list)):
         return response.parsed
 
-    raise HomeAssistantError(
-        "Der Anbieter hat kein gültiges JSON zum verlangten Schema geliefert: "
-        f"{response.text.strip()[:200]!r}"
-    )
+    raise _fehler("json_ungueltig", antwort=repr(response.text.strip()[:200]))
 
 
 def estimate_input_tokens(instructions: str, bilder: tuple[PreparedImage, ...]) -> int:

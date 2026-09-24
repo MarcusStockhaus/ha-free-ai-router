@@ -70,6 +70,7 @@ from .const import (
 from .ledger import Availability
 from .registry import Provider, Registry, RegistryError, load_registry
 from .router import abdeckung_text, coverage
+from .sprache import sprache_aus, t
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,27 +82,32 @@ TITLE = "Free AI Router"
 _ALWAYS_FREE = lambda _provider, _model: Availability(ok=True)  # noqa: E731
 
 
-def _provider_card(provider: Provider) -> str:
+def _provider_card(provider: Provider, sprache: str) -> str:
     """Eine Anbieterkarte als Markdown — eine ehrliche Zeile, kein Rechtstext."""
     can: list[str] = []
     if any(model.capabilities.vision for model in provider.models):
-        can.append("Bilder")
+        can.append(t(sprache, "faehigkeit_bilder"))
     if any(model.capabilities.tools for model in provider.models):
-        can.append("Werkzeuge")
+        can.append(t(sprache, "faehigkeit_werkzeuge"))
     biggest = max(model.capabilities.context_tokens for model in provider.models)
     titel = f"**{provider.name}**"
     if provider.onboarding.empfohlen:
-        titel += " — empfohlen für den Anfang"
+        titel += t(sprache, "karte_empfohlen")
     parts = [titel]
-    if provider.onboarding.summary_de:
-        parts.append(provider.onboarding.summary_de)
+    if zusammenfassung := provider.onboarding.zusammenfassung(sprache):
+        parts.append(zusammenfassung)
     parts.append(
-        f"Kann: {', '.join(can) if can else 'Text'} · "
-        f"Kontext bis {biggest // 1000}k · {len(provider.models)} Modelle"
+        t(
+            sprache,
+            "karte_kann",
+            was=", ".join(can) if can else t(sprache, "faehigkeit_text"),
+            kontext=biggest // 1000,
+            anzahl=len(provider.models),
+        )
     )
-    parts.append(f"Daten: {provider.onboarding.data_note_de}")
+    parts.append(t(sprache, "karte_daten", hinweis=provider.onboarding.datenhinweis(sprache)))
     if provider.onboarding.credit_card_required:
-        parts.append("Zahlungsdaten erforderlich, auch für die kostenlose Stufe.")
+        parts.append(t(sprache, "karte_zahlung"))
     return "\n".join(f"  {line}" if index else f"- {line}" for index, line in enumerate(parts))
 
 
@@ -125,7 +131,7 @@ def _sortiert(registry: Registry) -> list[Provider]:
     return sorted(registry, key=lambda item: (item.preference, item.id))
 
 
-def _empfehlung(registry: Registry, eingerichtet: set[str]) -> str:
+def _empfehlung(registry: Registry, eingerichtet: set[str], sprache: str) -> str:
     """Welcher Anbieter als naechstes sinnvoll waere — ein Satz."""
     offen = [
         provider.name
@@ -133,11 +139,9 @@ def _empfehlung(registry: Registry, eingerichtet: set[str]) -> str:
         if provider.onboarding.empfohlen and provider.id not in eingerichtet
     ]
     if offen:
-        return (
-            f"Als Nächstes empfohlen: **{' und '.join(offen)}** — damit bekommt jedes "
-            "Profil eine Reserve bei einem zweiten Anbieter."
-        )
-    return "Ein weiterer Anbieter gibt jedem Profil eine Reserve, falls einer ausfällt."
+        namen = t(sprache, "empfehlung_und").join(offen)
+        return t(sprache, "empfehlung_naechster", namen=namen)
+    return t(sprache, "empfehlung_allgemein")
 
 
 def _neue_daten(provider: Provider, api_key: str) -> dict[str, Any]:
@@ -168,18 +172,24 @@ class _SchluesselSchritt:
             self._registry = await self.hass.async_add_executor_job(load_registry)
         return self._registry
 
+    @property
+    def _sprache(self) -> str:
+        return sprache_aus(self.hass.config.language)
+
     async def async_step_key(self, user_input: dict[str, Any] | None = None) -> Any:
         provider = self._pending_provider
         assert provider is not None
 
+        sprache = self._sprache
         errors: dict[str, str] = {}
         placeholders = {
             "name": provider.name,
             "signup_link": f"[{provider.onboarding.signup_url}]({provider.onboarding.signup_url})",
             "steps": "\n".join(
-                f"{index}. {step}" for index, step in enumerate(provider.onboarding.steps_de, 1)
+                f"{index}. {step}"
+                for index, step in enumerate(provider.onboarding.schritte(sprache), 1)
             ),
-            "data_note": provider.onboarding.data_note_de,
+            "data_note": provider.onboarding.datenhinweis(sprache),
             "error_detail": "",
         }
 
@@ -187,7 +197,9 @@ class _SchluesselSchritt:
             api_key = str(user_input[CONF_API_KEY]).strip()
             session = async_get_clientsession(self.hass)
             try:
-                ok, message, art = await quick_key_check(session, provider, api_key)
+                ok, message, art = await quick_key_check(
+                    session, provider, api_key, sprache=sprache
+                )
             except Exception as err:  # noqa: BLE001 - Netzfehler jeder Art
                 _LOGGER.debug("Key-Test fehlgeschlagen: %r", err)
                 ok, message, art = False, repr(err), FEHLERART_UNBEKANNT
@@ -231,6 +243,7 @@ class FreeAIRouterConfigFlow(_SchluesselSchritt, ConfigFlow, domain=DOMAIN):
     """Ersteinrichtung: ein Anbieter, ein Schluessel, fertig."""
 
     VERSION = 2
+    MINOR_VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -252,7 +265,7 @@ class FreeAIRouterConfigFlow(_SchluesselSchritt, ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=_auswahl(anbieter),
             description_placeholders={
-                "cards": "\n".join(_provider_card(provider) for provider in anbieter),
+                "cards": "\n".join(_provider_card(p, self._sprache) for p in anbieter),
             },
         )
 
@@ -266,7 +279,8 @@ class FreeAIRouterConfigFlow(_SchluesselSchritt, ConfigFlow, domain=DOMAIN):
         # Die Abdeckung auf Grundlage der Anbieterdatei — die eigene Messung
         # laeuft erst jetzt an. "Voraussichtlich" steht deshalb im Text.
         uebersicht = abdeckung_text(
-            coverage(build_channels(registry, {provider.id: daten}), _ALWAYS_FREE)
+            coverage(build_channels(registry, {provider.id: daten}), _ALWAYS_FREE),
+            self._sprache,
         )
         return self.async_create_entry(
             title=TITLE,
@@ -275,7 +289,7 @@ class FreeAIRouterConfigFlow(_SchluesselSchritt, ConfigFlow, domain=DOMAIN):
                 "name": provider.name,
                 "check": meldung,
                 "overview": uebersicht,
-                "empfehlung": _empfehlung(registry, {provider.id}),
+                "empfehlung": _empfehlung(registry, {provider.id}, self._sprache),
             },
             subentries=[
                 ConfigSubentryData(
@@ -337,7 +351,7 @@ class AnbieterSubentryFlow(_SchluesselSchritt, ConfigSubentryFlow):
             step_id="user",
             data_schema=_auswahl(offen),
             description_placeholders={
-                "cards": "\n".join(_provider_card(provider) for provider in offen)
+                "cards": "\n".join(_provider_card(p, self._sprache) for p in offen)
             },
         )
 

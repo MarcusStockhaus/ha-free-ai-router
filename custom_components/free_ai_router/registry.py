@@ -177,6 +177,9 @@ class Onboarding:
     data_note_de: str
     credit_card_required: bool
     summary_de: str = ""
+    steps_en: tuple[str, ...] = ()
+    data_note_en: str = ""
+    summary_en: str = ""
     empfohlen: bool = False
     """Fuer den Anfang markiert. Rein redaktionell, kein Messwert.
 
@@ -186,6 +189,15 @@ class Onboarding:
     die Anbieterkarte.
     """
 
+    def schritte(self, sprache: str) -> tuple[str, ...]:
+        return self.steps_de if sprache == "de" else self.steps_en
+
+    def datenhinweis(self, sprache: str) -> str:
+        return self.data_note_de if sprache == "de" else self.data_note_en
+
+    def zusammenfassung(self, sprache: str) -> str:
+        return self.summary_de if sprache == "de" else self.summary_en
+
     @classmethod
     def parse(cls, data: Any, where: str) -> Onboarding:
         data = _as_mapping(data, where)
@@ -194,9 +206,12 @@ class Onboarding:
             {
                 "signup_url",
                 "steps_de",
+                "steps_en",
                 "data_note_de",
+                "data_note_en",
                 "credit_card_required",
                 "summary_de",
+                "summary_en",
                 "empfohlen",
             },
             where,
@@ -204,21 +219,39 @@ class Onboarding:
         url = _req_str(data, "signup_url", where)
         if not url.startswith("https://"):
             raise RegistryError(f"{where}.signup_url: muss https sein")
-        steps = _req_list(data, "steps_de", where)
-        if not steps or not all(isinstance(step, str) and step.strip() for step in steps):
-            raise RegistryError(f"{where}.steps_de: mindestens ein nicht-leerer Text")
-        note = _req_str(data, "data_note_de", where).strip()
-        if not note:
-            raise RegistryError(f"{where}.data_note_de: darf nicht leer sein")
+        # Beide Sprachen sind Pflicht: ein Anbieter, dessen Karte auf einem
+        # englischen System deutsch erscheint, waere nur halb eingerichtet.
+        schritte: dict[str, tuple[str, ...]] = {}
+        hinweise: dict[str, str] = {}
+        for sprache in ("de", "en"):
+            feld = f"steps_{sprache}"
+            steps = _req_list(data, feld, where)
+            if not steps or not all(isinstance(step, str) and step.strip() for step in steps):
+                raise RegistryError(f"{where}.{feld}: mindestens ein nicht-leerer Text")
+            schritte[sprache] = tuple(step.strip() for step in steps)
+            feld = f"data_note_{sprache}"
+            note = _req_str(data, feld, where).strip()
+            if not note:
+                raise RegistryError(f"{where}.{feld}: darf nicht leer sein")
+            hinweise[sprache] = note
+        if len(schritte["de"]) != len(schritte["en"]):
+            raise RegistryError(
+                f"{where}: steps_de und steps_en muessen gleich viele Schritte haben"
+            )
+        if bool(data.get("summary_de")) != bool(data.get("summary_en")):
+            raise RegistryError(f"{where}: summary_de und summary_en nur gemeinsam")
         empfohlen = data.get("empfohlen", False)
         if not isinstance(empfohlen, bool):
             raise RegistryError(f"{where}.empfohlen: true/false erwartet")
         return cls(
             signup_url=url,
-            steps_de=tuple(step.strip() for step in steps),
-            data_note_de=note,
+            steps_de=schritte["de"],
+            data_note_de=hinweise["de"],
             credit_card_required=_req_bool(data, "credit_card_required", where),
             summary_de=str(data.get("summary_de", "")).strip(),
+            steps_en=schritte["en"],
+            data_note_en=hinweise["en"],
+            summary_en=str(data.get("summary_en", "")).strip(),
             empfohlen=empfohlen,
         )
 

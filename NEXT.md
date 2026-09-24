@@ -820,6 +820,99 @@ jedes neue Modell dann mit dem eigenen Schlüssel.
 
 ---
 
+## 12. Modell-Wächter statt Feed, zweisprachig, README neu (24.09.2026)
+
+Entscheidung des Autors zu Abschnitt 11, Punkt 2: der Feed-Server entfällt,
+ein Wächter meldet neue und verschwundene Modelle als GitHub-Issue.
+
+### Modell-Wächter
+
+`tools/waechter.py`, täglich über `.github/workflows/modell-waechter.yml`.
+Holt die Modell-Listen (kostet kein Kontingent), sortiert nach `REGELN` aus
+(Audio, Bild, Embedding, Aliase, Veraltetes, bei OpenRouter alles ohne
+`:free`), vergleicht mit den Anbieterdateien und pflegt je Anbieter ein Issue
+mit Label `modell-waechter`. Neue Modelle werden einmal angemessen, höchstens
+drei je Anbieter und Lauf, das Neueste zuerst. Ergebnisse stehen als Marke im
+Issue, damit sie nicht täglich neu Kontingent kosten; nur vorübergehende
+Störungen werden nicht gemerkt. Ein geschlossenes Issue bleibt zu, bis sich die
+Kandidaten ändern. Aufgenommen wird nichts automatisch.
+
+Schon der erste Trockenlauf gegen Google zeigte, wozu das Anmessen gut ist:
+`gemini-2.5-flash`, `-flash-lite` und `-pro` stehen in Googles Liste, antworten
+aber mit 404.
+
+### Feed entfernt
+
+`feed.py`, `feed_client.py`, `tools/prober.py`, `tools/feed_keys.py`,
+`FEED.md`, die Tests dazu und `prober.yml`. Die Integration räumt beim Start
+den alten Zwischenspeicher `.storage/free_ai_router.feed` weg. Vor dem
+Entfernen mit dem Feed vom 24.09.2026 abgeglichen: Anbieterdefinitionen
+identisch; die Gemma-Messwerte (31B Schema und Werkzeuge, 26B Werkzeuge) sind
+in `google_ai_studio.yaml` übernommen, weil die eigene Messung sie bestätigte.
+
+**Noch von Hand aufzuräumen, bewusst nicht automatisch:** der Zweig `feed`,
+GitHub Pages für dieses Repo und das Secret `FAR_FEED_PRIVATE_KEY`. Alle drei
+werden nicht mehr gebraucht; Installationen mit der alten Fassung holen den
+Feed weiterhin, bis sie aktualisiert sind — ein Abschalten vorher schadet
+nicht, der Client verträgt einen Ausfall.
+
+### Gefunden: geratene Anfragelimits
+
+Der Feed meldete für Groq 1.000 Anfragen je Minute. Richtig sind 30 je Minute
+und 1.000 je Tag. Ursache in `ModelProbe.measured_limits`: das Fenster wurde
+aus der Reset-Zeit geraten, und Groq füllt sein Tageslimit laufend auf, der
+Reset liegt oft unter zwei Minuten. Derselbe Fehler stand in den lokalen
+Messwerten zweier Groq-Modelle. Jetzt wird ein Anfragelimit nur übernommen,
+wenn der Anbieter das Fenster nennt (`RateLimitInfo.requests_window_s`, bei
+Mistral im Headernamen). Migration auf Fassung 2.2 entfernt alle gespeicherten
+`rpm`/`rpd`-Messwerte; die Anbieterdateien führen für jedes Modell gepflegte
+Werte. Live geprüft: Fassung 2.2, Groq nur noch mit `tpm`.
+
+### Zweisprachig
+
+- **Übersetzungen:** `strings.json` ist jetzt die englische Quelle
+  (HA-Konvention), `translations/en.json` englisch, `de.json` deutsch. Neu
+  übersetzbar: Fehlermeldungen (`exceptions`) aus `ai_task`, `conversation`,
+  `task_adapter` und dem Dienst — HA zeigt sie in der Sprache des Nutzers.
+- **`sprache.py`:** alles, was im Code zusammengesetzt wird — Anbieterkarten,
+  Abdeckung, Messbericht, Sperrgründe im Ledger, Fehlschläge im Client,
+  Benachrichtigungen, Systemprompt, Rückfalltext von Assist, Geräte-Modell,
+  Einheiten. Gewählt nach `hass.config.language`; Assist antwortet im
+  Rückfall in der Sprache der Anfrage.
+- **Anbieterdateien:** `steps_en`, `data_note_en`, `summary_en`. Beide Sprachen
+  sind Pflicht, gleich viele Schritte, sonst lehnt der Loader die Datei ab.
+- **Feste Entity-IDs:** HA bildet IDs sonst aus dem übersetzten Namen; auf einem
+  englischen System hieße die Bildanalyse `..._image_analysis`, und jeder
+  Blueprint liefe ins Leere. Jetzt setzen alle Entities ihre ID selbst, die
+  HA als Vorschlag übernimmt. Bestehende IDs bleiben ohnehin.
+- **Einheiten:** HA übersetzt `unit_of_measurement` absichtlich immer auf
+  Englisch, damit sich Statistiken beim Sprachwechsel nicht ändern. Live
+  gesehen: „requests“ auf einem deutschen System. Die Einheit wird deshalb
+  beim Anlegen nach Systemsprache gesetzt.
+- **Blueprints:** `camera_analysis.yaml` und `doorbell.yaml` neben den
+  deutschen, mit englischen Variablen (`result.description`) und englischer
+  Antwortvorgabe an das Modell.
+
+Tests halten das fest: gleiche Schlüssel und Platzhalter in beiden Sprachen,
+keine deutschen Wörter im Englischen (die erste Fassung dieser Prüfung war
+durch einen Schreibfehler wirkungslos und lief trotzdem grün — aufgefallen,
+weil „background“ hätte anschlagen müssen), `strings.json` gleich `en.json`,
+beide Blueprint-Fassungen gleich aufgebaut.
+
+### README
+
+Neu geschrieben, sachlich: `README.md` englisch (zeigt HACS an),
+`README.de.md` deutsch, mit Funktionen, Anwendungsfällen, Anbieterübersicht
+aus der Registry, Einrichtung, Verwendung, Reserve und Limits, Messung,
+Sensoren, Fehlersuche, Datenschutz, Einschränkungen.
+
+**Live verifiziert** (24.09.2026): Eintrag lädt, kein Logeintrag, Entity-IDs
+unverändert, Namen und Einheiten deutsch, keine Statistik-Reparaturhinweise,
+HA liefert deutsche und englische Übersetzungen aus, `ai_task.generate_data`
+antwortet in 0,9 s über Groq.
+
+---
+
 ## Kleinkram, notiert damit er nicht verlorengeht
 
 - `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der

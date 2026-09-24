@@ -32,6 +32,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .capabilities import ALL_CHECKS, CHEAP_CHECKS, bericht_zeilen, probe_provider
 from .const import CONF_API_KEY, DOMAIN
 from .hintergrund import async_speichern
+from .sprache import t
 
 if TYPE_CHECKING:
     from . import FreeAIRouterConfigEntry
@@ -62,14 +63,11 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         if getattr(entry, "runtime_data", None) is not None
     ]
     if not entries:
-        raise HomeAssistantError(
-            "Free AI Router ist nicht geladen — nichts zu vermessen."
-        )
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="nicht_geladen")
     entry: FreeAIRouterConfigEntry = entries[0]
     runtime = entry.runtime_data
-    # Die wirksame Registry, also mit Feed: auch Modelle, die nur der Feed
-    # kennt, sind Kanaele und gehoeren gemessen.
     registry = runtime.registry
+    sprache = runtime.sprache
 
     from . import configured_providers
 
@@ -79,8 +77,12 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         unbekannt = sorted(set(gewuenscht) - set(configured))
         if unbekannt:
             raise ServiceValidationError(
-                f"Nicht eingerichtet: {', '.join(unbekannt)}. "
-                f"Eingerichtet sind: {', '.join(sorted(configured)) or 'keiner'}"
+                translation_domain=DOMAIN,
+                translation_key="nicht_eingerichtet",
+                translation_placeholders={
+                    "unbekannt": ", ".join(unbekannt),
+                    "eingerichtet": ", ".join(sorted(configured)) or "–",
+                },
             )
         ziele = [pid for pid in configured if pid in gewuenscht]
     else:
@@ -98,11 +100,11 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         for provider_id in ziele:
             provider = registry.get(provider_id)
             if provider is None:
-                bericht[provider_id] = {"hinweis": "steht nicht mehr in der Registry"}
+                bericht[provider_id] = {"hinweis": t(sprache, "dienst_nicht_in_registry")}
                 continue
             api_key = configured[provider_id].get(CONF_API_KEY) or ""
             if not api_key:
-                bericht[provider_id] = {"hinweis": "kein Schluessel hinterlegt"}
+                bericht[provider_id] = {"hinweis": t(sprache, "dienst_kein_schluessel")}
                 continue
 
             _LOGGER.info(
@@ -112,15 +114,16 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
                 session, provider, api_key, checks=checks, concurrency=CONCURRENCY
             )
             aenderungen = async_speichern(hass, entry, provider, probe, benachrichtigen=False)
+            zeilen = bericht_zeilen(probe.models, sprache=sprache)
             if aenderungen is None:
-                bericht[provider_id] = {"hinweis": "kein Subentry gefunden"}
+                bericht[provider_id] = {"hinweis": t(sprache, "dienst_kein_subentry")}
                 continue
             etwas_geaendert = etwas_geaendert or bool(aenderungen)
 
             bericht[provider_id] = {
                 "gemessen": len(probe.models),
                 "lebendig": len(probe.working_models),
-                "modelle": bericht_zeilen(probe.models),
+                "modelle": zeilen,
                 "aenderungen": aenderungen or None,
             }
             if probe.stale_registry_entries:
@@ -129,7 +132,7 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
     ergebnis: ServiceResponse = {
         "anbieter": bericht,
         "dauer_s": round(time.monotonic() - begonnen, 1),
-        "umfang": "nur Lebendigkeit" if nur_lebendigkeit else "alle Pruefungen",
+        "umfang": t(sprache, "dienst_umfang_sparsam" if nur_lebendigkeit else "dienst_umfang_voll"),
     }
 
     if not etwas_geaendert:

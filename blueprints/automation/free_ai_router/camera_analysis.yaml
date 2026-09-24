@@ -1,0 +1,218 @@
+blueprint:
+  name: Camera analysis on motion (Free AI Router)
+  description: >-
+    Has the AI analyze a camera image when a motion sensor triggers — with
+    care for the daily quota.
+
+
+    **Why this matters:** one analysis costs about 1,100 tokens. With Groq's
+    8,000 tokens per minute that is six to seven analyses per minute; Google's
+    Flash-Lite allows 500 per day. A motion sensor facing a street easily
+    triggers 2,000 times a day. Without a cooldown the daily budget is used up
+    within hours.
+
+
+    Shrinking the image beforehand does **not** help — measured, the same
+    scene costs the same at 256×144 as at 4096×2304, because providers bill
+    independently of resolution. The only lever is the number of triggers,
+    which is what this blueprint controls.
+  domain: automation
+  source_url: https://github.com/MarcusStockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/camera_analysis.yaml
+  input:
+    what:
+      name: What is analyzed
+      icon: mdi:cctv
+      input:
+        camera:
+          name: Camera
+          description: >-
+            Must be able to provide a still image. If the camera shows no image
+            in its preview, the analysis fails as well.
+          selector:
+            entity:
+              filter:
+                - domain: camera
+        trigger_sensors:
+          name: Trigger
+          description: >-
+            Motion sensor, doorbell or Frigate object detection. Several are
+            possible. The more precise the trigger, the fewer unnecessary
+            analyses — a Frigate "person detected" sensor is far better than a
+            raw motion sensor.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+        question:
+          name: Question for the AI
+          description: What should be recognized in the image?
+          default: >-
+            Briefly describe what the camera image shows. Pay attention to
+            people, vehicles and parcels left behind.
+          selector:
+            text:
+              multiline: true
+
+    economy:
+      name: Quota control
+      icon: mdi:speedometer-slow
+      description: >-
+        The three settings that decide how far the daily budget goes.
+      input:
+        cooldown:
+          name: Cooldown
+          description: >-
+            No new analysis for this long after the previous one. The single
+            most effective lever: five minutes limit the automation to at most
+            288 analyses per day, one minute to 1,440 — more than any free
+            quota allows.
+          default: 300
+          selector:
+            duration: {}
+        extra_condition:
+          name: Additional condition
+          description: >-
+            Optional. For example only when it is dark, only when nobody is at
+            home, or only outside waste collection hours.
+          default: []
+          selector:
+            condition: {}
+        entity:
+          name: AI entity
+          description: >-
+            The entity that performs the analysis. Free AI Router picks the
+            suitable provider from there and falls back to a reserve channel
+            if one fails.
+          default: ai_task.free_ai_router_bildanalyse
+          selector:
+            entity:
+              filter:
+                - domain: ai_task
+
+    afterwards:
+      name: What happens next
+      icon: mdi:bell-ring
+      input:
+        person_only:
+          name: Only notify when a person is visible
+          description: >-
+            The analysis always runs; a notification is only sent when a person
+            is visible. Saves no tokens, but many unnecessary notifications.
+          default: true
+          selector:
+            boolean: {}
+        action:
+          name: Action
+          description: >-
+            What to do with the result. The variable `result` is available with
+            the fields `description`, `person`, `vehicle` and `package`.
+          default:
+            - action: persistent_notification.create
+              data:
+                title: Camera
+                message: "{{ result.description }}"
+          selector:
+            action: {}
+        report_errors:
+          name: Report failures
+          description: >-
+            Sends a notification when the analysis returned no answer — usually
+            because the camera provides no still image or all configured
+            channels are at their limit. Without it, the automation silently
+            does nothing in that case.
+          default: true
+          selector:
+            boolean: {}
+
+mode: single
+max_exceeded: silent
+
+variables:
+  cooldown: !input cooldown
+  person_only: !input person_only
+  camera: !input camera
+  report_errors: !input report_errors
+
+triggers:
+  - trigger: state
+    entity_id: !input trigger_sensors
+    to: "on"
+
+conditions:
+  # Cooldown as a condition rather than a delay at the end: the automation
+  # does not block, it discards the trigger right away.
+  - condition: template
+    value_template: >-
+      {% set last = state_attr(this.entity_id, 'last_triggered') %}
+      {{ last is none
+         or (now() - last).total_seconds()
+            > (cooldown.hours | default(0) | int) * 3600
+              + (cooldown.minutes | default(0) | int) * 60
+              + (cooldown.seconds | default(0) | int) }}
+  - condition: !input extra_condition
+
+actions:
+  - action: ai_task.generate_data
+    data:
+      entity_id: !input entity
+      task_name: "Camera analysis {{ camera }}"
+      instructions: !input question
+      structure:
+        person:
+          description: Is at least one person visible?
+          required: true
+          selector:
+            boolean: {}
+        vehicle:
+          description: Is a vehicle visible?
+          required: true
+          selector:
+            boolean: {}
+        package:
+          description: Is a parcel or package left behind visible?
+          required: true
+          selector:
+            boolean: {}
+        description:
+          description: One short English sentence describing the scene.
+          required: true
+          selector:
+            text: {}
+      attachments:
+        media_content_id: "media-source://camera/{{ camera }}"
+        media_content_type: image/jpeg
+    response_variable: finding
+    # If every channel fails, the call ends with an error. The automation should
+    # not be marked as broken for that — the router has already tried every
+    # fallback and logged it. The default branch below reports the failure
+    # instead of doing nothing.
+    continue_on_error: true
+
+  # ai_task.generate_data returns {conversation_id, data}. Unpacking data here
+  # spares every action the `finding.data.` prefix.
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ finding is defined and finding.data is defined }}"
+        sequence:
+          - variables:
+              result: "{{ finding.data }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not person_only or result.person }}"
+                sequence: !input action
+    default:
+      - if:
+          - condition: template
+            value_template: "{{ report_errors }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Camera analysis failed
+              message: >-
+                Free AI Router returned no answer for {{ camera }}. Most common
+                cause: the camera currently provides no still image, or all
+                configured channels are at their limit. Details under
+                Settings → Devices & services → Free AI Router.

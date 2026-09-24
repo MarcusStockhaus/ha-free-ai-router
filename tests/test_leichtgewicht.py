@@ -81,24 +81,6 @@ def test_validate_registry_laeuft_ohne_aiohttp() -> None:
     assert "ok" in ergebnis.stdout
 
 
-def test_feed_format_laedt_ohne_aiohttp() -> None:
-    """Das Feed-Format gehört zur schlanken Hälfte des Pakets.
-
-    ``feed.py`` beschreibt nur Struktur und Vertrauensregeln; geholt wird in
-    ``feed_client.py``. Rutschte hier ein HTTP-Import herein, könnte der Prober
-    das Format nicht mehr ohne die volle Umgebung bauen — und die Trennung
-    wäre nur noch behauptet.
-    """
-    ergebnis = _ohne_aiohttp(
-        """
-        from custom_components.free_ai_router.feed import SCHEMA_VERSION, dump_document
-        print(SCHEMA_VERSION, len(dump_document({"a": 1})))
-        """
-    )
-    assert ergebnis.returncode == 0, ergebnis.stderr
-    assert ergebnis.stdout.split()[0] == "1"
-
-
 def test_der_blocker_blockt_wirklich() -> None:
     """Sonst prüften die Tests darüber gar nichts."""
     ergebnis = _ohne_aiohttp("import aiohttp")

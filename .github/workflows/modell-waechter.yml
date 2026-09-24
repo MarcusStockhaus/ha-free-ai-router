@@ -1,0 +1,46 @@
+name: Modell-Waechter
+
+# Taeglich die Modell-Listen der Anbieter mit den Anbieterdateien vergleichen
+# und Neues oder Verschwundenes als Issue melden. Neue Modelle werden dabei
+# einmal angemessen, hoechstens drei je Anbieter und Lauf.
+#
+# Laeuft nur nach Zeitplan oder von Hand, niemals bei einem Pull Request:
+# die Anbieter-Schluessel aus den Secrets darf ein fremder PR nicht sehen.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # taeglich 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: modell-waechter
+  cancel-in-progress: false
+
+jobs:
+  waechter:
+    name: Modell-Listen vergleichen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install aiohttp PyYAML
+
+      - name: Waechter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAR_KEY_GOOGLE_AI_STUDIO: ${{ secrets.FAR_KEY_GOOGLE_AI_STUDIO }}
+          FAR_KEY_GROQ: ${{ secrets.FAR_KEY_GROQ }}
+          FAR_KEY_MISTRAL: ${{ secrets.FAR_KEY_MISTRAL }}
+          FAR_KEY_OPENROUTER: ${{ secrets.FAR_KEY_OPENROUTER }}
+        # --env auf eine Datei, die es nicht gibt: die Schluessel kommen hier
+        # ausschliesslich aus den Secrets.
+        run: python tools/waechter.py --env /nonexistent

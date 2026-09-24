@@ -25,7 +25,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry
 
 from . import RouterRuntime
-from .const import DOMAIN, PROFILE_LABELS_DE, PROFILES
+from .const import DOMAIN, PROFILES
+from .sprache import profil_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def async_pruefen(hass: HomeAssistant, runtime: RouterRuntime) -> None:
                 hass,
                 issue_id,
                 ISSUE_LUECKE,
-                {"profil": PROFILE_LABELS_DE[profile]},
+                {"profil": profil_name(runtime.sprache, profile)},
             )
 
     # --- alles Uebrige wieder wegnehmen ------------------------------------

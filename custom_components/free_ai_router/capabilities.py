@@ -1,14 +1,15 @@
 """Faehigkeitserkennung — misst, was ein Schluessel tatsaechlich kann.
 
-Eigenstaendiges Modul mit zwei Verwendern:
+Eigenstaendiges Modul mit drei Verwendern:
 
-* der Config Flow beim Einrichten (Phase 1),
-* der Prober unter Cron fuer den Feed-Dienst (Phase 3).
+* die Hintergrundmessung in Home Assistant (``hintergrund.py``),
+* das Probe-CLI fuer Entwickler (``tools/probe_cli.py``),
+* der Modell-Waechter, der neue Modelle einmal anmisst (``tools/waechter.py``).
 
 Deshalb kein ``homeassistant``-Import und keine Annahme ueber den Aufrufer.
 Die Pruefungen sind in Stufen geschnitten (:data:`CHECK_LIVENESS` usw.), damit
-der Prober spaeter die billigen stuendlich und die teuren taeglich fahren kann,
-ohne genau das Kontingent zu verbrauchen, das er vermessen soll.
+ein sparsamer Lauf nur die Lebendigkeit pruefen kann, ohne genau das
+Kontingent zu verbrauchen, das er vermessen soll.
 
 Grundsatz: Nichts wird abgeschrieben. Was hier nicht gemessen wurde, bleibt
 ``None`` — und ``None`` heisst "unbekannt", nicht "kann es nicht".
@@ -16,8 +17,7 @@ Grundsatz: Nichts wird abgeschrieben. Was hier nicht gemessen wurde, bleibt
 Der Unterschied ist nicht akademisch. Ein gestoerter Anbieter (Zeitueberschreitung,
 500, Ratenlimit) hat ueber das Modell nichts ausgesagt; nur eine gelesene und
 abgelehnte Anfrage hat das. Wer beides als "kann es nicht" bucht, schaltet beim
-naechsten Schluckauf des Anbieters eine Faehigkeit ab — im Feed-Dienst gleich
-fuer alle Installationen auf einmal.
+naechsten Schluckauf des Anbieters eine Faehigkeit ab.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from .adapters import ChatRequest, ImageAttachment, ProviderError, ToolSpec, get
 from .const import PROBE_TIMEOUT_S
 from .ratelimit import RateLimitInfo
 from .registry import Model, Provider
+from .sprache import DE, t
 from .testimage import make_challenge
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ CHECK_VISION = "vision"
 CHECK_TOOLS = "tools"
 
 ALL_CHECKS: tuple[str, ...] = (CHECK_LIVENESS, CHECK_STRUCTURED, CHECK_VISION, CHECK_TOOLS)
-#: Billig genug fuer den stuendlichen Takt des Probers (ein Request je Modell).
+#: Ein Aufruf je Modell — nur: antwortet es noch?
 CHEAP_CHECKS: tuple[str, ...] = (CHECK_LIVENESS,)
 
 # Mini-Schema fuer die Structured-Output-Pruefung.
@@ -180,14 +181,14 @@ class ModelProbe:
         """Limits aus den Antwortheadern, soweit erkannt."""
         limits: dict[str, Any] = {}
         info = self.rate_limit
-        if info.limit_requests and info.reset_requests_s:
-            # Ein Reset unter zwei Minuten deutet auf ein Minutenfenster,
-            # alles darueber auf ein Tagesfenster. Mehr ist aus einem
-            # einzelnen Header nicht sicher abzuleiten.
-            if info.reset_requests_s <= 120:
-                limits["rpm"] = info.limit_requests
-            else:
-                limits["rpd"] = info.limit_requests
+        # Ein Anfragelimit nur, wenn der Anbieter das Fenster nennt. Frueher
+        # wurde es aus der Reset-Zeit geraten — und Groqs Tageslimit von
+        # 1.000 landete als 1.000 je Minute im Router. Ohne genanntes Fenster
+        # gilt der gepflegte Wert aus der Anbieterdatei.
+        if info.limit_requests and info.requests_window_s == 60:
+            limits["rpm"] = info.limit_requests
+        elif info.limit_requests and info.requests_window_s == 86400:
+            limits["rpd"] = info.limit_requests
         if info.limit_tokens and info.reset_tokens_s and info.reset_tokens_s <= 120:
             limits["tpm"] = info.limit_tokens
         return limits
@@ -589,6 +590,7 @@ async def quick_key_check(
     api_key: str,
     *,
     timeout: float = PROBE_TIMEOUT_S,
+    sprache: str = DE,
 ) -> tuple[bool, str, str]:
     """Ein einzelner Aufruf, der sofort nach der Key-Eingabe Rueckmeldung gibt.
 
@@ -601,12 +603,12 @@ async def quick_key_check(
     )
     if probe.alive:
         latency = f"{probe.latency_total_s:.1f} s" if probe.latency_total_s else "?"
-        return True, f"{model.display_name} antwortet ({latency})", ""
-    return False, probe.error or "keine Antwort", _fehlerart(probe)
+        return True, t(sprache, "antwortet", modell=model.display_name, dauer=latency), ""
+    return False, probe.error or t(sprache, "keine_antwort"), _fehlerart(probe)
 
 
 def merge_into_registry(
-    provider: Provider, probes: Iterable[ModelProbe]
+    provider: Provider, probes: Iterable[ModelProbe], sprache: str = DE
 ) -> dict[str, dict[str, Any]]:
     """Fasse Messergebnisse als Ueberschreibungen je Modellschluessel zusammen.
 
@@ -615,10 +617,10 @@ def merge_into_registry(
     ueber die Startwerte der YAML-Datei gelegt.
     """
     del provider  # Signatur bleibt symmetrisch zu probe_provider
-    return {probe.key: _eintrag(probe) for probe in probes}
+    return {probe.key: _eintrag(probe, sprache) for probe in probes}
 
 
-def _eintrag(probe: ModelProbe) -> dict[str, Any]:
+def _eintrag(probe: ModelProbe, sprache: str = DE) -> dict[str, Any]:
     """Ein Messergebnis in der Form, in der es im Subentry liegt."""
     eintrag: dict[str, Any] = {
         "alive": probe.alive,
@@ -633,7 +635,7 @@ def _eintrag(probe: ModelProbe) -> dict[str, Any]:
         # Modell nachgeprueft gehoert. Eintraege ohne dieses Feld stammen aus
         # der Zeit, als ein 503 noch als "tot" galt — sie werden beim
         # naechsten Hintergrundlauf sofort nachgemessen.
-        eintrag["grund"] = kurzgrund(probe)
+        eintrag["grund"] = kurzgrund(probe, sprache)
     return eintrag
 
 
@@ -692,8 +694,7 @@ def should_discard(vorher: dict[str, dict[str, Any]], lebendig: int) -> bool:
     Wahr, wenn kein einziges Modell geantwortet hat, obwohl vorher welche
     liefen. Das ist fast immer die eigene Leitung und nicht das Ende des
     Anbieters — und eine kaputte Leitung darf nicht dazu fuehren, dass sich
-    die Installation selbst die Kanaele abschaltet. Dieselbe Notbremse faehrt
-    der Prober fuer den Feed.
+    die Installation selbst die Kanaele abschaltet.
 
     Beim ersten Mal (``vorher`` leer) gibt es nichts zu schuetzen: dann ist
     auch ein durchweg totes Ergebnis ein Ergebnis.
@@ -750,33 +751,24 @@ def ist_voruebergehend(probe: ModelProbe, *, schluessel_gueltig: bool) -> bool:
     return False
 
 
-def kurzgrund(probe: ModelProbe) -> str:
+def kurzgrund(probe: ModelProbe, sprache: str = DE) -> str:
     """Warum ein Modell nicht geantwortet hat — ein paar Worte statt JSON."""
     if probe.rate_limit.limit_requests == 0:
-        return "kein Kontingent für dieses Konto"
+        return t(sprache, "grund_kein_kontingent")
     status = probe.status
     if status is None:
-        return "keine Antwort, Zeitüberschreitung oder Netz"
+        return t(sprache, "grund_keine_antwort")
     if status < 400:
-        return "Fehler beim Anbieter hinter dem Vermittler"
-    texte = {
-        400: "Anfrage abgelehnt",
-        401: "Schlüssel abgelehnt",
-        402: "nur mit bezahltem Tarif",
-        403: "kein Zugriff mit diesem Konto",
-        404: "Modell gibt es nicht (mehr)",
-        408: "Zeitüberschreitung",
-        429: "Limit erreicht",
-    }
-    if status in texte:
-        return texte[status]
+        return t(sprache, "grund_vermittler")
+    if status in (400, 401, 402, 403, 404, 408, 429):
+        return t(sprache, f"grund_{status}")
     if status >= 500:
-        return f"Anbieter überlastet oder gestört, HTTP {status}"
-    return f"HTTP {status}"
+        return t(sprache, "grund_5xx", status=status)
+    return t(sprache, "grund_http", status=status)
 
 
 def uebernehmen(
-    vorher: dict[str, dict[str, Any]], probes: Iterable[ModelProbe]
+    vorher: dict[str, dict[str, Any]], probes: Iterable[ModelProbe], sprache: str = DE
 ) -> dict[str, dict[str, Any]]:
     """Eine Messung in den gespeicherten Stand einrechnen.
 
@@ -806,11 +798,32 @@ def uebernehmen(
                 # abgeschaltet, obwohl nichts gegen sie sprach.
                 nachher.pop(probe.key, None)
             continue
-        eintrag = _eintrag(probe)
+        eintrag = _eintrag(probe, sprache)
         if probe.alive:
             eintrag = merge_overrides(vorher.get(probe.key) or {}, eintrag)
         nachher[probe.key] = eintrag
     return nachher
+
+
+def ohne_geratene_anfragelimits(
+    gespeichert: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Gespeicherte Messwerte ohne ``rpm``/``rpd`` — fuer die Migration.
+
+    Vor dem 24.09.2026 wurde das Fenster eines Anfragelimits aus der
+    Reset-Zeit geraten. Welcher gespeicherte Wert davon betroffen ist, laesst
+    sich im Nachhinein nicht sagen; die Anbieterdateien fuehren fuer jedes
+    Modell gepflegte Werte, also fallen alle geschaetzten weg.
+    """
+    ergebnis: dict[str, dict[str, Any]] = {}
+    for key, eintrag in gespeichert.items():
+        limits = {
+            name: wert
+            for name, wert in (eintrag.get("limits") or {}).items()
+            if name not in ("rpm", "rpd")
+        }
+        ergebnis[key] = {**eintrag, "limits": limits} if "limits" in eintrag else dict(eintrag)
+    return ergebnis
 
 
 def faellige_modelle(
@@ -846,7 +859,10 @@ def faellige_modelle(
 
 
 def bericht_zeilen(
-    probes: Iterable[ModelProbe], *, schluessel_gueltig: bool | None = None
+    probes: Iterable[ModelProbe],
+    *,
+    schluessel_gueltig: bool | None = None,
+    sprache: str = DE,
 ) -> list[str]:
     """Eine Zeile je gemessenem Modell, fuer Benachrichtigung und Dienst.
 
@@ -861,26 +877,25 @@ def bericht_zeilen(
     for probe in probes:
         if probe.alive:
             pruefungen = (
-                ("Bilder", probe.vision),
-                ("Schema", probe.structured_output),
-                ("Werkzeuge", probe.tools),
+                (t(sprache, "faehigkeit_bilder"), probe.vision),
+                (t(sprache, "faehigkeit_schema"), probe.structured_output),
+                (t(sprache, "faehigkeit_werkzeuge"), probe.tools),
             )
             kann = [name for name, ergebnis in pruefungen if ergebnis.ok]
             if all(ergebnis.ok is None for _name, ergebnis in pruefungen):
                 # Sparsamer Lauf: nur die Lebendpruefung. "nur Text" waere
                 # hier eine Behauptung ueber etwas, das nicht geprueft wurde.
-                befund = "erreichbar"
+                befund = t(sprache, "bericht_erreichbar")
             else:
-                befund = ", ".join(kann) or "nur Text"
+                befund = ", ".join(kann) or t(sprache, "bericht_nur_text")
             dauer = f" · {probe.latency_total_s:.1f} s" if probe.latency_total_s else ""
             zeilen.append(f"- **{probe.model_id}** — {befund}{dauer}")
         elif ist_voruebergehend(probe, schluessel_gueltig=schluessel_gueltig):
-            zeilen.append(
-                f"- **{probe.model_id}** — gerade nicht erreichbar ({kurzgrund(probe)}), "
-                "wird später erneut versucht"
-            )
+            grund = kurzgrund(probe, sprache)
+            zeilen.append(t(sprache, "bericht_gestoert", modell=probe.model_id, grund=grund))
         else:
-            zeilen.append(f"- **{probe.model_id}** — nicht nutzbar: {kurzgrund(probe)}")
+            grund = kurzgrund(probe, sprache)
+            zeilen.append(t(sprache, "bericht_tot", modell=probe.model_id, grund=grund))
     return zeilen
 
 
@@ -938,6 +953,7 @@ __all__ = [
     "kurzgrund",
     "merge_into_registry",
     "merge_overrides",
+    "ohne_geratene_anfragelimits",
     "probe_model",
     "probe_provider",
     "quick_key_check",

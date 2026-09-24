@@ -452,8 +452,9 @@ async def test_limits_aus_den_headern(umgebung) -> None:
     probe = await probe_model(
         umgebung["session"], umgebung["provider"], "key", umgebung["model"]
     )
-    # Reset bei 120 s: als Minutenfenster gewertet.
-    assert probe.measured_limits() == {"rpm": 1000}
+    # Ein Reset von 120 s verraet das Fenster nicht — so meldet Groq sein
+    # Tageslimit. Frueher wurde daraus "1000 je Minute".
+    assert probe.measured_limits() == {}
 
 
 async def test_anbieter_messung_und_modellabgleich(umgebung) -> None:
@@ -770,3 +771,23 @@ def test_grund_ohne_doppelte_klammern() -> None:
     zeilen = bericht_zeilen([_probe("a", alive=True), _probe("b", alive=False, status=None),
                              _probe("c", alive=False, status=503)])
     assert "((" not in "".join(zeilen) and "))" not in "".join(zeilen)
+
+
+def test_anfragelimit_nur_bei_genanntem_fenster() -> None:
+    probe = _probe("m", alive=True)
+    probe.rate_limit = RateLimitInfo(limit_requests=60, requests_window_s=60.0)
+    assert probe.measured_limits() == {"rpm": 60}
+    probe.rate_limit = RateLimitInfo(limit_requests=1000, reset_requests_s=86.0)
+    assert probe.measured_limits() == {}
+
+
+def test_migration_entfernt_geratene_anfragelimits() -> None:
+    from custom_components.free_ai_router.capabilities import ohne_geratene_anfragelimits
+
+    vorher = {
+        "groq/a": {"alive": True, "limits": {"rpm": 1000, "tpm": 8000}},
+        "groq/b": {"alive": False, "grund": "x"},
+    }
+    nachher = ohne_geratene_anfragelimits(vorher)
+    assert nachher["groq/a"]["limits"] == {"tpm": 8000}
+    assert nachher["groq/b"] == vorher["groq/b"]

@@ -15,13 +15,22 @@ onboarding:
   summary_de: >-
     Latenz-König, erste Wahl für Assist. Qwen3.8 kann entgegen der
     verbreiteten Annahme auch Bilder.
+  summary_en: >-
+    Lowest latency, first choice for Assist. Qwen3.8 accepts images,
+    contrary to common belief.
   empfohlen: true
   steps_de:
     - Mit GitHub- oder Google-Konto anmelden
     - '"Create API Key" klicken und einen Namen vergeben'
     - Key sofort kopieren, er wird nur einmal angezeigt
+  steps_en:
+    - Sign in with a GitHub or Google account
+    - Click "Create API Key" and give it a name
+    - Copy the key right away, it is shown only once
   data_note_de: >-
     Kein Training auf Inhalten der kostenlosen Stufe.
+  data_note_en: >-
+    No training on free-tier content.
   credit_card_required: false
 
 # Modellbestand am 09.09.2026 ueber /models abgeglichen. Die Llama-Modelle

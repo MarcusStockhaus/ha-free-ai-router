@@ -37,6 +37,7 @@ from . import FreeAIRouterConfigEntry, RouterRuntime
 from .const import DOMAIN
 from .entity import MANUFACTURER, RouterEntity
 from .ledger import bucket_key
+from .sprache import t
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,9 +48,20 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 @dataclass(frozen=True, kw_only=True)
 class RouterSensorDescription(SensorEntityDescription):
-    """Ein Tageszaehler und wie er aus der Laufzeit zu holen ist."""
+    """Ein Tageszaehler und wie er aus der Laufzeit zu holen ist.
+
+    Die Einheit folgt der Systemsprache und wird beim Anlegen gesetzt. Home
+    Assistants eigener Weg (``unit_of_measurement`` in den Uebersetzungen)
+    nimmt absichtlich immer die englische Fassung, damit sich Statistiken
+    beim Sprachwechsel nicht aendern — auf einem deutschen System stuende dann
+    "requests" neben "Anfragen heute". Live am 24.09.2026 so gesehen.
+    """
 
     wert: Callable[[RouterRuntime], int]
+    einheit: str
+    """Schluessel in ``sprache.TEXTE``."""
+    objekt_id: str
+    """Feste Entity-ID, unabhaengig von der Systemsprache (siehe ai_task.OBJEKT_IDS)."""
 
 
 GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
@@ -58,7 +70,8 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="anfragen_heute",
         icon="mdi:counter",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement="Anfragen",
+        objekt_id="anfragen_heute",
+        einheit="einheit_anfragen",
         wert=lambda runtime: runtime.ledger.stats.requests,
     ),
     RouterSensorDescription(
@@ -66,7 +79,8 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="token_heute",
         icon="mdi:cash-multiple",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement="Token",
+        objekt_id="token_heute",
+        einheit="einheit_token",
         wert=lambda runtime: runtime.ledger.stats.tokens,
     ),
     RouterSensorDescription(
@@ -74,7 +88,8 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="reserve_heute",
         icon="mdi:backup-restore",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement="Wechsel",
+        objekt_id="reserve_gegriffen_heute",
+        einheit="einheit_wechsel",
         # Bewusst *nicht* diagnostisch: das ist laut README "der Sensor, auf
         # den es ankommt" — ein still dauerhaft ausgefallener Erstkanal faellt
         # sonst nicht auf. In der Diagnose-Kategorie fehlt er auf jedem
@@ -86,7 +101,8 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="verworfen_heute",
         icon="mdi:close-octagon-outline",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement="Anfragen",
+        objekt_id="verworfen_heute",
+        einheit="einheit_anfragen",
         entity_category=EntityCategory.DIAGNOSTIC,
         wert=lambda runtime: runtime.ledger.stats.discarded,
     ),
@@ -129,6 +145,8 @@ class RouterGesamtSensor(RouterEntity, SensorEntity):
         RouterEntity.__init__(self, entry)
         self.entity_description = beschreibung
         self._attr_unique_id = f"{entry.entry_id}_{beschreibung.key}"
+        self.entity_id = f"sensor.{DOMAIN}_{beschreibung.objekt_id}"
+        self._attr_native_unit_of_measurement = t(entry.runtime_data.sprache, beschreibung.einheit)
 
     @property
     def native_value(self) -> int:
@@ -156,13 +174,14 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
 
     _attr_should_poll = True
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
-    _attr_native_unit_of_measurement = "Anfragen"
     _attr_icon = "mdi:api"
 
     def __init__(self, entry: FreeAIRouterConfigEntry, provider: Any) -> None:
         RouterEntity.__init__(self, entry)
         self._provider_id = provider.id
         self._attr_unique_id = f"{entry.entry_id}_{provider.id}_anfragen"
+        self.entity_id = f"sensor.{provider.id}_anfragen_heute"
+        self._attr_native_unit_of_measurement = t(entry.runtime_data.sprache, "einheit_anfragen")
         # Der Anbietername steht schon am Geraet. Ihn hier zu wiederholen
         # ergaebe "Google AI Studio Google AI Studio Anfragen heute" — Home
         # Assistant setzt den Geraetenamen selbst davor.
@@ -177,7 +196,7 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
             identifiers={(DOMAIN, f"{entry.entry_id}_{provider.id}")},
             name=provider.name,
             manufacturer=MANUFACTURER,
-            model=f"{len(provider.models)} Modelle",
+            model=t(entry.runtime_data.sprache, "geraet_modell", anzahl=len(provider.models)),
             entry_type=DeviceEntryType.SERVICE,
             # Kein via_device mehr: es zeigte auf das gemeinsame Geraet der
             # Integration, das es seit dem 12.09.2026 nicht mehr gibt (siehe

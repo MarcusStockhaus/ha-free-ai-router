@@ -24,21 +24,27 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 
-from .const import PROFILE_LABELS_DE, PROFILE_REQUIREMENTS, PROFILES
+from .const import PROFILE_REQUIREMENTS, PROFILES
 from .ledger import Availability
 from .registry import Model, Provider
+from .sprache import DE, profil_name, t
 
 AvailabilityLookup = Callable[[Provider, Model], Availability]
 
 _LATENCY_RANK = {"sehr_schnell": 0, "schnell": 1, "normal": 2, "langsam": 3}
 
-# Ablehnungsgruende — auch die Abschlussuebersicht im Config Flow liest sie.
-REASON_PROFILE = "Profil passt nicht"
-REASON_VISION = "kann keine Bilder"
-REASON_TOOLS = "kann keine Werkzeuge"
-REASON_STRUCTURED = "kann kein Structured Output"
-REASON_CONTEXT = "Kontextfenster zu klein"
+# Ablehnungsgruende als Kennungen; den Text in der jeweiligen Sprache liefert
+# :func:`ablehnung_text`.
+REASON_PROFILE = "profil"
+REASON_VISION = "bilder"
+REASON_TOOLS = "werkzeuge"
+REASON_STRUCTURED = "schema"
+REASON_CONTEXT = "kontext"
 REASON_DISABLED = "abgeschaltet"
+
+
+def ablehnung_text(sprache: str, grund: str) -> str:
+    return t(sprache, f"ablehnung_{grund}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -279,7 +285,7 @@ def coverage(
     return result
 
 
-def abdeckung_text(eintraege: dict[str, CoverageEntry]) -> str:
+def abdeckung_text(eintraege: dict[str, CoverageEntry], sprache: str = DE) -> str:
     """Die Abdeckung als Markdown-Liste — eine Zeile je Profil.
 
     Dieselbe Uebersicht an zwei Stellen: am Ende der Einrichtung und in der
@@ -288,15 +294,18 @@ def abdeckung_text(eintraege: dict[str, CoverageEntry]) -> str:
     zeilen: list[str] = []
     for profil in PROFILES:
         eintrag = eintraege.get(profil)
-        name = PROFILE_LABELS_DE[profil]
+        name = profil_name(sprache, profil)
         if eintrag is None or eintrag.primary is None:
-            zeilen.append(f"- **{name}** — keine Abdeckung. Hier bleibt eine Lücke.")
+            zeilen.append(t(sprache, "abdeckung_luecke", profil=name))
             continue
         erst = _kanal_name(eintrag.primary)
         if eintrag.has_reserve:
-            zeilen.append(f"- **{name}** — {erst}, Reserve: {_kanal_name(eintrag.reserves[0])}")
+            reserve = _kanal_name(eintrag.reserves[0])
+            zeilen.append(
+                t(sprache, "abdeckung_reserve", profil=name, erst=erst, reserve=reserve)
+            )
         else:
-            zeilen.append(f"- **{name}** — {erst} — **ohne Reserve**")
+            zeilen.append(t(sprache, "abdeckung_ohne_reserve", profil=name, erst=erst))
     return "\n".join(zeilen)
 
 
@@ -309,6 +318,7 @@ __all__ = [
     "Channel",
     "CoverageEntry",
     "abdeckung_text",
+    "ablehnung_text",
     "Rejection",
     "Requirements",
     "RoutingPlan",

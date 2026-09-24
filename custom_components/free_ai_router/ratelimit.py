@@ -63,6 +63,16 @@ class RateLimitInfo:
     remaining_tokens: int | None = None
     reset_tokens_s: float | None = None
     retry_after_s: float | None = None
+    requests_window_s: float | None = None
+    """Fensterlaenge des Anfragelimits — nur gesetzt, wenn der Anbieter sie nennt.
+
+    Mistral schreibt sie in den Headernamen (``x-ratelimit-limit-req-minute``).
+    Aus dem Reset-Zeitpunkt laesst sie sich nicht ablesen: Groq meldet in
+    ``x-ratelimit-limit-requests`` laut eigener Doku immer das Tageslimit,
+    fuellt es aber laufend auf — der Reset liegt dann oft unter zwei Minuten,
+    und aus 1.000 am Tag wurden 1.000 je Minute. Live am 24.09.2026 in den
+    Messwerten gefunden.
+    """
     raw: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -78,6 +88,7 @@ class RateLimitInfo:
             "remaining_tokens": self.remaining_tokens,
             "reset_tokens_s": self.reset_tokens_s,
             "retry_after_s": self.retry_after_s,
+            "requests_window_s": self.requests_window_s,
             "raw": dict(self.raw),
         }
 
@@ -152,6 +163,7 @@ def parse_headers(headers: Mapping[str, str], api_style: str = "") -> RateLimitI
         remaining_tokens=remaining_tokens,
         reset_tokens_s=reset_tokens_s,
         retry_after_s=retry_after_s,
+        requests_window_s=named_reset,
         raw=raw,
     )
 

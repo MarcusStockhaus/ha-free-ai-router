@@ -1,0 +1,195 @@
+blueprint:
+  name: Doorbell analysis (Free AI Router)
+  description: >-
+    Analyzes the camera image when someone rings and reports in one sentence
+    who is at the door.
+
+
+    **Difference to motion analysis:** ringing is an intention, not an
+    observation. It happens rarely enough that quota does not matter — a
+    doorbell triggers five to twenty times a day, a motion sensor facing a
+    street two thousand times. The cooldown is therefore short and only
+    catches repeated presses.
+
+
+    **What the camera must provide:** a still image. Not every doorbell does —
+    some only provide a video stream and fail with "Unable to get image". If
+    the camera view shows no image, there will be no analysis either.
+  domain: automation
+  source_url: https://github.com/MarcusStockhaus/ha-free-ai-router/blob/main/blueprints/automation/free_ai_router/doorbell.yaml
+  input:
+    what:
+      name: Doorbell and camera
+      icon: mdi:doorbell-video
+      input:
+        doorbell:
+          name: Doorbell button
+          description: >-
+            The entity that changes when someone rings. Depending on the
+            integration an `event` entity or a `binary_sensor`. Both are
+            supported.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: event
+                - domain: binary_sensor
+        camera:
+          name: Camera
+          description: The camera at the door. Must be able to provide a still image.
+          selector:
+            entity:
+              filter:
+                - domain: camera
+        entity:
+          name: AI entity
+          default: ai_task.free_ai_router_bildanalyse
+          selector:
+            entity:
+              filter:
+                - domain: ai_task
+
+    behaviour:
+      name: Behaviour
+      icon: mdi:tune
+      input:
+        cooldown:
+          name: Cooldown
+          description: >-
+            Catches repeated presses. Keep it short — unlike motion analysis,
+            this is not about quota, only about not reporting the same visitor
+            twice.
+          default:
+            seconds: 30
+          selector:
+            duration: {}
+        question:
+          name: Question for the AI
+          default: >-
+            Someone rang the front door bell. Who or what is visible in the
+            image? Pay attention to uniforms or clothing of delivery services and
+            to parcels left behind. Answer factually and without assumptions
+            about people.
+          selector:
+            text:
+              multiline: true
+
+    afterwards:
+      name: What happens next
+      icon: mdi:bell-ring
+      input:
+        action:
+          name: Action
+          description: >-
+            The variable `result` is available with the fields `description`,
+            `person`, `delivery` and `package`.
+
+
+            To include the image, add a `camera.snapshot` action before the
+            notification and reference the file — this depends on your own
+            setup and is therefore not part of the default.
+          default:
+            - action: persistent_notification.create
+              data:
+                title: Someone is at the door
+                message: "{{ result.description }}"
+          selector:
+            action: {}
+        report_errors:
+          name: Report failures
+          description: >-
+            Sends a notification when the analysis returned no answer — usually
+            because the camera provides no still image or all configured
+            channels are at their limit. Without it, the automation silently
+            does nothing in that case.
+          default: true
+          selector:
+            boolean: {}
+
+mode: single
+max_exceeded: silent
+
+variables:
+  cooldown: !input cooldown
+  camera: !input camera
+  report_errors: !input report_errors
+
+triggers:
+  # A state change without a filter so that both kinds match: a
+  # binary_sensor switches to "on", an event entity to a new timestamp. The
+  # condition sorts out the rest.
+  - trigger: state
+    entity_id: !input doorbell
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is not none
+         and trigger.to_state is not none
+         and trigger.to_state.state not in ['unknown', 'unavailable', 'off']
+         and trigger.to_state.state != trigger.from_state.state }}
+  - condition: template
+    value_template: >-
+      {% set last = state_attr(this.entity_id, 'last_triggered') %}
+      {{ last is none
+         or (now() - last).total_seconds()
+            > (cooldown.hours | default(0) | int) * 3600
+              + (cooldown.minutes | default(0) | int) * 60
+              + (cooldown.seconds | default(0) | int) }}
+
+actions:
+  - action: ai_task.generate_data
+    data:
+      entity_id: !input entity
+      task_name: Doorbell
+      instructions: !input question
+      structure:
+        person:
+          description: Is at least one person visible?
+          required: true
+          selector:
+            boolean: {}
+        delivery:
+          description: >-
+            Do clothing or a vehicle indicate a delivery service?
+          required: true
+          selector:
+            boolean: {}
+        package:
+          description: Is a parcel or package left behind visible?
+          required: true
+          selector:
+            boolean: {}
+        description:
+          description: >-
+            One short English sentence that can be read aloud.
+          required: true
+          selector:
+            text: {}
+      attachments:
+        media_content_id: "media-source://camera/{{ camera }}"
+        media_content_type: image/jpeg
+    response_variable: finding
+    continue_on_error: true
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ finding is defined and finding.data is defined }}"
+        sequence:
+          - variables:
+              result: "{{ finding.data }}"
+          - sequence: !input action
+    default:
+      - if:
+          - condition: template
+            value_template: "{{ report_errors }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: Doorbell analysis failed
+              message: >-
+                Free AI Router returned no answer for {{ camera }}. Most common
+                cause: the camera currently provides no still image, or all
+                configured channels are at their limit. Details under
+                Settings → Devices & services → Free AI Router.

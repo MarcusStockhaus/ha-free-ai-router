@@ -69,9 +69,8 @@ das ist ein Ergebnis.)
 ### 1. Host in die Allowlist
 
 Das ist der **einzige** Python-Teil, und er ist Absicht: eine Datendatei darf
-niemals einen neuen Endpunkt einführen. Auch der signierte Feed-Dienst
-([FEED.md](FEED.md)) darf Modelle und Limits aktualisieren, aber nie, wohin
-Kamerabilder fließen.
+niemals einen neuen Endpunkt einführen. Anbieterdateien dürfen Modelle und
+Limits ändern, aber nie, wohin Kamerabilder fließen.
 
 ```diff
 --- a/custom_components/free_ai_router/allowlist.py
@@ -103,11 +102,17 @@ daily_reset_timezone: UTC
 onboarding:
   signup_url: https://cloud.cerebras.ai/platform/apikeys
   summary_de: Sehr schnelle Inferenz, zweiter Kanal für Assist neben Groq.
+  summary_en: Very fast inference, second channel for Assist next to Groq.
   steps_de:
     - Bei Cerebras Cloud mit Google- oder GitHub-Konto anmelden
     - 'Unter "Billing" prüfen, ob ein Tarif aktiv ist'
     - '"Generate API Key" klicken, Namen vergeben, Key kopieren'
+  steps_en:
+    - Sign in to Cerebras Cloud with a Google or GitHub account
+    - 'Check under "Billing" that a plan is active'
+    - 'Click "Generate API Key", give it a name, copy the key'
   data_note_de: Kein Training auf Inhalten der kostenlosen Stufe.
+  data_note_en: No training on free-tier content.
   credit_card_required: false
 
 models:
@@ -152,7 +157,9 @@ des PR. Alle interessanten Befunde dieses Projekts kamen so zustande.
 | `monthly_budget_usd` | Nur falls der Anbieter einen Ausgabendeckel hat statt eines Zeitfensters (Mistral: 10). Dann sind `pricing`-Angaben Pflicht. |
 | `capabilities` | Startwerte. Was die Fähigkeitsmessung feststellt, gewinnt — und ein selbst beobachteter 429 gewinnt über beides. |
 | `limits` | Leer heißt **unbekannt**, nicht unbegrenzt. |
-| `data_note_de` | Eine ehrliche Zeile, kein Rechtstext. Sie steht im Einrichtungsassistenten direkt über dem Eingabefeld für den Schlüssel. |
+| `data_note_de`, `data_note_en` | Eine ehrliche Zeile, kein Rechtstext. Sie steht im Einrichtungsassistenten direkt über dem Eingabefeld für den Schlüssel. |
+| `steps_de`, `steps_en` | Die Schritte bis zum Schlüssel, in beiden Sprachen gleich viele. Die Integration zeigt die Fassung in der Systemsprache von Home Assistant; fehlt eine, lehnt der Loader die Datei ab. |
+| `summary_de`, `summary_en` | Optional, aber nur gemeinsam. |
 
 Die maschinenlesbare Fassung derselben Regeln steht in
 `custom_components/free_ai_router/registry_schema.json`.

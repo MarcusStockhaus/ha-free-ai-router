@@ -28,9 +28,8 @@ from .const import (
     CONF_PROVIDER,
     DOMAIN,
     PROFILES,
-    STORAGE_KEY_FEED,
+    STORAGE_KEY_FEED_ALT,
     STORAGE_KEY_LEDGER,
-    STORAGE_VERSION_FEED,
     STORAGE_VERSION_LEDGER,
     SUBENTRY_TYPE_ANBIETER,
 )
@@ -44,6 +43,7 @@ from .registry import (
     load_registry,
 )
 from .router import Channel, CoverageEntry, coverage
+from .sprache import sprache_aus
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -74,14 +74,8 @@ class RouterRuntime:
     client: RouterClient
     channels: tuple[Channel, ...] = ()
     store: Store | None = None
-    base_registry: Registry | None = None
-    """Die mitgelieferte Registry ohne Feed.
-
-    Wird aufgehoben, weil der Feed jedesmal neu darueber gelegt wird und nicht
-    auf ein bereits angereichertes Ergebnis — sonst bliebe ein einmal
-    uebernommener Wert stehen, auch wenn der Feed ihn zuruecknimmt.
-    """
-    feed: Any = None
+    sprache: str = "de"
+    """Sprache der Texte, die im Code entstehen — folgt der Systemsprache."""
     messung: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     """Haelt Hintergrundmessung und Dienst ``neu_vermessen`` auseinander."""
     _coverage: dict[str, CoverageEntry] = field(default_factory=dict, repr=False)
@@ -219,9 +213,8 @@ async def async_setup_entry(
     # Erst hier, nicht auf Modulebene: ``client`` braucht aiohttp. Sonst
     # laesst sich kein einziges Modul dieses Pakets ohne HTTP-Bibliothek
     # importieren — und die Registry-Pruefung fuer Contributor soll mit
-    # PyYAML und jsonschema auskommen. Dasselbe gilt fuer den Feed-Client.
+    # PyYAML und jsonschema auskommen.
     from .client import RouterClient
-    from .feed_client import FeedManager, feed_configured
     from .hintergrund import async_starten
     from .services import async_setup_services
 
@@ -238,32 +231,30 @@ async def async_setup_entry(
     async def save(data: dict[str, Any]) -> None:
         store.async_delay_save(lambda: data, LEDGER_SAVE_DELAY_S)
 
-    ledger = Ledger(save=save)
+    sprache = sprache_aus(hass.config.language)
+    ledger = Ledger(save=save, sprache=sprache)
     ledger.restore(stored)
 
     session = async_get_clientsession(hass)
     eingerichtet = configured_providers(entry)
 
-    # Der Feed wird aus dem Zwischenspeicher uebernommen, nicht geholt: der
-    # Start soll nicht an einem fremden Server haengen. Nachgesehen wird
-    # gleich danach im Hintergrund.
-    feed_store = Store(hass, STORAGE_VERSION_FEED, STORAGE_KEY_FEED)
-    feed = FeedManager(session, save=feed_store.async_save)
-    feed.restore(await feed_store.async_load())
-    wirksam = feed.apply(registry)
+    # Bis Fassung 0.3 hielt die Integration hier den Zwischenspeicher eines
+    # signierten Feeds. Den gibt es nicht mehr — Aenderungen an Modellen und
+    # Limits kommen als Update ueber HACS. Die alte Datei wird weggeraeumt.
+    await Store(hass, 1, STORAGE_KEY_FEED_ALT).async_remove()
 
     runtime = RouterRuntime(
-        registry=wirksam,
+        registry=registry,
         ledger=ledger,
         client=RouterClient(
             session=session,
             ledger=ledger,
             keys=api_keys(eingerichtet),
+            sprache=sprache,
         ),
-        channels=build_channels(wirksam, eingerichtet),
+        channels=build_channels(registry, eingerichtet),
         store=store,
-        base_registry=registry,
-        feed=feed,
+        sprache=sprache,
     )
     entry.runtime_data = runtime
     _log_coverage(runtime)
@@ -277,38 +268,7 @@ async def async_setup_entry(
     # Was noch nicht gemessen ist, wird jetzt gemessen — der Einrichtungs-
     # assistent speichert nach dem Schluesseltest sofort und misst nicht mehr.
     entry.async_on_unload(async_starten(hass, entry))
-    if feed_configured():
-        entry.async_on_unload(_start_feed(hass, entry, runtime))
     return True
-
-
-def _start_feed(hass: HomeAssistant, entry: FreeAIRouterConfigEntry, runtime: RouterRuntime):
-    """Den Feed gleich einmal und danach im Takt nachsehen."""
-    from homeassistant.helpers.event import async_track_time_interval
-
-    from .feed_client import FEED_INTERVAL_HOURS
-
-    async def _nachsehen(_now: Any = None) -> None:
-        if await runtime.feed.async_update():
-            _uebernehmen(entry, runtime)
-            _kanaele_geaendert(hass, entry)
-
-    entry.async_create_background_task(hass, _nachsehen(), f"{DOMAIN} Feed")
-    return async_track_time_interval(
-        hass, _nachsehen, timedelta(hours=FEED_INTERVAL_HOURS)
-    )
-
-
-def _uebernehmen(entry: FreeAIRouterConfigEntry, runtime: RouterRuntime) -> None:
-    """Ein neues Feed-Dokument in Registry und Kanaele einrechnen.
-
-    Immer auf der mitgelieferten Registry aufsetzen, nie auf der zuletzt
-    angereicherten: sonst liesse sich eine Aenderung nie wieder zuruecknehmen.
-    """
-    basis = runtime.base_registry or runtime.registry
-    runtime.registry = runtime.feed.apply(basis)
-    runtime.channels = build_channels(runtime.registry, configured_providers(entry))
-    _log_coverage(runtime)
 
 
 def _start_issue_check(hass: HomeAssistant, runtime: RouterRuntime):
@@ -353,13 +313,21 @@ async def async_migrate_entry(
     eines einzelnen Anbieters ging nur ueber einen selbstgebauten Dialog.
     Fassung 2 legt je Anbieter einen Subentry an — die Zeilen, die Knoepfe und
     der Loeschdialog kommen dann von Home Assistant.
-    """
-    from homeassistant.config_entries import ConfigSubentry
 
+    Unterfassung 2.2 entfernt geratene Anfragelimits aus den gespeicherten
+    Messwerten (siehe ``capabilities.ohne_geratene_anfragelimits``).
+    """
     if entry.version > 2:
         return False
-    if entry.version == 2:
-        return True
+    if entry.version == 1 and not await _async_migrate_1_2(hass, entry):
+        return False
+    if entry.minor_version < 2:
+        _migrate_2_1_2_2(hass, entry)
+    return True
+
+
+async def _async_migrate_1_2(hass: HomeAssistant, entry: FreeAIRouterConfigEntry) -> bool:
+    from homeassistant.config_entries import ConfigSubentry
 
     providers: dict[str, Any] = dict(entry.data.get("providers") or {})
     registry: Registry | None = None
@@ -382,11 +350,28 @@ async def async_migrate_entry(
             ),
         )
 
-    hass.config_entries.async_update_entry(entry, data={}, version=2)
+    hass.config_entries.async_update_entry(entry, data={}, version=2, minor_version=1)
     _LOGGER.info(
         "Config Entry auf Fassung 2 gehoben: %s Anbieter als Subentries", len(providers)
     )
     return True
+
+
+def _migrate_2_1_2_2(hass: HomeAssistant, entry: FreeAIRouterConfigEntry) -> None:
+    """Geratene Anfragelimits aus allen Anbieter-Subentries entfernen."""
+    from .capabilities import ohne_geratene_anfragelimits
+
+    for subentry in list(entry.subentries.values()):
+        if subentry.subentry_type != SUBENTRY_TYPE_ANBIETER:
+            continue
+        vorher = dict(subentry.data.get(CONF_MODELS) or {})
+        nachher = ohne_geratene_anfragelimits(vorher)
+        if nachher != vorher:
+            hass.config_entries.async_update_subentry(
+                entry, subentry, data={**subentry.data, CONF_MODELS: nachher}
+            )
+    hass.config_entries.async_update_entry(entry, minor_version=2)
+    _LOGGER.info("Config Entry auf Fassung 2.2 gehoben: geratene Anfragelimits entfernt")
 
 
 async def async_unload_entry(

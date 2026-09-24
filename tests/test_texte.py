@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent.parent / "custom_components" / "free_ai_router"
@@ -242,21 +243,74 @@ def test_der_anbieter_subentry_ist_beschriftet() -> None:
         assert block["initiate_flow"].get(quelle), f"initiate_flow.{quelle} fehlt"
 
 
-def test_englische_uebersetzung_ist_identisch_zur_deutschen() -> None:
-    """Halb uebersetzt ist schlechter als konsistent deutsch.
+def _flach(d: dict, praefix: str = "") -> dict[str, str]:
+    ergebnis: dict[str, str] = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            ergebnis.update(_flach(v, f"{praefix}{k}."))
+        else:
+            ergebnis[f"{praefix}{k}"] = v
+    return ergebnis
 
-    Ein Einsteiger mit englischem Home Assistant soll denselben, vollstaendig
-    durchdachten Text sehen wie mit deutschem — nicht eine Mischung aus
-    uebersetzten und liegengebliebenen deutschen Saetzen. Solange es keine
-    echte englische Fassung gibt, ist ``en.json`` bewusst eine Kopie von
-    ``de.json``. Weicht sie ab, ist entweder eine Uebersetzung begonnen und
-    nicht zu Ende gefuehrt worden, oder die deutsche Fassung wurde geaendert
-    und die englische vergessen — beides soll aufgefallen sein, bevor es das
-    Frontend erreicht.
+
+def _sprache(code: str) -> dict[str, str]:
+    return _flach(
+        json.loads((WURZEL / "translations" / f"{code}.json").read_text(encoding="utf-8"))
+    )
+
+
+#: Woerter, die in einem englischen Text nichts verloren haben. Umlaute allein
+#: reichen nicht: "Anbieter" oder "Schluessel" kaemen ohne durch.
+_DEUTSCH = re.compile(
+    r"[äöüÄÖÜß]|\b(und|der|die|das|nicht|wird|Anbieter|Schlüssel|Einstellungen)\b"
+)
+
+
+def test_beide_sprachen_haben_dieselben_texte_und_platzhalter() -> None:
+    """Jeder Text in beiden Sprachen, mit denselben Platzhaltern.
+
+    Ein Platzhalter, der nur in einer Sprache steht, bleibt in der anderen als
+    rohe Klammer stehen — oder fehlt, obwohl der Code ihn fuellt.
     """
-    de = json.loads((WURZEL / "translations" / "de.json").read_text(encoding="utf-8"))
-    en = json.loads((WURZEL / "translations" / "en.json").read_text(encoding="utf-8"))
-    assert en == de
+    de, en = _sprache("de"), _sprache("en")
+    assert de.keys() == en.keys(), sorted(set(de) ^ set(en))
+    for schluessel in de:
+        assert set(re.findall(r"\{(\w+)\}", de[schluessel])) == set(
+            re.findall(r"\{(\w+)\}", en[schluessel])
+        ), schluessel
+
+
+def test_englisch_ist_wirklich_englisch() -> None:
+    fehler = [f"{k}: {v[:60]!r}" for k, v in _sprache("en").items() if _DEUTSCH.search(v)]
+    assert not fehler, fehler
+
+
+def test_strings_json_ist_die_englische_quelle() -> None:
+    """Home-Assistant-Konvention: strings.json ist Englisch, en.json dasselbe."""
+    assert _flach(_texte()) == _sprache("en")
+
+
+def test_texte_im_code_gibt_es_in_beiden_sprachen() -> None:
+    """``sprache.py`` fuer alles, was im Python-Code zusammengesetzt wird."""
+    from custom_components.free_ai_router.sprache import DE, EN, TEXTE
+
+    assert TEXTE[DE].keys() == TEXTE[EN].keys(), sorted(set(TEXTE[DE]) ^ set(TEXTE[EN]))
+    for schluessel, text in TEXTE[DE].items():
+        assert set(re.findall(r"\{(\w+)\}", text)) == set(
+            re.findall(r"\{(\w+)\}", TEXTE[EN][schluessel])
+        ), schluessel
+    fehler = [k for k, v in TEXTE[EN].items() if _DEUTSCH.search(v)]
+    assert not fehler, fehler
+
+
+def test_sprachwahl_folgt_der_systemsprache() -> None:
+    from custom_components.free_ai_router.sprache import sprache_aus
+
+    assert sprache_aus("de") == "de"
+    assert sprache_aus("de-CH") == "de"
+    assert sprache_aus("en") == "en"
+    assert sprache_aus("fr") == "en"
+    assert sprache_aus(None) == "en"
 
 
 def test_router_entities_ohne_geraet_tragen_den_integrationsnamen() -> None:

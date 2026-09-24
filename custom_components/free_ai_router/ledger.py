@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .ratelimit import RateLimitInfo
 from .registry import Model, Provider
+from .sprache import t
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -251,6 +252,8 @@ class Ledger:
     """
 
     save: SaveCallback | None = None
+    sprache: str = "de"
+    """Sprache der Sperrgruende — sie landen im Anbietersensor und in Meldungen."""
     buckets: dict[str, BucketState] = field(default_factory=dict)
     spend: dict[str, SpendState] = field(default_factory=dict)
     """Ausgaben je Anbieter-ID. Nur gefuellt, wo es Preise gibt."""
@@ -330,7 +333,7 @@ class Ledger:
         if state.blocked_until > now:
             return Availability(
                 ok=False,
-                reason=state.block_reason or "gesperrt",
+                reason=state.block_reason or t(self.sprache, "sperre_gesperrt"),
                 wait_s=state.blocked_until - now,
                 headroom=0.0,
             )
@@ -349,7 +352,10 @@ class Ledger:
             if rest <= 0:
                 return Availability(
                     ok=False,
-                    reason=f"Monatsbudget aufgebraucht ({ausgegeben:.2f} von {budget:.2f} USD)",
+                    reason=t(
+                        self.sprache, "sperre_budget",
+                        ausgegeben=f"{ausgegeben:.2f}", budget=f"{budget:.2f}",
+                    ),
                     wait_s=_seconds_to_month_end(provider.daily_reset_timezone, now),
                     headroom=0.0,
                 )
@@ -361,7 +367,7 @@ class Ledger:
             if used >= limits.rpd:
                 return Availability(
                     ok=False,
-                    reason=f"Tageslimit erreicht ({used}/{limits.rpd})",
+                    reason=t(self.sprache, "sperre_tag", genutzt=used, grenze=limits.rpd),
                     wait_s=_seconds_to_midnight(provider.daily_reset_timezone, now),
                     headroom=0.0,
                 )
@@ -377,7 +383,7 @@ class Ledger:
         ):
             return Availability(
                 ok=False,
-                reason="Anbieter meldet Rest 0",
+                reason=t(self.sprache, "sperre_rest_null"),
                 wait_s=DEFAULT_COOLDOWN_S,
                 headroom=0.0,
             )
@@ -388,7 +394,7 @@ class Ledger:
                 wait = max(0.0, 60.0 - (now - state.minute_start))
                 return Availability(
                     ok=False,
-                    reason=f"Minutenlimit erreicht ({used}/{limits.rpm})",
+                    reason=t(self.sprache, "sperre_minute", genutzt=used, grenze=limits.rpm),
                     wait_s=wait,
                     headroom=0.0,
                 )
@@ -398,7 +404,9 @@ class Ledger:
             wait = max(0.0, 60.0 - (now - state.minute_start))
             return Availability(
                 ok=False,
-                reason=f"Token-Minutenlimit erreicht ({state.minute_tokens}/{limits.tpm})",
+                reason=t(
+                    self.sprache, "sperre_token", genutzt=state.minute_tokens, grenze=limits.tpm
+                ),
                 wait_s=wait,
                 headroom=0.0,
             )
@@ -506,12 +514,12 @@ class Ledger:
         retry_after_s: float | None = None,
         now: float | None = None,
     ) -> None:
-        """Ein selbst beobachteter 429 — schlaegt Registry und Feed."""
+        """Ein selbst beobachteter 429 — schlaegt die Werte der Anbieterdatei."""
         now = time.time() if now is None else now
         state = self.bucket(bucket_key(provider, model))
         wait = retry_after_s if retry_after_s and retry_after_s > 0 else DEFAULT_COOLDOWN_S
         state.blocked_until = max(state.blocked_until, now + wait)
-        state.block_reason = f"429 vom Anbieter, gesperrt fuer {wait:.0f} s"
+        state.block_reason = t(self.sprache, "sperre_429", sekunden=f"{wait:.0f}")
         # Bewusst *kein* kuenstliches ``remaining_requests = 0``: die Sperre
         # steht bereits in ``blocked_until``. Ein gefaelschter Header-Rest
         # wuerde den Kanal ueber die Header-Frist von zwei Minuten blockieren
@@ -543,7 +551,7 @@ class Ledger:
             state.auth_failed = True
         if fatal or state.consecutive_failures >= 3:
             state.blocked_until = max(state.blocked_until, now + DEAD_COOLDOWN_S)
-            state.block_reason = reason or "wiederholt fehlgeschlagen"
+            state.block_reason = reason or t(self.sprache, "sperre_wiederholt")
             _LOGGER.warning(
                 "%s/%s: %s — %.0f s uebersprungen",
                 provider.id,

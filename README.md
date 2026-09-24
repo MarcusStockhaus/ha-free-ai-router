@@ -1,279 +1,215 @@
 # Free AI Router
 
-KI-Funktionen für Home Assistant, verteilt über mehrere kostenlose Anbieter.
-Für Installationen ohne eigene GPU — Green, Yellow, Raspberry Pi, kleiner NUC.
+**English** · [Deutsch](README.de.md)
 
-> **Läuft bei mir.** Keine Supportzusage, Issues können unbeantwortet bleiben.
-> Wer das liest, ist nicht enttäuscht, wenn es eintritt.
+AI features for Home Assistant based on the free tiers of several AI providers.
+Free AI Router bundles Google AI Studio, Groq, Mistral and OpenRouter behind
+Home Assistant's standard AI interfaces, routes every request to a suitable
+model and falls back to another provider automatically when a model fails or
+reaches its limit. No local GPU is required — it runs on Home Assistant Green,
+Yellow, a Raspberry Pi or a small NUC.
 
 ---
 
-## Worum es geht
+## Features
 
-Das Einrichten ist der Punkt. Ein Assistent führt durch zwei, drei Anmeldungen,
-prüft jeden Schlüssel sofort mit einem echten Aufruf und **misst selbst**, was
-jedes Modell kann — Bilder, Schemata, Werkzeuge, Antwortzeit. Danach verteilt
-ein Router die Anfragen still auf den jeweils passenden Kanal und weicht auf
-die Reserve aus, wenn einer ausfällt.
+- **Standard Home Assistant entities.** Three [AI task](https://www.home-assistant.io/integrations/ai_task/)
+  entities and one [conversation agent](https://www.home-assistant.io/integrations/conversation/)
+  for Assist. Every automation and blueprint that lets you pick an AI task
+  entity works with them.
+- **Routing with automatic fallback.** Each request goes to the best available
+  model for the task. If a model is overloaded, rejects the key or reaches a
+  limit, the next suitable model takes over — at another provider if
+  necessary.
+- **Quota tracking.** Per-minute, per-day and token limits as well as monthly
+  spending caps are tracked per model. Requests that hit only a per-minute
+  limit are queued briefly instead of failing.
+- **Capabilities measured with your own key.** Image input, structured output,
+  tool calling and response time are measured for every model in the
+  background. The measurement reflects what your account can actually do and
+  takes precedence over published information.
+- **Setup in seconds.** Choose a provider, paste the key, done. Additional
+  providers are added individually on the integration page.
+- **Monitoring.** Usage sensors, repair notices for rejected keys, uncovered
+  profiles and used-up budgets, and a downloadable diagnostics file.
+- **Blueprints** for camera analysis on motion and for doorbells, in English
+  and German.
+- **English and German** throughout the user interface.
 
-Heraus kommen vier Entities:
+## Use cases
 
-| Entity | wofür |
-|---|---|
-| `ai_task.free_ai_router_schnell` | kurze Aufgaben, Zusammenfassen, Klassifizieren |
-| `ai_task.free_ai_router_bildanalyse` | Kamerabilder |
-| `ai_task.free_ai_router_reasoning` | großer Kontext, Automationsbau |
-| `conversation.free_ai_router_assist` | Assist, mit Gerätesteuerung |
+| Use case | Entity | Example |
+|---|---|---|
+| Camera analysis | `ai_task.free_ai_router_bildanalyse` | Motion at the driveway → "A delivery van, one person carrying a parcel." With structured fields such as `person`, `vehicle`, `package` for conditions. |
+| Doorbell | `ai_task.free_ai_router_bildanalyse` | Someone rings → a one-sentence description of who is at the door, spoken on a speaker or sent to a phone. |
+| Voice control | `conversation.free_ai_router_assist` | Assist with a language model that understands free-form requests and controls exposed devices. |
+| Text tasks in automations | `ai_task.free_ai_router_schnell` | Summarize the day's calendar and weather, classify incoming notifications, turn free text into structured data. |
+| Demanding tasks | `ai_task.free_ai_router_reasoning` | Tasks with a large context or several reasoning steps, such as drafting automation logic from a description. |
 
-Dazu sechs Verbrauchssensoren und zwei Blueprints.
+## Requirements
 
-Jede Automation und jeder fremde Blueprint, der eine AI-Task-Entity auswählen
-lässt, funktioniert damit. Die Integration baut nichts nach, was es schon gibt —
-sie stellt sich hinter die Andockstelle, die Home Assistant selbst mitbringt.
-
-## Was es nicht kann
-
-- **Konten für dich anlegen.** Captcha und Nutzungsbedingungen setzen die Grenze.
-- **Verhindern, dass ein Anbieter morgen abschaltet.** Drei von sechs geprüften
-  Anbietern bewerben eine kostenlose Stufe, die über die API gar nicht
-  erreichbar ist — siehe unten.
-- **Ohne Internet arbeiten.** Fällt die Leitung aus, ist jede KI-Funktion weg.
-  Für eine Türklingel-Benachrichtigung verschmerzbar, für alles Alarm-nahe
-  disqualifizierend.
-- **Deine Daten im Haus halten.** Sie gehen an den gewählten Anbieter. Die
-  Anbieterkarte sagt vor der Eingabe des Schlüssels, was der damit macht.
+- Home Assistant 2025.6 or newer
+- An internet connection
+- A free account with at least one supported provider. Google AI Studio and
+  Groq together cover all profiles with a fallback and require no payment
+  details.
 
 ---
 
 ## Installation
 
-**Über HACS**, als benutzerdefiniertes Repository — nicht im Standardkatalog,
-das ist bewusst so: Aufnahme dort verspricht eine Pflege, die dieses Projekt
-mit seiner „Läuft bei mir"-Zeile in der Kopfzeile nicht geben will. Wer die
-URL selbst einträgt, weiß, worauf er sich einlässt.
+### HACS
 
-1. HACS → oben rechts die drei Punkte → **Benutzerdefinierte Repositories**
-2. URL `https://github.com/MarcusStockhaus/ha-free-ai-router`, Kategorie
-   **Integration**
-3. Free AI Router suchen und herunterladen, Home Assistant neu starten
+1. HACS → menu (⋮) → **Custom repositories**
+2. Repository `https://github.com/MarcusStockhaus/ha-free-ai-router`,
+   type **Integration**
+3. Search for **Free AI Router**, download it and restart Home Assistant
 
-Die beiden Blueprints liegen nicht in diesem HACS-Eintrag — sie kommen im
-Abschnitt [Blueprints](#blueprints) über einen Ein-Klick-Import.
+### Manual
 
-### Ohne HACS
+Copy `custom_components/free_ai_router` from this repository to
+`/config/custom_components/` and restart Home Assistant.
 
-Auf einem System mit Shell-Zugang (SSH-Add-on oder Terminal):
+## Setup
 
-```bash
-cd /tmp && git clone https://github.com/MarcusStockhaus/ha-free-ai-router
-cp -r ha-free-ai-router/custom_components/free_ai_router /config/custom_components/
-cp -r ha-free-ai-router/blueprints/automation/free_ai_router /config/blueprints/automation/
-```
+**Settings → Devices & services → Add integration → Free AI Router**, or
+[open the setup directly](https://my.home-assistant.io/redirect/config_flow_start/?domain=free_ai_router).
 
-Ohne Shell: das Repo als ZIP herunterladen und die beiden Ordner über das
-File-Editor- oder Samba-Add-on an dieselben Stellen legen. Danach Home
-Assistant neu starten.
+1. **Choose a provider.** Each provider card lists its capabilities, how it
+   handles your data, whether payment details are required, and whether it is
+   recommended to start with.
+2. **Enter the key.** The card links directly to the provider's key page. The
+   key is checked immediately with a real request. If it succeeds, the
+   integration is set up.
 
-### Einrichten
+The capability measurement then runs in the background and takes one to two
+minutes per provider. The result arrives as a notification. Until then, the
+values from the provider file apply, so the integration is usable right away.
 
-**Einstellungen → Geräte & Dienste → Integration hinzufügen → Free AI
-Router**, oder direkt per Klick:
-[Einrichtungsassistenten öffnen](https://my.home-assistant.io/redirect/config_flow_start/?domain=free_ai_router).
-
-Der Assistent zeigt je Anbieter eine Karte: was er kann, was er mit den Daten
-macht, ob Zahlungsdaten verlangt werden, ob er für den Anfang empfohlen ist —
-und einen Deep-Link direkt zur Key-Seite, nicht zur Startseite. Nach der
-Eingabe läuft sofort ein echter Testaufruf. **Geht er durch, ist die
-Integration eingerichtet** — ein Anbieter, ein Schlüssel, ein paar Sekunden.
-Der Abschlussbildschirm zeigt, welches Profil voraussichtlich von welchem
-Modell bedient wird, und verlinkt die nächsten Schritte (Assist verbinden,
-beide Blueprints importieren).
-
-Welche Modelle genau was können — Bilder, Schema, Werkzeuge, Antwortzeit —
-misst die Integration danach **im Hintergrund**. Das dauert je Anbieter ein
-bis zwei Minuten, weil es je Modell mehrere echte Aufrufe braucht; das
-Ergebnis kommt als Benachrichtigung. Bis dahin gelten die Angaben aus der
-Anbieterdatei, die Integration ist also sofort nutzbar.
-
-Jeder weitere Anbieter kommt auf der Integrationsseite über **Anbieter
-hinzufügen** dazu: derselbe kurze Weg, ebenfalls sofort gespeichert und im
-Hintergrund vermessen.
-
-Für den Anfang reichen **Google AI Studio und Groq**: zusammen tragen sie alle
-drei Profile mit Reserve, ohne Zahlungsdaten und ohne Ausgabendeckel. Mistral
-und OpenRouter sind zusätzliche Reserve, kein Ersatz für die beiden.
-
-### Zugänge verwalten
-
-Jeder eingerichtete Anbieter ist eine eigene Zeile auf der Integrationsseite,
-mit eigenem Gerät und eigenem Verbrauchssensor:
-
-```
-Free AI Router
-├─ Google AI Studio      1 Entität
-├─ Groq                  1 Entität
-└─ Mistral               1 Entität
-   Anbieter hinzufügen
-```
-
-**Anbieter hinzufügen**, **Schlüssel ersetzen** und **Entfernen** sind die
-Knöpfe, die Home Assistant dort selbst anbietet — die Integration baut keine
-eigene Verwaltungsoberfläche daneben.
-
-Ein Schlüsselwechsel läuft durch denselben Weg wie das Einrichten: Test,
-gespeichert, Messung im Hintergrund. Die bisherige Messung wird dabei
-verworfen — ein anderer Schlüssel kann ein anderes Konto sein, und was das
-Konto darf, ist damit offen. Der alte Schlüssel wird nirgends angezeigt;
-zum Ersetzen braucht es ohnehin einen neuen.
-
-Die vier Router-Entities (die drei `ai_task`-Profile, Assist) und die vier
-Gesamtzähler stehen bewusst **nicht** auf dieser Seite — sie tragen kein
-eigenes Gerät. Genauso macht es Home Assistants eigene Google-Generative-AI-
-und OpenAI-Conversation-Integration: der Config Entry ist der Zugang, jedes
-sichtbare Gerät gehört zu einem Untereintrag. Zu finden sind sie unter
-**Einstellungen → Geräte & Dienste → Entitäten** (nach `free_ai_router`
-filtern) oder direkt in den AI-Task- und Assist-Einstellungen. Ihr
-Anzeigename trägt deshalb den Namen der Integration im Text selbst
-(„Free AI Router Schnell" statt nur „Schnell") — ohne Gerät gäbe es sonst
-keinen Hinweis, welche Integration eine Entity wie `ai_task.free_ai_router_schnell`
-überhaupt anbietet, wenn sie neben denen anderer Integrationen in einer
-Auswahlliste steht.
+Additional providers are added on the integration page via **Add provider**.
+Each provider appears as its own entry there, with **Replace key** and
+**Delete**.
 
 ---
 
-## Anschließen
+## Entities
 
-Die eingerichteten Entities tun erst dann etwas, wenn sie irgendwo
-angeschlossen sind. Die Übersicht am Ende des Einrichtungsassistenten
-verlinkt dieselben drei Schritte direkt.
+| Entity | Purpose |
+|---|---|
+| `ai_task.free_ai_router_schnell` | Fast profile: short tasks, summaries, classification |
+| `ai_task.free_ai_router_bildanalyse` | Image analysis profile: camera images |
+| `ai_task.free_ai_router_reasoning` | Reasoning profile: large context, multi-step tasks |
+| `conversation.free_ai_router_assist` | Conversation agent for Assist, with device control |
 
-**Assist als Sprachassistent.** [Einstellungen → Sprachassistenten
-öffnen](https://my.home-assistant.io/redirect/voice_assistants/), Free AI
-Router als Gesprächsagenten wählen. Auf derselben Seite steht auch die
-bevorzugte KI-Aufgaben-Entity — die, die eine Automation ohne eigene Angabe
-einer `entity_id` benutzt.
+The entity IDs are the same in every language, so blueprints and automations
+can be shared between installations.
 
-**Kameraanalyse.** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml),
-Kamera und Bewegungsmelder wählen, Sperrzeit setzen.
+## Usage
 
-**Türklingel.** [Blueprint importieren](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml),
-Klingelsensor und Kamera wählen.
-
-Ohne eigene Blueprint- oder Automationsidee reicht auch ein einzelner
-Diensteaufruf, etwa in den Entwicklerwerkzeugen zum Ausprobieren:
+### In an automation
 
 ```yaml
 action: ai_task.generate_data
 data:
-  entity_id: ai_task.free_ai_router_schnell
-  instructions: Fasse in einem Satz zusammen, wie das Wetter heute wird.
+  entity_id: ai_task.free_ai_router_bildanalyse
+  task_name: Driveway
+  instructions: Is a person or a vehicle visible? Answer in one sentence.
+  attachments:
+    media_content_id: media-source://camera/camera.driveway
+    media_content_type: image/jpeg
+response_variable: result
 ```
 
----
+With a `structure`, the answer is returned as fields instead of text — for
+example `person: true` — and can be used directly in conditions.
 
-## Anbieterlage, gemessen am 11.09.2026
+### Assist
 
-Alle Zahlen aus echten Konten und Antwortheadern, nicht aus Dokumentation.
-Momentaufnahmen — das mitgelieferte Probe-CLI hält sie aktuell.
+[Open voice assistants](https://my.home-assistant.io/redirect/voice_assistants/),
+select an assistant and choose **Free AI Router Assist** as the conversation
+agent. The preferred AI task entity for automations is set on the same page.
 
-| Kanal | Profile | RPM | RPD | TPM |
-|---|---|---:|---:|---:|
-| `gemini-3.5-flash-lite` | schnell, vision | 15 | 500 | 250k |
-| `gemini-3.1-flash-lite` | schnell, vision | 15 | 500 | 250k |
-| `gemma-4-31b-it` | vision, schnell — kein Schema | 30 | 14.400 | 16k |
-| `gemma-4-26b-a4b-it` | vision, schnell — kein Schema | 30 | 14.400 | 16k |
-| `gemini-3.5-flash` | reasoning, vision | 5 | **20** | 250k |
-| `gemini-3.8-flash` | reasoning | 5 | **20** | 250k |
-| `groq/openai/gpt-oss-20b` | schnell | 30 | 1.000 | 8k |
-| `groq/qwen/qwen3.8-27b` | schnell, reasoning, **vision** | 30 | 1.000 | 8k |
-| `groq/openai/gpt-oss-120b` | reasoning | 30 | 1.000 | 8k |
-| `mistral/ministral-3b-2512` | schnell | 750 | — | 1.300k |
-| `mistral/ministral-8b-2512` | schnell | 188 | — | 625k |
-| `mistral/codestral-2508` | reasoning | 125 | — | 625k |
-| `openrouter/nemotron-3-nano-omni…:free` | vision | 20 | 50 | — |
-| `openrouter/nemotron-3.5-lightning:free` | schnell | 20 | 50 | — |
+### Blueprints
 
-### Vier Befunde, die die übliche Planung umwerfen
-
-**Die großen Flash-Modelle haben 20 Anfragen pro Tag.** Nicht 250, nicht 1.500.
-Wer „Gemini Flash" als Kamera-Arbeitspferd einplant, bekommt zwanzig Analysen
-und danach 429. Tragend sind allein die Flash-Lite-Modelle mit je 500/Tag.
-
-**Ein Bild kostet rund 1.100 Token — unabhängig von der Auflösung.** Dasselbe
-Motiv kostet bei 256×144 genauso viel wie bei 4096×2304: 30-fache Pixelzahl,
-identischer Preis. Bilder vor dem Versand zu verkleinern spart deshalb
-**nichts** und kostet nur Bildqualität. Verkleinert wird hier erst ab 1,5 MB,
-und dann allein wegen der Uploadzeit.
-
-**Groqs Qwen3.8 kann Bilder**, entgegen der verbreiteten Annahme. Damit hängt
-die Bildanalyse nicht an einem einzigen Anbieter.
-
-**Googles Gemma kann kein Schema.** Es nimmt Bilder an und beschreibt sie
-richtig, liefert aber kein `responseSchema`. Für die übliche Kameraanalyse
-(„Person? Paket?" als Felder) fällt es damit aus; der Router filtert es
-korrekt heraus.
-
-Realistisch für Kameraanalyse **mit Schema**: rund 2.000 am Tag über Google und
-Groq, dazu Mistral als gedeckelter Puffer — 10 $ API-Nutzung im Monat, das
-reicht für etwa 2.500 Analysen am Tag. Gegen das übliche Muster, drei bis vier
-Außenkameras mit Bewegungsauslöser und 50 bis 300 Analysen am Tag, ist das
-reichlich Luft.
-
-### Anbieter, die es nicht in die Auswahl geschafft haben
-
-Alle aus demselben Grund: eine beworbene kostenlose Stufe, die über die API
-nicht erreichbar ist. Kein Randfall, sondern der Normalfall — deshalb misst
-diese Integration, statt Dokumentation abzuschreiben.
-
-- **OpenCode Zen** — `MissingSessionID`: *„OpenCode's free tier can only be
-  used in OpenCode"*. Verlangt vorher Zahlungsdaten.
-- **Cerebras** — `402 Payment required`. Die Limits-Seite des Kontos weist
-  großzügige Kontingente aus, die API gibt sie ohne bezahlten Tarif nicht
-  heraus.
-- **Mistral**, teilweise — `mistral-small` und `magistral` melden
-  `x-ratelimit-limit-req-minute: 0`. Mistral führt drei getrennte
-  Produktlinien; der kostenlose *Le-Chat*-Tarif schaltet keine API-Modelle
-  frei, dafür braucht es das eigene API-Abonnement.
-
----
-
-## Blueprints
-
-| Blueprint | wofür |
+| Blueprint | Import |
 |---|---|
-| `kamera_analyse.yaml` | Bewegungsmelder → Analyse. Sperrzeit als Pflichtfeld. |
-| `tuerklingel.yaml` | Klingeln → wer vor der Tür steht. Erkennt `event`- und `binary_sensor`-Klingeln. |
+| Camera analysis on motion | [English](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fcamera_analysis.yaml) · [German](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fkamera_analyse.yaml) |
+| Doorbell analysis | [English](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Fdoorbell.yaml) · [German](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMarcusStockhaus%2Fha-free-ai-router%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Ffree_ai_router%2Ftuerklingel.yaml) |
 
-Da Verkleinern nichts spart, ist die **Anzahl der Auslösungen** die einzige
-Stellschraube, die es gibt. Deshalb sind Sperrzeit, genauer Auslöser und
-Zusatzbedingung Eingabefelder und keine Fußnoten. Ein Bewegungsmelder an der
-Straße kommt leicht auf 2.000 Auslösungen am Tag; ohne Sperrzeit ist das
-Tagesbudget vor dem Mittagessen weg.
+Both blueprints make the cooldown a required setting: the number of
+triggers is the only effective way to save quota, because providers bill an
+image at roughly the same cost regardless of its resolution. Both also report
+a failure — for example a camera without a still image — as a notification
+instead of doing nothing.
 
-Beide Blueprints haben außerdem **„Fehler melden"** (Vorgabe: an). Liefert
-`ai_task.generate_data` keine Antwort — meist eine Kamera ohne Standbild oder
-alle Kanäle am Limit — läuft die Automation sonst lautlos ins Leere: sie tut
-nichts, ohne dass irgendwo eine Meldung erscheint. Mit dem Feld kommt
-stattdessen eine Benachrichtigung, die sagt, woran es lag.
+---
 
-## Sensoren
+## Providers
 
+Free-tier values as of September 2026. Limits are per model unless stated
+otherwise.
+
+| Provider | Models | Requests per day | Notes |
+|---|---|---:|---|
+| Google AI Studio | Gemini 3.5 / 3.1 Flash-Lite | 500 each | Main channel for image analysis. Content is used for product improvement. |
+| | Gemma 4 31B / 26B | 14,400 each | Large buffer, 16,000 tokens per minute. |
+| | Gemini 3.5 / 3.8 Flash | 20 each | Reasoning profile. |
+| Groq | GPT-OSS 20B / 120B, Qwen3.8 27B | 1,000 each | Lowest latency, preferred for Assist. 8,000 tokens per minute. No training on free-tier content. |
+| Mistral | Ministral 3B / 8B, Mistral Small, Codestral | not published | High per-minute limits, capped at USD 10 of usage per month. Content is used for training. Requires the API subscription with the FREE plan. |
+| OpenRouter | Nemotron models (free) | 50 per key | Fallback outside Google. |
+
+Measured behaviour worth knowing when planning automations:
+
+- An image costs roughly 1,100 tokens, independent of its resolution.
+  Downscaling does not reduce cost.
+- The larger Gemini Flash models allow only 20 requests per day. The
+  Flash-Lite models carry the daily load.
+- Several providers advertise free tiers that are not usable through the API.
+  This is why the integration measures instead of relying on documentation.
+
+## Fallback and limits
+
+1. Candidate models are ordered: available ones before those that would have
+   to wait; for the fast profile by latency, otherwise by the curated order in
+   the provider file, then by remaining quota.
+2. If only a per-minute limit is reached, the request waits up to 20 seconds.
+3. Daily limits and monthly spending caps switch to the next model
+   immediately. Daily counters follow the provider's time zone.
+4. A rejected key blocks the affected model immediately instead of retrying it
+   on every request, and raises a repair notice. The block is lifted as soon as
+   a request with that key succeeds again.
+5. Only when no model is left does the call fail, with a message listing each
+   attempt. Automations can handle this with `continue_on_error: true`.
+
+## Measuring capabilities
+
+The background measurement runs ten seconds after every start and then every
+six hours. It only measures what is pending: new models, models that were
+temporarily unavailable, and models that have been unusable for a week.
+Working models are not re-measured periodically — live traffic already shows
+whether they respond, without using quota.
+
+The service `free_ai_router.neu_vermessen` measures all models on demand:
+
+```yaml
+action: free_ai_router.neu_vermessen
+data:
+  anbieter: [groq]        # optional, default: all providers
+  nur_lebendigkeit: false # optional, liveness only
 ```
-sensor.free_ai_router_anfragen_heute
-sensor.free_ai_router_token_heute
-sensor.free_ai_router_reserve_gegriffen_heute      ← der wichtigste
-sensor.free_ai_router_verworfen_heute
-sensor.free_ai_router_<anbieter>_anfragen_heute    ← Restkontingent in den Attributen
-```
 
-Bei einem Anbieter mit Ausgabendeckel stehen in denselben Attributen
-`budget_usd`, `ausgegeben_usd` und `rest_usd`. Ist der Betrag aufgebraucht,
-meldet sich das zusätzlich unter **Einstellungen → Reparaturen** — nicht als
-Störung, sondern weil es die Erwartung ändert: der Puffer ist bis zum
-Monatsersten weg.
+## Sensors
 
-Als Entities-Karte für ein Dashboard, ohne YAML-Vorwissen über
-**Einstellungen → Dashboards → Karte hinzufügen → Entitäten** nachzubauen:
+| Sensor | Meaning |
+|---|---|
+| `sensor.free_ai_router_anfragen_heute` | Requests today |
+| `sensor.free_ai_router_token_heute` | Tokens today |
+| `sensor.free_ai_router_reserve_gegriffen_heute` | Requests served by a fallback today |
+| `sensor.free_ai_router_verworfen_heute` | Requests no model could handle |
+| `sensor.<provider>_anfragen_heute` | Requests per provider; remaining quota per model in the attributes |
+
+A rising fallback count is the earliest sign that a primary channel has
+failed permanently.
 
 ```yaml
 type: entities
@@ -285,137 +221,48 @@ entities:
   - sensor.free_ai_router_verworfen_heute
 ```
 
-*Reserve gegriffen heute* ist der Sensor, auf den es ankommt. Ein Erstkanal,
-der still dauerhaft ausfällt, fällt sonst erst auf, wenn auch die Reserve weg
-ist. Dieselbe Lage meldet sich zusätzlich von selbst unter **Einstellungen →
-Reparaturen**, samt Link zur Key-Seite des betroffenen Anbieters.
+## Troubleshooting
 
-## Nachmessen
-
-```yaml
-action: free_ai_router.neu_vermessen
-data:
-  nur_lebendigkeit: false     # optional
-  anbieter: [mistral]         # optional, sonst alle
-```
-
-Die Fähigkeiten, mit denen der Router arbeitet, stammen aus der eigenen
-Messung mit dem eigenen Schlüssel. Sie schlagen bewusst alles andere — `alive`
-und Limits hängen am Konto und nicht am Modell.
-
-Im Hintergrund wird nachgemessen, was offen ist: neue Modelle, Modelle, die
-beim letzten Versuch nur vorübergehend gestört waren (Überlastung,
-Zeitüberschreitung, Ratenlimit), und Modelle, die seit einer Woche als nicht
-nutzbar gelten. Das geschieht nach jedem Laden der Integration und danach
-alle sechs Stunden, und es kostet nur, wenn etwas offen ist. Was
-funktioniert, wird nicht periodisch neu vermessen — ob es noch antwortet,
-zeigt der laufende Betrieb ohne einen Aufruf aus dem Kontingent.
-
-Dieser Dienst misst auf Zuruf alles neu, auch das Funktionierende.
-
-Der Aufruf liefert eine Antwort, die sagt, was sich geändert hat:
-
-```yaml
-anbieter:
-  mistral:
-    gemessen: 4
-    lebendig: 3
-    aenderungen:
-      - "ministral-3b-2512: vision nein -> ja"
-dauer_s: 47.2
-```
-
-Zwei Vorsichtsmaßnahmen, dieselben wie im Feed-Dienst: antwortet **kein
-einziges** Modell eines Anbieters, der vorher welche hatte, wird das Ergebnis
-verworfen — das ist fast immer die eigene Leitung, und eine kaputte Leitung
-darf nicht dazu führen, dass sich die Installation selbst die Kanäle
-abschaltet. Und `nur_lebendigkeit` lässt die bisher gemessenen Fähigkeiten
-unangetastet, statt sie zu löschen, weil nicht danach gefragt wurde.
+- **Diagnostics:** integration page → menu → **Download diagnostics**. The file
+  contains runtime state and counters; API keys are redacted.
+- **Key check during setup** distinguishes four cases: key rejected, no quota
+  enabled for the account, limit reached, and provider unavailable. Each
+  message states what to do next.
+- **Repairs** (Settings → Repairs) report rejected keys, profiles without a
+  model, and used-up monthly budgets.
 
 ---
 
-## Was bei Limit oder Ausfall passiert
+## Privacy and security
 
-1. Der Router sortiert die Kanäle: wer sofort kann vor dem, der warten müsste;
-   bei `schnell` nach Latenz, sonst nach der redaktionellen Reihenfolge,
-   zuletzt nach freiem Restkontingent.
-2. Ist nur das **Minutenfenster** zu, reiht sich die Anfrage bis zu 20 Sekunden
-   ein. Fünf gleichzeitig auslösende Bewegungsmelder reißen 15 RPM lange vor
-   500 RPD.
-3. Gegen ein **Tagesfenster** hilft kein Warten — der Router wechselt sofort.
-   Dasselbe gilt für den **Ausgabendeckel**: Mistrals kostenlose Stufe ist auf
-   10 $ API-Nutzung im Monat begrenzt, und das ist kein Zeitfenster, sondern
-   ein Geldbetrag. Der Ledger rechnet ihn aus den gemessenen Token und der
-   Preisliste hoch, bucht schon beim Absenden vor und sperrt den Anbieter,
-   wenn der Betrag erreicht ist — bis zum Monatsersten, in der Zeitzone des
-   Anbieters. Der Deckel hängt am Konto: alle Modelle eines Anbieters teilen
-   ihn sich.
+- Request content is sent only to the provider that handles the request.
+  Each provider card states how that provider uses the data.
+- No telemetry, no affiliate links.
+- Provider endpoints are restricted by an allowlist compiled into the code. A
+  provider file cannot introduce a new destination for data.
 
-   Ein- und Ausgabe werden getrennt gerechnet, weil sie getrennt bepreist
-   sind. Bei `mistral-small` kostet die Ausgabe das Vierfache der Eingabe;
-   mit einem Mischpreis wäre der Deckel bei langen Antworten zu spät
-   erreicht. Der so gerechnete Betrag ist eine Schätzung — maßgeblich bleibt
-   die Abrechnung des Anbieters.
-4. Jeder Wechsel steht im Log und im Attribut `zuletzt_genutzter_kanal`.
-5. Erst wenn **kein** Kanal übrig ist, endet der Aufruf mit einem
-   `HomeAssistantError`, dessen Text jeden Versuch einzeln nennt. Eine
-   Automation fängt ihn mit `continue_on_error: true` ab.
+## Limitations
 
-Ein abgelehnter Schlüssel schaltet den Kanal sofort ab, statt ihn bei jeder
-Anfrage neu anzuklopfen — und gibt ihn wieder frei, sobald ein Aufruf
-durchgeht. Die Zählerstände überleben Neustarts.
+- An internet connection is required. Not suitable for safety-critical
+  functions.
+- Free tiers are defined by the providers and can change at any time.
+- Accounts must be created by the user; captcha and terms of service prevent
+  automation.
 
-Der Tageszähler läuft in der Zeitzone des Anbieters, nicht in der lokalen:
-Googles kostenlose Stufe setzt um Mitternacht Pacific zurück.
+## Updates
 
----
+A scheduled check compares the model lists published by the providers with
+the provider files and reports new or discontinued models. Updated provider
+files are released through HACS. Each installation then measures new models
+with its own key.
 
-## Fehlersuche
+## Support
 
-**Diagnose herunterladen** steht auf der Integrationsseite unter dem
-Drei-Punkte-Menü. Die Datei enthält Laufzeitzustand, Ledger-Zählerstände und
-Feed-Status — ohne API-Schlüssel, die werden vor dem Export geschwärzt. Das
-ist der erste Anhang für ein Issue, nicht zehn Rückfragen.
+This is a community project without a support commitment. Issues and pull
+requests are welcome. Adding a provider requires only a YAML file — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Development notes are in
+[ENTWICKLUNG.md](ENTWICKLUNG.md).
 
-Ein abgelehnter Schlüssel beim Einrichten unterscheidet jetzt vier Fälle
-statt eines Satzes „nicht angenommen": abgelehnt, kein Kontingent
-freigeschaltet (bei Mistral zum Beispiel ein fehlendes API-Abonnement),
-Limit erreicht, oder der Anbieter antwortet gerade nicht. Jeder Fall sagt,
-was als Nächstes zu tun ist.
+## License
 
----
-
-## Sicherheit
-
-Die Registry-Dateien bestimmen, wohin Daten fließen. Deshalb steht zusätzlich
-eine **fest eincompilierte Host-Allowlist** im Python-Code: eine Datendatei
-kann niemals einen Endpunkt einführen, der dort nicht steht.
-
-Das ist die zweite Linie hinter der Signatur des **Feed-Dienstes**, der
-Modelle und Limits aktuell hält. Er darf Texte und Zahlen ändern, niemals aber
-das Ziel. Der Feed ist eingeschaltet: die Integration holt alle vier Stunden
-ein signiertes Dokument von GitHub Pages und prüft die Signatur gegen einen
-fest eincompilierten Schlüssel. Wie er funktioniert, steht in
-[FEED.md](FEED.md).
-
----
-
-## Grundsatz
-
-**Keine Affiliate-Links, keine bezahlten Empfehlungen, keine Telemetrie.**
-Nutzdaten gehen ausschließlich an den jeweils gewählten Anbieter.
-
-Das steht hier und nicht im Kleingedruckten, weil die Rechnung eindeutig ist:
-selbst im besten Fall stünden einstellige Jahresbeträge gegen den Verdacht,
-dass jede Empfehlung gekauft ist.
-
-## Mitmachen
-
-**Ein neuer Anbieter ist eine YAML-Datei, kein Python.** Wie das geht, steht in
-[CONTRIBUTING.md](CONTRIBUTING.md) — mit einem echten Beispiel-Diff.
-
-Entwicklung, Probe-CLI und Tests: [ENTWICKLUNG.md](ENTWICKLUNG.md).
-
-## Lizenz
-
-[MIT](LICENSE).
+[MIT](LICENSE)

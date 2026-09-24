@@ -67,9 +67,30 @@ python tools/validate_registry.py
 ```
 
 Prüft gegen `registry_schema.json`, den Loader und die Host-Allowlist.
-Der Host muss zusätzlich in `allowlist.py` stehen — das ist Absicht: der
-Feed-Dienst aus Phase 3 darf Modelle, Limits und Texte ändern, aber niemals,
-wohin Daten fließen.
+Der Host muss zusätzlich in `allowlist.py` stehen — das ist Absicht: eine
+Anbieterdatei darf Modelle, Limits und Texte ändern, aber niemals, wohin Daten
+fließen.
+
+---
+
+## Modell-Wächter
+
+`tools/waechter.py` läuft täglich als GitHub-Action
+(`.github/workflows/modell-waechter.yml`). Er holt die Modell-Listen der
+Anbieter, vergleicht sie mit den Anbieterdateien und pflegt je Anbieter ein
+Issue mit dem Label `modell-waechter`: neue Modelle, mit einer einmaligen
+Messung, und verschwundene. Aufgenommen wird nichts automatisch — Profil und
+Tageslimit sind eine redaktionelle Entscheidung, die Änderung geht als Release
+über HACS hinaus.
+
+```bash
+python tools/waechter.py --dry-run                  # alle Anbieter, nichts melden
+python tools/waechter.py --dry-run --nur groq       # ein Anbieter
+```
+
+Die Schlüssel kommen wie beim Probe-CLI aus `FAR_KEY_<ANBIETER>`, in der Action
+aus den Repository-Secrets. Was der Wächter übergeht (Audio-, Bild-,
+Embedding-Modelle, Aliase), steht in `REGELN` am Anfang des Skripts.
 
 ---
 

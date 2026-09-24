@@ -26,7 +26,8 @@ from .adapters import (
 from .adapters.base import Message
 from .const import REQUEST_TIMEOUT_S
 from .ledger import Ledger, cost_usd
-from .router import Candidate, Channel, Requirements, RoutingPlan, plan
+from .router import Candidate, Channel, Requirements, RoutingPlan, ablehnung_text, plan
+from .sprache import DE, profil_name, t
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,12 +62,13 @@ class NoChannelAvailable(RuntimeError):
     formulieren kann, die dem Nutzer sagt, was zu tun ist.
     """
 
-    def __init__(self, message: str, *, attempts: list[str]) -> None:
+    def __init__(self, message: str, *, attempts: list[str], sprache: str = DE) -> None:
         super().__init__(message)
         self.attempts = attempts
+        self.sprache = sprache
 
     def report(self) -> str:
-        lines = "; ".join(self.attempts) if self.attempts else "keine Kanäle eingerichtet"
+        lines = "; ".join(self.attempts) if self.attempts else t(self.sprache, "keine_kanaele")
         return f"{self.args[0]} — {lines}"
 
 
@@ -93,6 +95,8 @@ class RouterClient:
     keys: dict[str, str]
     max_queue_wait_s: float = DEFAULT_MAX_QUEUE_WAIT_S
     request_timeout_s: float = REQUEST_TIMEOUT_S
+    sprache: str = DE
+    """Sprache der Meldungen, die bei einem Fehlschlag beim Nutzer ankommen."""
 
     async def run(
         self,
@@ -116,11 +120,16 @@ class RouterClient:
         routing: RoutingPlan = plan(requirements, channels, self.ledger.availability)
         _LOGGER.debug("Routing %s", routing.explain())
 
+        sprache = self.sprache
         attempts: list[str] = []
         if not routing.has_candidate:
             raise NoChannelAvailable(
-                f"Kein Kanal kann Profil {requirements.profile!r} bedienen",
-                attempts=[str(item) for item in routing.rejected],
+                t(sprache, "kein_kanal_profil", profil=profil_name(sprache, requirements.profile)),
+                attempts=[
+                    f"{item.key}: {ablehnung_text(sprache, item.reason)}"
+                    for item in routing.rejected
+                ],
+                sprache=sprache,
             )
 
         waited_total = 0.0
@@ -129,7 +138,7 @@ class RouterClient:
             model = candidate.model
             api_key = self.keys.get(provider.id)
             if not api_key:
-                attempts.append(f"{candidate.key}: kein Schlüssel hinterlegt")
+                attempts.append(f"{candidate.key}: {t(sprache, 'versuch_kein_schluessel')}")
                 continue
 
             availability = candidate.availability
@@ -146,9 +155,11 @@ class RouterClient:
                 waited = asyncio.get_running_loop().time() - loop_start
                 waited_total += waited
                 if not availability.ok:
-                    attempts.append(
-                        f"{candidate.key}: nach {waited:.0f} s immer noch {availability.reason}"
+                    gewartet = t(
+                        sprache, "versuch_gewartet", sekunden=f"{waited:.0f}",
+                        grund=availability.reason,
                     )
+                    attempts.append(f"{candidate.key}: {gewartet}")
                     _LOGGER.info(
                         "%s: Warteschlange ohne Erfolg (%s), naechster Kanal",
                         candidate.key,
@@ -190,13 +201,14 @@ class RouterClient:
                 self._note_failure(candidate, err, attempts)
                 continue
             except TimeoutError:
-                self.ledger.record_failure(provider, model, reason="Zeitüberschreitung")
-                attempts.append(f"{candidate.key}: Zeitüberschreitung")
+                self.ledger.record_failure(provider, model, reason=t(sprache, "versuch_zeit"))
+                attempts.append(f"{candidate.key}: {t(sprache, 'versuch_zeit')}")
                 _LOGGER.warning("%s: Zeitueberschreitung, wechsle auf Reserve", candidate.key)
                 continue
             except aiohttp.ClientError as err:
-                self.ledger.record_failure(provider, model, reason=f"Netzfehler: {err!r}")
-                attempts.append(f"{candidate.key}: Netzfehler {err!r}")
+                netz = t(sprache, "versuch_netz", fehler=repr(err))
+                self.ledger.record_failure(provider, model, reason=netz)
+                attempts.append(f"{candidate.key}: {netz}")
                 _LOGGER.warning("%s: Netzfehler %r, wechsle auf Reserve", candidate.key, err)
                 continue
 
@@ -228,8 +240,10 @@ class RouterClient:
         self.ledger.note_discarded()
         await self.ledger.async_save()
         raise NoChannelAvailable(
-            f"Alle Kanäle für Profil {requirements.profile!r} ausgefallen oder am Limit",
+            t(sprache, "alle_kanaele_ausgefallen",
+              profil=profil_name(sprache, requirements.profile)),
             attempts=attempts,
+            sprache=sprache,
         )
 
     def _note_failure(
@@ -240,14 +254,13 @@ class RouterClient:
             self.ledger.record_rate_limited(
                 provider, model, retry_after_s=err.rate_limit.retry_after_s
             )
-            attempts.append(f"{candidate.key}: Limit erreicht")
+            attempts.append(f"{candidate.key}: {t(self.sprache, 'versuch_limit')}")
             _LOGGER.info("%s: Limit erreicht, wechsle auf Reserve", candidate.key)
             return
         if err.is_auth:
-            self.ledger.record_failure(
-                provider, model, fatal=True, auth=True, reason="Schlüssel abgelehnt"
-            )
-            attempts.append(f"{candidate.key}: Schlüssel abgelehnt")
+            abgelehnt = t(self.sprache, "versuch_abgelehnt")
+            self.ledger.record_failure(provider, model, fatal=True, auth=True, reason=abgelehnt)
+            attempts.append(f"{candidate.key}: {abgelehnt}")
             _LOGGER.warning(
                 "%s: Schluessel abgelehnt (%s), wechsle auf Reserve",
                 candidate.key,

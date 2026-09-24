@@ -19,13 +19,24 @@ onboarding:
     Vision-Reserve außerhalb von Google. Ohne einmalige 10-Dollar-Aufladung
     nur 50 Anfragen pro Tag — als tragende Säule zu wenig, als Ausweichkanal
     brauchbar.
+  summary_en: >-
+    Image-analysis fallback outside Google. Without a one-time 10-dollar
+    top-up only 50 requests per day — too few as a main channel, useful as a
+    fallback.
   steps_de:
     - Konto anlegen und anmelden
     - '"Create Key" klicken, Limit leer lassen'
     - Key kopieren und hier einfügen
+  steps_en:
+    - Create an account and sign in
+    - Click "Create Key" and leave the limit empty
+    - Copy the key and paste it here
   data_note_de: >-
     Kein Training auf Inhalten, sofern in den Kontoeinstellungen nicht
     ausdrücklich erlaubt. Der jeweilige Modellanbieter sieht die Daten.
+  data_note_en: >-
+    No training on content unless explicitly allowed in the account
+    settings. The respective model provider sees the data.
   credit_card_required: false
 
 # Modellbestand am 09.09.2026 ueber /models abgeglichen: von 430 Modellen

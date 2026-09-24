@@ -53,10 +53,9 @@ SUBENTRY_TYPE_ANBIETER: Final = "anbieter"
 STORAGE_KEY_LEDGER: Final = f"{DOMAIN}.ledger"
 STORAGE_VERSION_LEDGER: Final = 1
 
-# Zwischenspeicher des Feed-Dienstes (Phase 3). Eigener Store, weil er ein
-# anderes Schreibmuster hat als der Ledger: selten, dafuer am Stueck.
-STORAGE_KEY_FEED: Final = f"{DOMAIN}.feed"
-STORAGE_VERSION_FEED: Final = 1
+# Zwischenspeicher des frueheren Feed-Dienstes. Nur noch bekannt, damit die
+# Integration die Datei beim Start wegraeumen kann.
+STORAGE_KEY_FEED_ALT: Final = f"{DOMAIN}.feed"
 
 # Zeitbudget fuer einen einzelnen Fähigkeitstest.
 PROBE_TIMEOUT_S: Final = 45.0

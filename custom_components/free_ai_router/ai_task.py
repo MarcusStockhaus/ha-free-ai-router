@@ -18,9 +18,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FreeAIRouterConfigEntry
 from .client import NoChannelAvailable
-from .const import PROFILE_REASONING, PROFILES
+from .const import DOMAIN, PROFILE_REASONING, PROFILES
 from .entity import RouterEntity
 from .router import Requirements
+from .sprache import t
 from .task_adapter import (
     attachments_to_images,
     estimate_input_tokens,
@@ -31,10 +32,12 @@ from .task_adapter import (
 
 _LOGGER = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "Du bist Teil einer Home-Assistant-Automation. Antworte knapp und "
-    "ausschließlich mit dem Verlangten, ohne Einleitung und ohne Rückfrage."
-)
+#: Feste Entity-IDs, unabhaengig von der Systemsprache. Home Assistant bildet
+#: die ID sonst aus dem uebersetzten Namen — auf einem englischen System hiesse
+#: die Bildanalyse dann ``ai_task.free_ai_router_image_analysis``, und jeder
+#: Blueprint mit ``ai_task.free_ai_router_bildanalyse`` als Vorgabe liefe ins
+#: Leere. Bestehende Eintraege behalten ihre ID ohnehin.
+OBJEKT_IDS = {"schnell": "schnell", "vision": "bildanalyse", "reasoning": "reasoning"}
 
 
 async def async_setup_entry(
@@ -60,6 +63,7 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
         # strings.json, die Entity-ID wird dadurch stabil (ai_task.<geraet>_<profil>).
         self._attr_translation_key = profile
         self._attr_unique_id = f"{entry.entry_id}_{profile}"
+        self.entity_id = f"ai_task.{DOMAIN}_{OBJEKT_IDS[profile]}"
 
     async def _async_generate_data(
         self, task: ai_task.GenDataTask, chat_log: conversation.ChatLog
@@ -90,7 +94,7 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
                 # war. Der Router filtert nach Faehigkeit, nicht nach Etikett.
                 runtime.all_channels(),
                 instructions=task.instructions,
-                system=SYSTEM_PROMPT,
+                system=t(runtime.sprache, "systemprompt"),
                 json_schema=json_schema,
                 images=images,
                 # Beim Reasoning-Profil ist Nachdenken der Zweck. Bei einer
@@ -100,7 +104,11 @@ class FreeAITaskEntity(ai_task.AITaskEntity, RouterEntity):
             )
         except NoChannelAvailable as err:
             _LOGGER.warning("%s: %s", self.entity_id, err.report())
-            raise HomeAssistantError(err.report()) from err
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="no_channel",
+                translation_placeholders={"detail": err.report()},
+            ) from err
 
         self._note_channel(execution.candidate.key, execution.used_reserve)
         self.async_write_ha_state()
