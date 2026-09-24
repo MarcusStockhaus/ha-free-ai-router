@@ -32,7 +32,7 @@ def _texte() -> dict:
 #: Welche Klasse ihre Texte wo sucht. Der Mixin liefert Schritte an beide
 #: Fluesse und muss deshalb in beiden Bloecken stehen.
 _BLOECKE = {
-    "_MessSchritte": ("config", "config_subentries.anbieter"),
+    "_SchluesselSchritt": ("config", "config_subentries.anbieter"),
     "FreeAIRouterConfigFlow": ("config",),
     "AnbieterSubentryFlow": ("config_subentries.anbieter",),
 }
@@ -111,7 +111,7 @@ def test_jeder_sichtbare_schritt_hat_einen_text() -> None:
     gemeinsamen Mixin braucht beide.
     """
     je_klasse = _schritte_je_klasse()
-    assert je_klasse.get("_MessSchritte"), "Mixin nicht gefunden — Test trifft nicht mehr zu"
+    assert je_klasse.get("_SchluesselSchritt"), "Mixin nicht gefunden — Test trifft nicht mehr zu"
 
     fehlend: list[str] = []
     for klasse, bloecke in _BLOECKE.items():
@@ -126,12 +126,15 @@ def test_jeder_sichtbare_schritt_hat_einen_text() -> None:
 
 
 def test_jeder_fortschritt_hat_einen_text() -> None:
-    """Fortschrittsschritte holen ihren Text aus ``progress``, nicht aus ``step``."""
+    """Fortschrittsschritte holen ihren Text aus ``progress``, nicht aus ``step``.
+
+    Zurzeit gibt es keinen — die Messung laeuft im Hintergrund. Die Regel
+    gilt trotzdem fuer jeden, der wieder dazukommt.
+    """
     aktionen = _argumente({"async_show_progress"}, "progress_action")
-    assert aktionen, "keine Fortschrittsschritte gefunden"
     fehlend: list[str] = []
     for pfad in ("config", "config_subentries.anbieter"):
-        offen = sorted(aktionen - set(_block(pfad)["progress"]))
+        offen = sorted(aktionen - set(_block(pfad).get("progress", {})))
         fehlend += [f"{pfad}.progress.{name}" for name in offen]
     assert not fehlend, f"ohne Text: {fehlend}"
 
@@ -219,7 +222,6 @@ def test_menue_titel_haben_keine_platzhalter() -> None:
     import re
 
     je_klasse = _menu_schritte_je_klasse()
-    assert je_klasse, "kein async_show_menu-Schritt gefunden — Test trifft nicht mehr zu"
 
     fehlend: list[str] = []
     for klasse, schritte in je_klasse.items():
@@ -298,38 +300,62 @@ def test_keine_verweise_auf_einen_konfigurieren_knopf() -> None:
         assert "Konfigurieren" not in text, pfad.name
 
 
-def test_die_uebersicht_erstellt_sofort_ohne_eigenen_bestaetigungsschritt() -> None:
-    """Kein separates Formular mehr fuer "summary" — der Schritt legt den
-    Eintrag direkt an.
+def test_nach_dem_ersten_schluessel_ist_alles_gespeichert() -> None:
+    """Der Einrichtungsassistent kennt nur Anbieterwahl und Schluessel.
 
-    Fruehere Fassung zeigte hier ein leeres Formular mit nur einem Knopf,
-    um vor dem Abschluss noch einmal zu bestaetigen. Live am 17.09.2026
-    aufgefallen: genau dieser zusaetzliche, unauffaellige Knopf wurde
-    uebersehen — vier Anbieter eingerichtet, aber kein Config Entry
-    entstanden. "Fertig" in der Menue-Auswahl davor war die Bestaetigung
-    schon; ein zweiter Klick bot nur eine weitere Gelegenheit, den Dialog
-    versehentlich zu schliessen. Dieser Test haelt fest, dass "summary" nie
-    wieder ein eigener sichtbarer Formular- oder Menue-Schritt wird.
+    Live am 17.09.2026: vier Anbieter vermessen, der Dialog vor dem letzten
+    Klick geschlossen, nichts gespeichert. Seitdem legt der Schluesseltest den
+    Eintrag sofort an, und die Messung laeuft im Hintergrund. Kommt je wieder
+    ein sichtbarer Schritt nach ``key`` dazu, bricht dieser Test — dann steht
+    wieder etwas zwischen dem Nutzer und dem gespeicherten Ergebnis.
     """
     je_klasse = _schritte_je_klasse()
-    assert "summary" not in je_klasse.get("FreeAIRouterConfigFlow", set())
-    assert "summary" not in _texte()["config"]["step"]
+    sichtbar = je_klasse.get("FreeAIRouterConfigFlow", set()) | je_klasse.get(
+        "_SchluesselSchritt", set()
+    )
+    assert sichtbar == {"user", "key"}, sichtbar
+    assert set(_texte()["config"]["step"]) == {"user", "key"}
 
 
 def test_create_entry_platzhalter_werden_gefuellt() -> None:
-    """``config.create_entry`` bekommt keinen eigenen Test wie ``step`` —
-    ohne diesen wuerde ein vergessener Platzhalter dort erst live auffallen,
-    genau wie beim Menue-Titel-Fehler zuvor.
-    """
+    """Auch der Abschlusstext kann Platzhalter haben — und sie vergessen."""
     import re
 
     quelle = QUELLE.read_text(encoding="utf-8")
     fehlend: list[str] = []
-    for name, text in _block("config")["create_entry"].items():
-        for platzhalter in re.findall(r"\{(\w+)\}", text):
-            if f'"{platzhalter}"' not in quelle:
-                fehlend.append(f"config.create_entry.{name}: {{{platzhalter}}}")
+    for pfad in ("config", "config_subentries.anbieter"):
+        for name, text in _block(pfad).get("create_entry", {}).items():
+            for platzhalter in re.findall(r"\{(\w+)\}", text):
+                if f'"{platzhalter}"' not in quelle:
+                    fehlend.append(f"{pfad}.create_entry.{name}: {{{platzhalter}}}")
     assert not fehlend, f"im Code nicht gesetzt: {fehlend}"
+
+
+def test_jeder_abbruchgrund_hat_einen_text() -> None:
+    """``async_abort(reason="x")`` ohne ``abort.x`` zeigt den rohen Schluessel.
+
+    ``async_update_and_abort`` bricht intern mit ``reconfigure_successful`` ab
+    — genau der Text fehlte im Anbieter-Block, bis er hier auffiel.
+    """
+    fehlend: list[str] = []
+    for knoten in ast.walk(_baum()):
+        if not isinstance(knoten, ast.ClassDef) or knoten.name not in _BLOECKE:
+            continue
+        gruende: set[str] = set()
+        for unter in ast.walk(knoten):
+            if not isinstance(unter, ast.Call) or not isinstance(unter.func, ast.Attribute):
+                continue
+            if unter.func.attr == "async_update_and_abort":
+                gruende.add("reconfigure_successful")
+            if unter.func.attr != "async_abort":
+                continue
+            for arg in unter.keywords:
+                if arg.arg == "reason" and isinstance(arg.value, ast.Constant):
+                    gruende.add(arg.value.value)
+        for pfad in _BLOECKE[knoten.name]:
+            texte = _block(pfad).get("abort", {})
+            fehlend += [f"{pfad}.abort.{grund}" for grund in sorted(gruende - set(texte))]
+    assert not fehlend, f"ohne Text: {fehlend}"
 
 
 def test_platzhalter_werden_auch_gefuellt() -> None:

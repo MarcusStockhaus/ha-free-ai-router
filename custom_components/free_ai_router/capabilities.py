@@ -106,7 +106,12 @@ def _nicht_messbar(err: Exception) -> bool:
     status = getattr(err, "status", None)
     if status is None:
         return True  # Netz, Zeitueberschreitung, abgebrochene Verbindung
-    return status in _SAGT_NICHTS or status >= 500
+    # Ein Fehler mit Erfolgsstatus ist ein vom Vermittler eingepackter
+    # Fehler des eigentlichen Anbieters. Live am 24.09.2026: OpenRouter
+    # antwortete auf die Bildpruefung mit HTTP 200 und "Upstream error from
+    # Nvidia: ResourceExhausted" — das ist ausgelastete Hardware, keine
+    # Aussage darueber, ob das Modell Bilder sieht.
+    return status < 400 or status in _SAGT_NICHTS or status >= 500
 
 
 def _fehlversuch(err: Exception, dauer: float) -> CheckResult:
@@ -610,17 +615,26 @@ def merge_into_registry(
     ueber die Startwerte der YAML-Datei gelegt.
     """
     del provider  # Signatur bleibt symmetrisch zu probe_provider
-    overrides: dict[str, dict[str, Any]] = {}
-    for probe in probes:
-        overrides[probe.key] = {
-            "alive": probe.alive,
-            "capabilities": probe.measured_capabilities(),
-            "limits": probe.measured_limits(),
-            "latency_total_s": probe.latency_total_s,
-            "ttft_s": probe.ttft_s,
-            "checked_at": probe.checked_at,
-        }
-    return overrides
+    return {probe.key: _eintrag(probe) for probe in probes}
+
+
+def _eintrag(probe: ModelProbe) -> dict[str, Any]:
+    """Ein Messergebnis in der Form, in der es im Subentry liegt."""
+    eintrag: dict[str, Any] = {
+        "alive": probe.alive,
+        "capabilities": probe.measured_capabilities(),
+        "limits": probe.measured_limits(),
+        "latency_total_s": probe.latency_total_s,
+        "ttft_s": probe.ttft_s,
+        "checked_at": probe.checked_at,
+    }
+    if not probe.alive:
+        # Ohne Grund laesst sich spaeter nicht unterscheiden, ob ein totes
+        # Modell nachgeprueft gehoert. Eintraege ohne dieses Feld stammen aus
+        # der Zeit, als ein 503 noch als "tot" galt — sie werden beim
+        # naechsten Hintergrundlauf sofort nachgemessen.
+        eintrag["grund"] = kurzgrund(probe)
+    return eintrag
 
 
 #: Felder, die :func:`describe_changes` vergleicht.
@@ -689,6 +703,187 @@ def should_discard(vorher: dict[str, dict[str, Any]], lebendig: int) -> bool:
     return any(eintrag.get("alive", True) for eintrag in vorher.values())
 
 
+# --------------------------------------------------------------------------
+# Messen im Hintergrund: was faellig ist, was bleibt, was gemeldet wird
+# --------------------------------------------------------------------------
+
+#: So lange bleibt ein als tot gemessenes Modell unangetastet, bevor der
+#: Hintergrundlauf es erneut versucht. Ein Versuch kostet genau einen Aufruf:
+#: ``probe_model`` bricht nach gescheiterter Lebendpruefung ab.
+TOT_NACHPRUEFEN_S = 7 * 86400
+
+
+def ist_voruebergehend(probe: ModelProbe, *, schluessel_gueltig: bool) -> bool:
+    """Ist das Scheitern der Lebendpruefung eine Aussage ueber das Modell?
+
+    Nein bei allem, was mit dem Anbieter gerade los ist und nicht mit dem
+    Modell: Netz, Zeitueberschreitung, 5xx, ein Ratenlimit mit echtem
+    Kontingent, ein vom Vermittler eingepackter Fehler (Status unter 400).
+    Live am 24.09.2026 genau so aufgetreten — ``gemini-3.8-flash`` mit 503
+    "high demand", ``nemotron-3.5-lightning`` mit Zeitueberschreitung. Beide
+    waren danach bis zur Handmessung abgeschaltet.
+
+    Ja bei einem Ratenlimit ohne Kontingent (``limit_requests == 0``, bei
+    Mistral das fehlende API-Abo), bei 400/404 und bei 402.
+
+    Die Ausnahme ist 401: bei gueltigem Schluessel (ein anderes Modell hat im
+    selben Lauf geantwortet) war das live eine Verzoegerung beim Anbieter —
+    am 17.09.2026 lehnte Mistral denselben Schluessel fuer zwei Modelle ab,
+    den es fuer ein drittes annahm, eine Woche spaeter fuer alle. Bei
+    ungueltigem Schluessel ist es ein Schluesselproblem und kein
+    Modellbefund; das meldet der Reparaturhinweis aus dem laufenden Betrieb.
+    Ein 403 ohne gueltigen Schluessel gilt aus demselben Grund als offen.
+    """
+    if probe.alive:
+        return False
+    if probe.rate_limit.limit_requests == 0:
+        return False
+    status = probe.status
+    if status is None or status < 400 or status >= 500:
+        return True
+    if status in (408, 409, 425, 429):
+        return True
+    if status == 401:
+        return True
+    if status == 403:
+        return not schluessel_gueltig
+    return False
+
+
+def kurzgrund(probe: ModelProbe) -> str:
+    """Warum ein Modell nicht geantwortet hat — ein paar Worte statt JSON."""
+    if probe.rate_limit.limit_requests == 0:
+        return "kein Kontingent für dieses Konto"
+    status = probe.status
+    if status is None:
+        return "keine Antwort, Zeitüberschreitung oder Netz"
+    if status < 400:
+        return "Fehler beim Anbieter hinter dem Vermittler"
+    texte = {
+        400: "Anfrage abgelehnt",
+        401: "Schlüssel abgelehnt",
+        402: "nur mit bezahltem Tarif",
+        403: "kein Zugriff mit diesem Konto",
+        404: "Modell gibt es nicht (mehr)",
+        408: "Zeitüberschreitung",
+        429: "Limit erreicht",
+    }
+    if status in texte:
+        return texte[status]
+    if status >= 500:
+        return f"Anbieter überlastet oder gestört, HTTP {status}"
+    return f"HTTP {status}"
+
+
+def uebernehmen(
+    vorher: dict[str, dict[str, Any]], probes: Iterable[ModelProbe]
+) -> dict[str, dict[str, Any]]:
+    """Eine Messung in den gespeicherten Stand einrechnen.
+
+    * Hat das Modell geantwortet, gilt die neue Messung — wo sie nichts sagt
+      (``None``), bleibt der alte Befund stehen.
+    * Ist es definitiv nicht nutzbar, wird es als tot gespeichert, mit Grund.
+    * Ist es nur voruebergehend gestoert, bleibt der alte Eintrag unveraendert.
+      Gab es keinen, bleibt das Modell offen und wird beim naechsten Lauf
+      wieder versucht — genau wie ein nie gemessenes.
+
+    Damit braucht es die alte Notbremse fuer Netzausfaelle nicht mehr: eine
+    tote Leitung liefert nur voruebergehende Fehler und ueberschreibt nichts.
+    """
+    probes = list(probes)
+    schluessel_gueltig = any(probe.alive for probe in probes)
+    nachher = dict(vorher)
+    for probe in probes:
+        if not probe.alive and ist_voruebergehend(probe, schluessel_gueltig=schluessel_gueltig):
+            alt = vorher.get(probe.key) or {}
+            if alt.get("alive") is False and "grund" not in alt:
+                # Ein "tot" ohne Grund stammt aus der Zeit, als schon ein 503
+                # als tot galt — es war nie ein Befund. Bleibt die neue
+                # Messung wieder nur gestoert, ist das Modell offen, nicht tot:
+                # es laeuft mit den Startwerten und wird weiter versucht. Live
+                # am 24.09.2026: gemini-3.8-flash (503) und
+                # nemotron-3.5-lightning (Zeitueberschreitung) blieben sonst
+                # abgeschaltet, obwohl nichts gegen sie sprach.
+                nachher.pop(probe.key, None)
+            continue
+        eintrag = _eintrag(probe)
+        if probe.alive:
+            eintrag = merge_overrides(vorher.get(probe.key) or {}, eintrag)
+        nachher[probe.key] = eintrag
+    return nachher
+
+
+def faellige_modelle(
+    provider: Provider,
+    gespeichert: dict[str, dict[str, Any]],
+    jetzt: float,
+    *,
+    tot_nachpruefen_s: float = TOT_NACHPRUEFEN_S,
+) -> list[Model]:
+    """Welche Modelle ein Hintergrundlauf messen soll.
+
+    Faellig ist, was nie gemessen wurde (auch: bisher nur voruebergehend
+    gestoert), was als tot gilt, aber keinen Grund traegt (Messung aus der
+    Zeit vor dieser Unterscheidung), und was laenger als eine Woche tot ist.
+    Was lebt, wird nicht periodisch nachgemessen: Faehigkeiten sind
+    Eigenschaften des Modells, und ob es noch antwortet, zeigt der laufende
+    Betrieb ohnehin — ohne einen einzigen Aufruf aus dem Kontingent.
+    """
+    faellig: list[Model] = []
+    for model in provider.models:
+        eintrag = gespeichert.get(model.key) or gespeichert.get(model.id)
+        if not eintrag:
+            faellig.append(model)
+            continue
+        if eintrag.get("alive", True):
+            continue
+        if "grund" not in eintrag:
+            faellig.append(model)
+            continue
+        if jetzt - float(eintrag.get("checked_at") or 0) > tot_nachpruefen_s:
+            faellig.append(model)
+    return faellig
+
+
+def bericht_zeilen(
+    probes: Iterable[ModelProbe], *, schluessel_gueltig: bool | None = None
+) -> list[str]:
+    """Eine Zeile je gemessenem Modell, fuer Benachrichtigung und Dienst.
+
+    Bewusst ohne rohe Fehlertexte der Anbieter: dass ein reines Textmodell
+    "messages[0].content must be a string" antwortet, wenn man ihm ein Bild
+    schickt, ist die erwartete Antwort und keine Meldung wert.
+    """
+    probes = list(probes)
+    if schluessel_gueltig is None:
+        schluessel_gueltig = any(probe.alive for probe in probes)
+    zeilen: list[str] = []
+    for probe in probes:
+        if probe.alive:
+            pruefungen = (
+                ("Bilder", probe.vision),
+                ("Schema", probe.structured_output),
+                ("Werkzeuge", probe.tools),
+            )
+            kann = [name for name, ergebnis in pruefungen if ergebnis.ok]
+            if all(ergebnis.ok is None for _name, ergebnis in pruefungen):
+                # Sparsamer Lauf: nur die Lebendpruefung. "nur Text" waere
+                # hier eine Behauptung ueber etwas, das nicht geprueft wurde.
+                befund = "erreichbar"
+            else:
+                befund = ", ".join(kann) or "nur Text"
+            dauer = f" · {probe.latency_total_s:.1f} s" if probe.latency_total_s else ""
+            zeilen.append(f"- **{probe.model_id}** — {befund}{dauer}")
+        elif ist_voruebergehend(probe, schluessel_gueltig=schluessel_gueltig):
+            zeilen.append(
+                f"- **{probe.model_id}** — gerade nicht erreichbar ({kurzgrund(probe)}), "
+                "wird später erneut versucht"
+            )
+        else:
+            zeilen.append(f"- **{probe.model_id}** — nicht nutzbar: {kurzgrund(probe)}")
+    return zeilen
+
+
 async def gather_probes(
     session: aiohttp.ClientSession,
     jobs: Sequence[tuple[Provider, str]],
@@ -731,15 +926,21 @@ __all__ = [
     "FEHLERART_LIMIT",
     "FEHLERART_UNBEKANNT",
     "FEHLERART_UNERREICHBAR",
+    "TOT_NACHPRUEFEN_S",
     "CheckResult",
     "ModelProbe",
     "ProviderProbe",
+    "bericht_zeilen",
     "describe_changes",
+    "faellige_modelle",
     "gather_probes",
+    "ist_voruebergehend",
+    "kurzgrund",
     "merge_into_registry",
     "merge_overrides",
     "probe_model",
     "probe_provider",
     "quick_key_check",
     "should_discard",
+    "uebernehmen",
 ]

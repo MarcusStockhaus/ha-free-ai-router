@@ -2,26 +2,19 @@
 
 Bisher genau einer: ``free_ai_router.neu_vermessen``.
 
-**Warum es ihn braucht.** Die Faehigkeiten, mit denen der Router arbeitet,
-stammen aus dem Augenblick des Einrichtens und liegen im Config Entry. Sie
-schlagen den Feed — eigene Messung vor fremder, und das ist richtig, weil
-``alive`` und Limits vom Konto abhaengen und nicht vom Modell. Die Kehrseite:
-ohne diesen Dienst ist ein einmal gemessener Wert unerreichbar. Ein
-verbessertes Messverfahren erreichte den Nutzer nie, und ein Anbieter, den der
-Feed gar nicht kennt, bliebe fuer immer auf dem Stand des ersten Tages.
+**Wozu, wenn doch im Hintergrund gemessen wird.** Die Hintergrundmessung
+(``hintergrund.py``) misst nur, was offen ist: neue Modelle, bisher nur
+voruebergehend gestoerte, lange tote. Was einmal funktioniert hat, fasst sie
+nicht mehr an — Faehigkeiten sind Eigenschaften des Modells, und jede
+Messung kostet Kontingent. Dieser Dienst misst auf Zuruf alles neu, auch das
+Funktionierende; noetig etwa, wenn sich das Messverfahren verbessert hat.
 
-**Dieselbe Vorsicht wie im Prober.** Eine Messung, die nichts erreicht hat,
-ueberschreibt nichts:
-
-* Antwortet **kein einziges** Modell eines Anbieters, der vorher welche hatte,
-  wird das Ergebnis verworfen. Das ist fast immer die eigene Leitung und nicht
-  das Ende des Anbieters — und eine kaputte Leitung darf nicht dazu fuehren,
-  dass sich die Installation selbst die Kanaele abschaltet.
-* Wird der Schluessel abgelehnt, gilt dasselbe.
-* Beim sparsamen Lauf (``nur_lebendigkeit``) bleiben die bisherigen
-  Faehigkeiten stehen. Er prueft sie gar nicht — sie zu loeschen, weil nicht
-  danach gefragt wurde, waere der Unterschied zwischen "nein" und "nicht
-  gemessen", auf den es in diesem Projekt durchgehend ankommt.
+**Dieselbe Vorsicht wie im Hintergrund.** Gespeichert wird ueber
+:func:`hintergrund.async_speichern`, also mit derselben Regel: was nur
+voruebergehend gestoert war (Netz, 5xx, Ratenlimit), ueberschreibt nichts.
+Eine kaputte Leitung schaltet damit keinen Kanal ab. Beim sparsamen Lauf
+(``nur_lebendigkeit``) bleiben die bisherigen Faehigkeiten stehen — er prueft
+sie gar nicht, und "nicht gemessen" ist nicht "kann es nicht".
 """
 
 from __future__ import annotations
@@ -36,16 +29,9 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .capabilities import (
-    ALL_CHECKS,
-    CHEAP_CHECKS,
-    describe_changes,
-    merge_into_registry,
-    merge_overrides,
-    probe_provider,
-    should_discard,
-)
-from .const import CONF_API_KEY, CONF_MODELS, DOMAIN
+from .capabilities import ALL_CHECKS, CHEAP_CHECKS, bericht_zeilen, probe_provider
+from .const import CONF_API_KEY, DOMAIN
+from .hintergrund import async_speichern
 
 if TYPE_CHECKING:
     from . import FreeAIRouterConfigEntry
@@ -81,9 +67,11 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         )
     entry: FreeAIRouterConfigEntry = entries[0]
     runtime = entry.runtime_data
-    registry = runtime.base_registry or runtime.registry
+    # Die wirksame Registry, also mit Feed: auch Modelle, die nur der Feed
+    # kennt, sind Kanaele und gehoeren gemessen.
+    registry = runtime.registry
 
-    from . import configured_providers, subentry_of
+    from . import configured_providers
 
     configured: dict[str, Any] = configured_providers(entry)
     gewuenscht = call.data.get(ATTR_ANBIETER)
@@ -106,61 +94,37 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
     bericht: dict[str, Any] = {}
     etwas_geaendert = False
 
-    for provider_id in ziele:
-        provider = registry.get(provider_id)
-        if provider is None:
-            bericht[provider_id] = {"hinweis": "steht nicht mehr in der Registry"}
-            continue
-        api_key = configured[provider_id].get(CONF_API_KEY) or ""
-        if not api_key:
-            bericht[provider_id] = {"hinweis": "kein Schluessel hinterlegt"}
-            continue
+    async with runtime.messung:
+        for provider_id in ziele:
+            provider = registry.get(provider_id)
+            if provider is None:
+                bericht[provider_id] = {"hinweis": "steht nicht mehr in der Registry"}
+                continue
+            api_key = configured[provider_id].get(CONF_API_KEY) or ""
+            if not api_key:
+                bericht[provider_id] = {"hinweis": "kein Schluessel hinterlegt"}
+                continue
 
-        _LOGGER.info(
-            "Vermesse %s neu (%s)", provider.name, "sparsam" if nur_lebendigkeit else "voll"
-        )
-        probe = await probe_provider(
-            session, provider, api_key, checks=checks, concurrency=CONCURRENCY
-        )
+            _LOGGER.info(
+                "Vermesse %s neu (%s)", provider.name, "sparsam" if nur_lebendigkeit else "voll"
+            )
+            probe = await probe_provider(
+                session, provider, api_key, checks=checks, concurrency=CONCURRENCY
+            )
+            aenderungen = async_speichern(hass, entry, provider, probe, benachrichtigen=False)
+            if aenderungen is None:
+                bericht[provider_id] = {"hinweis": "kein Subentry gefunden"}
+                continue
+            etwas_geaendert = etwas_geaendert or bool(aenderungen)
 
-        vorher: dict[str, Any] = configured[provider_id].get(CONF_MODELS) or {}
-        lebendig = len(probe.working_models)
-
-        if should_discard(vorher, lebendig):
             bericht[provider_id] = {
                 "gemessen": len(probe.models),
-                "lebendig": 0,
-                "hinweis": (
-                    "kein Modell hat geantwortet — Ergebnis verworfen, "
-                    f"bisheriger Stand bleibt ({probe.error or 'ohne Fehlermeldung'})"
-                ),
+                "lebendig": len(probe.working_models),
+                "modelle": bericht_zeilen(probe.models),
+                "aenderungen": aenderungen or None,
             }
-            continue
-
-        gemessen = merge_into_registry(provider, probe.models)
-        nachher = {
-            key: merge_overrides(vorher.get(key) or {}, wert) for key, wert in gemessen.items()
-        }
-        aenderungen = describe_changes(vorher, nachher)
-
-        subentry = subentry_of(entry, provider_id)
-        if subentry is None:
-            bericht[provider_id] = {"hinweis": "kein Subentry gefunden"}
-            continue
-        # Den Subentry zu aktualisieren laedt die Entry neu; dabei entstehen
-        # die Kanaele aus den frischen Werten.
-        hass.config_entries.async_update_subentry(
-            entry, subentry, data={**subentry.data, CONF_MODELS: nachher}
-        )
-        etwas_geaendert = True
-
-        bericht[provider_id] = {
-            "gemessen": len(probe.models),
-            "lebendig": lebendig,
-            "aenderungen": aenderungen or None,
-        }
-        if probe.stale_registry_entries:
-            bericht[provider_id]["nicht_mehr_gefuehrt"] = probe.stale_registry_entries
+            if probe.stale_registry_entries:
+                bericht[provider_id]["nicht_mehr_gefuehrt"] = probe.stale_registry_entries
 
     ergebnis: ServiceResponse = {
         "anbieter": bericht,

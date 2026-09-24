@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 
-from .const import PROFILE_REQUIREMENTS, PROFILES
+from .const import PROFILE_LABELS_DE, PROFILE_REQUIREMENTS, PROFILES
 from .ledger import Availability
 from .registry import Model, Provider
 
@@ -279,10 +279,36 @@ def coverage(
     return result
 
 
+def abdeckung_text(eintraege: dict[str, CoverageEntry]) -> str:
+    """Die Abdeckung als Markdown-Liste — eine Zeile je Profil.
+
+    Dieselbe Uebersicht an zwei Stellen: am Ende der Einrichtung und in der
+    Benachrichtigung nach einer Messung im Hintergrund.
+    """
+    zeilen: list[str] = []
+    for profil in PROFILES:
+        eintrag = eintraege.get(profil)
+        name = PROFILE_LABELS_DE[profil]
+        if eintrag is None or eintrag.primary is None:
+            zeilen.append(f"- **{name}** — keine Abdeckung. Hier bleibt eine Lücke.")
+            continue
+        erst = _kanal_name(eintrag.primary)
+        if eintrag.has_reserve:
+            zeilen.append(f"- **{name}** — {erst}, Reserve: {_kanal_name(eintrag.reserves[0])}")
+        else:
+            zeilen.append(f"- **{name}** — {erst} — **ohne Reserve**")
+    return "\n".join(zeilen)
+
+
+def _kanal_name(kanal: Channel) -> str:
+    return f"{kanal.provider.name} · {kanal.model.display_name}"
+
+
 __all__ = [
     "Candidate",
     "Channel",
     "CoverageEntry",
+    "abdeckung_text",
     "Rejection",
     "Requirements",
     "RoutingPlan",

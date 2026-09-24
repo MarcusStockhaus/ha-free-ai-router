@@ -247,3 +247,15 @@ def test_leere_kanalliste() -> None:
     assert not result.has_candidate
     assert result.rejected == ()
     assert "keine Kanaele" in result.explain()
+
+
+def test_abdeckung_als_text_nennt_luecke_und_fehlende_reserve(free_availability) -> None:
+    from custom_components.free_ai_router.router import abdeckung_text
+
+    schnell = make_model("klein", "a", profiles=("schnell",))
+    kanaele = [Channel(provider=make_provider("a", (schnell,)), model=schnell)]
+    text = abdeckung_text(coverage(kanaele, free_availability))
+
+    assert "**Schnell** — A · klein — **ohne Reserve**" in text
+    assert "**Bildanalyse** — keine Abdeckung" in text
+    assert "{" not in text

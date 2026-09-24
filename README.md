@@ -83,11 +83,21 @@ Router**, oder direkt per Klick:
 Der Assistent zeigt je Anbieter eine Karte: was er kann, was er mit den Daten
 macht, ob Zahlungsdaten verlangt werden, ob er für den Anfang empfohlen ist —
 und einen Deep-Link direkt zur Key-Seite, nicht zur Startseite. Nach der
-Eingabe läuft sofort ein echter Testaufruf, danach die Fähigkeitsmessung, mit
-Fortschrittsbalken. Die dauert ein bis zwei Minuten, weil sie je Modell
-mehrere echte Aufrufe macht. Am Ende steht, welches Profil von welchem Kanal
-bedient wird, wo eine Lücke bleibt — und drei Links zu den nächsten Schritten
-(Assist verbinden, beide Blueprints importieren).
+Eingabe läuft sofort ein echter Testaufruf. **Geht er durch, ist die
+Integration eingerichtet** — ein Anbieter, ein Schlüssel, ein paar Sekunden.
+Der Abschlussbildschirm zeigt, welches Profil voraussichtlich von welchem
+Modell bedient wird, und verlinkt die nächsten Schritte (Assist verbinden,
+beide Blueprints importieren).
+
+Welche Modelle genau was können — Bilder, Schema, Werkzeuge, Antwortzeit —
+misst die Integration danach **im Hintergrund**. Das dauert je Anbieter ein
+bis zwei Minuten, weil es je Modell mehrere echte Aufrufe braucht; das
+Ergebnis kommt als Benachrichtigung. Bis dahin gelten die Angaben aus der
+Anbieterdatei, die Integration ist also sofort nutzbar.
+
+Jeder weitere Anbieter kommt auf der Integrationsseite über **Anbieter
+hinzufügen** dazu: derselbe kurze Weg, ebenfalls sofort gespeichert und im
+Hintergrund vermessen.
 
 Für den Anfang reichen **Google AI Studio und Groq**: zusammen tragen sie alle
 drei Profile mit Reserve, ohne Zahlungsdaten und ohne Ausgabendeckel. Mistral
@@ -111,8 +121,9 @@ Knöpfe, die Home Assistant dort selbst anbietet — die Integration baut keine
 eigene Verwaltungsoberfläche daneben.
 
 Ein Schlüsselwechsel läuft durch denselben Weg wie das Einrichten: Test,
-Messung, Ergebnis. Ein anderer Schlüssel kann ein anderes Konto sein, und was
-das Konto darf, ist damit offen. Der alte Schlüssel wird nirgends angezeigt;
+gespeichert, Messung im Hintergrund. Die bisherige Messung wird dabei
+verworfen — ein anderer Schlüssel kann ein anderes Konto sein, und was das
+Konto darf, ist damit offen. Der alte Schlüssel wird nirgends angezeigt;
 zum Ersetzen braucht es ohnehin einen neuen.
 
 Die vier Router-Entities (die drei `ai_task`-Profile, Assist) und die vier
@@ -288,11 +299,19 @@ data:
   anbieter: [mistral]         # optional, sonst alle
 ```
 
-Die Fähigkeiten, mit denen der Router arbeitet, stammen aus dem Augenblick des
-Einrichtens. Sie schlagen bewusst alles andere — `alive` und Limits hängen am
-Konto und nicht am Modell, und was der eigene Schlüssel kann, weiß niemand
-besser als die eigene Messung. Ohne diesen Dienst bliebe ein einmal gemessener
-Wert allerdings für immer stehen.
+Die Fähigkeiten, mit denen der Router arbeitet, stammen aus der eigenen
+Messung mit dem eigenen Schlüssel. Sie schlagen bewusst alles andere — `alive`
+und Limits hängen am Konto und nicht am Modell.
+
+Im Hintergrund wird nachgemessen, was offen ist: neue Modelle, Modelle, die
+beim letzten Versuch nur vorübergehend gestört waren (Überlastung,
+Zeitüberschreitung, Ratenlimit), und Modelle, die seit einer Woche als nicht
+nutzbar gelten. Das geschieht nach jedem Laden der Integration und danach
+alle sechs Stunden, und es kostet nur, wenn etwas offen ist. Was
+funktioniert, wird nicht periodisch neu vermessen — ob es noch antwortet,
+zeigt der laufende Betrieb ohne einen Aufruf aus dem Kontingent.
+
+Dieser Dienst misst auf Zuruf alles neu, auch das Funktionierende.
 
 Der Aufruf liefert eine Antwort, die sagt, was sich geändert hat:
 
@@ -374,9 +393,9 @@ kann niemals einen Endpunkt einführen, der dort nicht steht.
 
 Das ist die zweite Linie hinter der Signatur des **Feed-Dienstes**, der
 Modelle und Limits aktuell hält. Er darf Texte und Zahlen ändern, niemals aber
-das Ziel. Der Feed ist in dieser Fassung **aus** — `FEED_URL` und
-`FEED_PUBLIC_KEY_B64` stehen leer, die Integration holt also nichts und fragt
-nichts. Wie er funktioniert und wie man ihn einschaltet, steht in
+das Ziel. Der Feed ist eingeschaltet: die Integration holt alle vier Stunden
+ein signiertes Dokument von GitHub Pages und prüft die Signatur gegen einen
+fest eincompilierten Schlüssel. Wie er funktioniert, steht in
 [FEED.md](FEED.md).
 
 ---

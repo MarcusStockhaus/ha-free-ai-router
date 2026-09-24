@@ -1,43 +1,34 @@
-"""Config Flow — Anbieterkarten, Key-Test, Faehigkeitserkennung, Uebersicht.
+"""Config Flow — Anbieterkarte, Schluesseltest, fertig.
 
 Ablauf:
 
 1. ``user`` — Anbieter waehlen. Die Karte nennt, was er kann, was er mit den
    Daten macht, ob eine Kreditkarte noetig ist, und verlinkt direkt auf die
    Key-Seite.
-2. ``key`` — Schluessel eingeben. Sofort ein echter Aufruf, sichtbares
-   Ergebnis in Sekunden.
-3. ``probe`` — Faehigkeitserkennung als Hintergrundtask mit
-   Fortschrittsanzeige. Das muss so sein: die Messung macht mehrere echte
-   API-Aufrufe je Modell und laeuft je nach Anbieter deutlich laenger, als ein
-   Formularschritt stehenbleiben darf.
-4. ``result`` — Messergebnis, dann Menue: weiterer Anbieter oder fertig.
-5. ``summary`` — erstellt den Eintrag sofort, ohne eigenen Formularschritt.
-   Welches Profil wer bedient und wo eine Luecke bleibt steht auf dem
-   Abschluss-Bildschirm, den Home Assistant nach ``async_create_entry``
-   selbst zeigt. Fruehere Fassung hatte hier noch ein leeres Formular mit
-   nur einem Knopf zur Bestaetigung — "Fertig" im Menue der Stufe 4 war
-   die Bestaetigung schon, ein zweiter Klick bot nur eine weitere
-   Gelegenheit, den Dialog versehentlich zu schliessen. Live am
-   17.09.2026 aufgefallen: vier Anbieter eingerichtet, aber kein Config
-   Entry entstanden.
+2. ``key`` — Schluessel eingeben. Sofort ein echter Aufruf. Geht er durch,
+   ist die Integration eingerichtet — ohne weiteren Schritt.
 
-Danach ist jeder eingerichtete Anbieter ein **Subentry** und damit eine eigene
-Zeile auf der Integrationsseite. Hinzufuegen, Schluessel ersetzen und
-Entfernen laufen ueber :class:`AnbieterSubentryFlow`; die Knoepfe, die Liste
-und der Loeschdialog kommen von Home Assistant. Ein selbstgebautes
-Verwaltungsmenue waere daneben nur eine zweite, schlechtere Oberflaeche.
+**Warum so kurz.** Frueher folgten hier Faehigkeitsmessung (ein bis zwei
+Minuten mit Fortschrittsbalken), Messergebnis, "weiterer Anbieter?" und eine
+Uebersicht, gespeichert wurde erst ganz am Ende. Live am 17.09.2026: vier
+Anbieter vermessen, der Dialog vor dem letzten Klick geschlossen, nichts
+gespeichert — zehn Minuten Arbeit fuer nichts. Seitdem:
 
-Die Schritte ``key``, ``probe`` und ``result`` teilen sich beide Fluesse ueber
-:class:`_MessSchritte` — ein neuer Schluessel gehoert genauso gemessen wie ein
-neuer Anbieter. Ein anderer Schluessel kann ein anderes Konto sein.
+* gespeichert wird nach dem ersten gueltigen Schluessel, sofort;
+* gemessen wird im Hintergrund (``hintergrund.py``), das Ergebnis kommt als
+  Benachrichtigung; bis dahin gelten die Angaben aus der Anbieterdatei;
+* jeder weitere Anbieter kommt ueber "Anbieter hinzufuegen" auf der
+  Integrationsseite dazu — derselbe kurze Weg, ebenfalls sofort gespeichert.
+
+Jeder eingerichtete Anbieter ist ein **Subentry** und damit eine eigene Zeile
+auf der Integrationsseite. Hinzufuegen, Schluessel ersetzen und Entfernen
+laufen ueber :class:`AnbieterSubentryFlow`; die Knoepfe, die Liste und der
+Loeschdialog kommen von Home Assistant.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 
 import voluptuous as vol
@@ -67,9 +58,6 @@ from .capabilities import (
     FEHLERART_LIMIT,
     FEHLERART_UNBEKANNT,
     FEHLERART_UNERREICHBAR,
-    ProviderProbe,
-    merge_into_registry,
-    probe_provider,
     quick_key_check,
 )
 from .const import (
@@ -77,13 +65,11 @@ from .const import (
     CONF_MODELS,
     CONF_PROVIDER,
     DOMAIN,
-    PROFILE_LABELS_DE,
-    PROFILES,
     SUBENTRY_TYPE_ANBIETER,
 )
 from .ledger import Availability
 from .registry import Provider, Registry, RegistryError, load_registry
-from .router import coverage
+from .router import abdeckung_text, coverage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,89 +105,70 @@ def _provider_card(provider: Provider) -> str:
     return "\n".join(f"  {line}" if index else f"- {line}" for index, line in enumerate(parts))
 
 
-def _key_hinweis(api_key: str) -> str:
-    """Genug zum Wiedererkennen, zu wenig zum Benutzen."""
-    key = (api_key or "").strip()
-    if len(key) <= 4:
-        return "hinterlegt"
-    return f"…{key[-4:]}"
+def _auswahl(anbieter: list[Provider]) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Required(CONF_PROVIDER): SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=provider.id, label=provider.name)
+                        for provider in anbieter
+                    ],
+                    mode=SelectSelectorMode.LIST,
+                )
+            )
+        }
+    )
 
 
-def _zugang_karte(provider: Provider, daten: dict[str, Any]) -> str:
-    """Eine Zeile je eingerichtetem Anbieter fuer die Verwaltungsuebersicht."""
-    modelle: dict[str, Any] = daten.get(CONF_MODELS) or {}
-    lebendig = sum(1 for wert in modelle.values() if wert.get("alive"))
-    gemessen = [
-        wert.get("checked_at") for wert in modelle.values() if wert.get("checked_at")
+def _sortiert(registry: Registry) -> list[Provider]:
+    return sorted(registry, key=lambda item: (item.preference, item.id))
+
+
+def _empfehlung(registry: Registry, eingerichtet: set[str]) -> str:
+    """Welcher Anbieter als naechstes sinnvoll waere — ein Satz."""
+    offen = [
+        provider.name
+        for provider in _sortiert(registry)
+        if provider.onboarding.empfohlen and provider.id not in eingerichtet
     ]
-    if gemessen:
-        zeitpunkt = datetime.fromtimestamp(max(gemessen)).strftime("%d.%m.%Y %H:%M")
-        wann = f"zuletzt vermessen {zeitpunkt}"
-    else:
-        wann = "noch nicht vermessen"
-    zahl = f"{lebendig} von {len(modelle)} Modellen erreichbar" if modelle else "keine Messung"
-    kopf = f"- **{provider.name}** — Schlüssel {_key_hinweis(daten.get(CONF_API_KEY, ''))}"
-    return f"{kopf}\n  {zahl} · {wann}"
-
-
-def _probe_report(provider: Provider, probe: ProviderProbe) -> str:
-    """Messergebnis als Markdown-Liste."""
-    lines: list[str] = []
-    for model in probe.models:
-        if not model.alive:
-            lines.append(f"- **{model.model_id}** — nicht erreichbar: {model.error[:120]}")
-            continue
-        can = []
-        if model.vision.ok:
-            can.append("Bilder")
-        if model.structured_output.ok:
-            can.append("Schema")
-        if model.tools.ok:
-            can.append("Werkzeuge")
-        latency = f"{model.latency_total_s:.1f} s" if model.latency_total_s else "?"
-        ttft = f", erstes Token {model.ttft_s:.1f} s" if model.ttft_s else ""
-        lines.append(
-            f"- **{model.model_id}** — {', '.join(can) or 'nur Text'} · {latency}{ttft}"
+    if offen:
+        return (
+            f"Als Nächstes empfohlen: **{' und '.join(offen)}** — damit bekommt jedes "
+            "Profil eine Reserve bei einem zweiten Anbieter."
         )
-        if model.vision.ok is False and model.vision.detail:
-            lines.append(f"    Bild: {model.vision.detail[:110]}")
-
-    stale = probe.stale_registry_entries
-    if stale:
-        lines.append(
-            f"- Hinweis: {provider.name} führt diese Modelle nicht mehr: {', '.join(stale)}"
-        )
-    return "\n".join(lines) or "- keine Messwerte"
+    return "Ein weiterer Anbieter gibt jedem Profil eine Reserve, falls einer ausfällt."
 
 
-class _MessSchritte:
-    """Schluesseleingabe und Faehigkeitsmessung — von beiden Fluessen benutzt.
+def _neue_daten(provider: Provider, api_key: str) -> dict[str, Any]:
+    """Subentry-Daten eines frisch eingerichteten Anbieters — noch ungemessen.
 
-    Der Einrichtungsassistent und der Subentry-Flow brauchen dieselben drei
-    Schritte: Schluessel testen, Faehigkeiten messen, Ergebnis zeigen. Ein
-    neuer Schluessel gehoert genauso gemessen wie ein neuer Anbieter — er
-    kann ein anderes Konto sein, und was das Konto darf, ist damit offen.
+    Leeres ``models`` heisst: jedes Modell ist offen. Die Hintergrundmessung
+    nimmt es sich beim naechsten Laden vor; bis dahin gelten die Startwerte
+    aus der Anbieterdatei.
+    """
+    return {CONF_PROVIDER: provider.id, CONF_API_KEY: api_key, CONF_MODELS: {}}
+
+
+class _SchluesselSchritt:
+    """Schluesseleingabe mit sofortigem Test — von beiden Fluessen benutzt.
+
+    Was nach einem gueltigen Schluessel passiert, entscheidet der jeweilige
+    Fluss in :meth:`_async_schluessel_gueltig`: der Einrichtungsassistent legt
+    den Config Entry an, der Subentry-Flow einen Anbieter.
     """
 
     def __init__(self) -> None:
         super().__init__()
         self._registry: Registry | None = None
-        self._providers: dict[str, dict[str, Any]] = {}
         self._pending_provider: Provider | None = None
-        self._pending_key: str = ""
-        self._probe_task: asyncio.Task[ProviderProbe] | None = None
-        self._probe_result: ProviderProbe | None = None
 
-    # ------------------------------------------------------------ Registry
     async def _async_registry(self) -> Registry:
         if self._registry is None:
             self._registry = await self.hass.async_add_executor_job(load_registry)
         return self._registry
 
-    # --------------------------------------------------------- Key-Eingabe
-    async def async_step_key(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_key(self, user_input: dict[str, Any] | None = None) -> Any:
         provider = self._pending_provider
         assert provider is not None
 
@@ -226,10 +193,7 @@ class _MessSchritte:
                 ok, message, art = False, repr(err), FEHLERART_UNBEKANNT
 
             if ok:
-                self._pending_key = api_key
-                self._probe_task = None
-                self._probe_result = None
-                return await self.async_step_probe()
+                return await self._async_schluessel_gueltig(provider, api_key, message)
 
             # Vier Fehlerarten statt einer: "abgelehnt" ist nicht dasselbe wie
             # "kein Abo aktiviert" (Mistral) oder "Anbieter gerade gestoert" —
@@ -257,73 +221,17 @@ class _MessSchritte:
             description_placeholders=placeholders,
         )
 
-    # -------------------------------------------------- Faehigkeitserkennung
-    async def async_step_probe(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Messung als Hintergrundtask.
-
-        Synchron im Formularschritt ginge nicht: pro Modell laufen vier echte
-        Aufrufe, bei vier Modellen sind das schnell ein bis zwei Minuten. Ein
-        Formularschritt, der so lange haengt, sieht fuer den Nutzer aus wie ein
-        Absturz.
-        """
-        provider = self._pending_provider
-        assert provider is not None
-
-        if self._probe_task is None:
-            self._probe_task = self.hass.async_create_task(self._async_probe())
-
-        if not self._probe_task.done():
-            return self.async_show_progress(
-                step_id="probe",
-                progress_action="probing",
-                progress_task=self._probe_task,
-                description_placeholders={"name": provider.name},
-            )
-
-        try:
-            self._probe_result = self._probe_task.result()
-        except Exception as err:  # noqa: BLE001 - die Messung darf nie den Flow toeten
-            _LOGGER.warning("Faehigkeitserkennung fehlgeschlagen: %r", err)
-            self._probe_result = ProviderProbe(provider_id=provider.id, error=repr(err))
-        finally:
-            self._probe_task = None
-
-        return self.async_show_progress_done(next_step_id="result")
-
-    async def _async_probe(self) -> ProviderProbe:
-        provider = self._pending_provider
-        assert provider is not None
-        session = async_get_clientsession(self.hass)
-
-        def _fortschritt(done: int, total: int, _label: str) -> None:
-            # Zwei Minuten "einen Moment" wirken wie ein Absturz. Der Balken
-            # braucht dafuer kein eigenes Protokoll: probe_provider ruft das
-            # hier nach jedem fertigen Modell auf, HA kuemmert sich um den Rest.
-            if total:
-                self.async_update_progress(done / total)
-
-        return await probe_provider(
-            session,
-            provider,
-            self._pending_key,
-            discover=True,
-            concurrency=1,
-            on_progress=_fortschritt,
-        )
+    async def _async_schluessel_gueltig(
+        self, provider: Provider, api_key: str, meldung: str
+    ) -> Any:
+        raise NotImplementedError
 
 
-
-class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
-    """Gefuehrte Ersteinrichtung: mehrere Anbieter nacheinander.
-
-    Am Ende entsteht ein Config Entry mit je einem Subentry pro Anbieter.
-    """
+class FreeAIRouterConfigFlow(_SchluesselSchritt, ConfigFlow, domain=DOMAIN):
+    """Ersteinrichtung: ein Anbieter, ein Schluessel, fertig."""
 
     VERSION = 2
 
-    # ------------------------------------------------------- Anbieterauswahl
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -335,132 +243,49 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
                 reason="registry_invalid", description_placeholders={"error": str(err)}
             )
 
-        remaining = [
-            provider
-            for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-            if provider.id not in self._providers
-        ]
-        if not remaining:
-            return await self.async_step_summary()
-
         if user_input is not None:
             self._pending_provider = registry.require(user_input[CONF_PROVIDER])
             return await self.async_step_key()
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_PROVIDER): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(value=provider.id, label=provider.name)
-                            for provider in remaining
-                        ],
-                        mode=SelectSelectorMode.LIST,
-                    )
-                )
-            }
-        )
+        anbieter = _sortiert(registry)
         return self.async_show_form(
             step_id="user",
-            data_schema=schema,
+            data_schema=_auswahl(anbieter),
             description_placeholders={
-                "cards": "\n".join(_provider_card(provider) for provider in remaining),
-                "configured": ", ".join(self._providers) or "noch keiner",
+                "cards": "\n".join(_provider_card(provider) for provider in anbieter),
             },
         )
 
-    # ------------------------------------------------------------ Ergebnis
-    async def async_step_result(
-        self, user_input: dict[str, Any] | None = None
+    async def _async_schluessel_gueltig(
+        self, provider: Provider, api_key: str, meldung: str
     ) -> ConfigFlowResult:
-        provider = self._pending_provider
-        probe = self._probe_result
-        assert provider is not None and probe is not None
-
-        # Auch ein Anbieter ohne einziges lebendes Modell wird uebernommen —
-        # der Key wurde getestet, und die Registry kann morgen ein Modell
-        # nachliefern. Abgeschaltet werden nur die gemessen toten Modelle.
-        self._providers[provider.id] = {
-            CONF_API_KEY: self._pending_key,
-            CONF_MODELS: merge_into_registry(provider, probe.models),
-        }
-        self._pending_provider = None
-        self._pending_key = ""
+        from . import build_channels  # lokal: sonst Zirkelimport beim Laden
 
         registry = await self._async_registry()
-        remaining = [item for item in registry if item.id not in self._providers]
-
-        menu_options = ["add_another", "summary"] if remaining else ["summary"]
-        return self.async_show_menu(
-            step_id="result",
-            menu_options=menu_options,
-            description_placeholders={
-                "name": provider.name,
-                "report": _probe_report(provider, probe),
-                "working": str(len(probe.working_models)),
-                "total": str(len(probe.models)),
-            },
+        daten = _neue_daten(provider, api_key)
+        # Die Abdeckung auf Grundlage der Anbieterdatei — die eigene Messung
+        # laeuft erst jetzt an. "Voraussichtlich" steht deshalb im Text.
+        uebersicht = abdeckung_text(
+            coverage(build_channels(registry, {provider.id: daten}), _ALWAYS_FREE)
         )
-
-    async def async_step_add_another(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        return await self.async_step_user()
-
-    # ----------------------------------------------------------- Uebersicht
-    async def async_step_summary(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Eintrag sofort anlegen — kein eigener Bestaetigungsschritt mehr.
-
-        "Fertig, Uebersicht anzeigen" im Menue der Stufe 4 war die
-        Bestaetigung schon; ein zweites leeres Formular mit nur einem Knopf
-        bot nur eine weitere Gelegenheit, den Dialog versehentlich zu
-        schliessen, ohne dass etwas gespeichert wurde (live am 17.09.2026
-        so passiert). Die Uebersicht steht jetzt auf dem Abschluss-Bildschirm,
-        den Home Assistant nach jedem ``async_create_entry`` selbst zeigt.
-        """
-        registry = await self._async_registry()
-
-        # Je Anbieter ein Subentry. Der Config Entry selbst haelt keine
-        # Anbieterdaten mehr — sonst gaebe es zwei Wahrheiten, und die
-        # Integrationsseite zeigte die falsche.
         return self.async_create_entry(
             title=TITLE,
             data={},
-            description_placeholders={"overview": self._coverage_text(registry)},
+            description_placeholders={
+                "name": provider.name,
+                "check": meldung,
+                "overview": uebersicht,
+                "empfehlung": _empfehlung(registry, {provider.id}),
+            },
             subentries=[
                 ConfigSubentryData(
-                    data={CONF_PROVIDER: provider_id, **daten},
+                    data=daten,
                     subentry_type=SUBENTRY_TYPE_ANBIETER,
-                    title=registry.require(provider_id).name,
-                    unique_id=provider_id,
+                    title=provider.name,
+                    unique_id=provider.id,
                 )
-                for provider_id, daten in self._providers.items()
             ],
         )
-
-    def _coverage_text(self, registry: Registry) -> str:
-        """Welches Profil wird von wem bedient, wo bleibt eine Luecke?"""
-        from . import build_channels  # lokal: sonst Zirkelimport beim Laden
-
-        channels = build_channels(registry, self._providers)
-        entries = coverage(channels, _ALWAYS_FREE)
-
-        lines: list[str] = []
-        for profile in PROFILES:
-            entry = entries[profile]
-            label = PROFILE_LABELS_DE[profile]
-            if not entry.covered:
-                lines.append(f"- **{label}** — keine Abdeckung. Hier bleibt eine Lücke.")
-                continue
-            reserve = (
-                f", Reserve: {entry.reserves[0].key}"
-                if entry.has_reserve
-                else " — **ohne Reserve**"
-            )
-            lines.append(f"- **{label}** — {entry.primary.key}{reserve}")
-        return "\n".join(lines)
 
     @classmethod
     @callback
@@ -471,20 +296,17 @@ class FreeAIRouterConfigFlow(_MessSchritte, ConfigFlow, domain=DOMAIN):
         return {SUBENTRY_TYPE_ANBIETER: AnbieterSubentryFlow}
 
 
-class AnbieterSubentryFlow(_MessSchritte, ConfigSubentryFlow):
+class AnbieterSubentryFlow(_SchluesselSchritt, ConfigSubentryFlow):
     """Anbieter hinzufuegen und seinen Schluessel ersetzen.
 
-    Beides derselbe Weg: Schluessel, Messung, Ergebnis. Nur der Abschluss
-    unterscheidet sich — neu anlegen oder den bestehenden Subentry ersetzen.
+    Beides derselbe Weg wie beim Einrichten: Schluessel, Test, gespeichert.
+    Ein ersetzter Schluessel verwirft die bisherige Messung — ein anderer
+    Schluessel kann ein anderes Konto sein, und was das Konto darf, ist damit
+    offen. Die Hintergrundmessung nimmt sich den Anbieter danach neu vor.
 
-    Was hier *nicht* steht, ist das Entfernen. Den Knopf und den
-    Bestaetigungsdialog dafuer bringt Home Assistant selbst mit; ihn
-    nachzubauen hiesse, eine zweite und schlechtere Oberflaeche zu pflegen.
+    Das Entfernen steht hier nicht: Knopf und Bestaetigungsdialog bringt Home
+    Assistant selbst mit.
     """
-
-    @property
-    def _ist_neu(self) -> bool:
-        return self.source == SOURCE_USER
 
     def _eingerichtet(self) -> dict[str, dict[str, Any]]:
         from . import configured_providers  # lokal: sonst Zirkelimport
@@ -503,11 +325,7 @@ class AnbieterSubentryFlow(_MessSchritte, ConfigSubentryFlow):
             )
 
         vorhanden = self._eingerichtet()
-        offen = [
-            provider
-            for provider in sorted(registry, key=lambda item: (item.preference, item.id))
-            if provider.id not in vorhanden
-        ]
+        offen = [provider for provider in _sortiert(registry) if provider.id not in vorhanden]
         if not offen:
             return self.async_abort(reason="alle_eingerichtet")
 
@@ -517,19 +335,7 @@ class AnbieterSubentryFlow(_MessSchritte, ConfigSubentryFlow):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_PROVIDER): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(value=provider.id, label=provider.name)
-                                for provider in offen
-                            ],
-                            mode=SelectSelectorMode.LIST,
-                        )
-                    )
-                }
-            ),
+            data_schema=_auswahl(offen),
             description_placeholders={
                 "cards": "\n".join(_provider_card(provider) for provider in offen)
             },
@@ -541,40 +347,22 @@ class AnbieterSubentryFlow(_MessSchritte, ConfigSubentryFlow):
         """Schluessel ersetzen. Der Anbieter steht schon fest."""
         registry = await self._async_registry()
         subentry = self._get_reconfigure_subentry()
-        provider_id = subentry.data.get(CONF_PROVIDER, "")
-        provider = registry.get(provider_id)
+        provider = registry.get(subentry.data.get(CONF_PROVIDER, ""))
         if provider is None:
             return self.async_abort(reason="unbekannter_anbieter")
         self._pending_provider = provider
         return await self.async_step_key()
 
-    async def async_step_result(
-        self, user_input: dict[str, Any] | None = None
+    async def _async_schluessel_gueltig(
+        self, provider: Provider, api_key: str, meldung: str
     ) -> SubentryFlowResult:
-        provider = self._pending_provider
-        probe = self._probe_result
-        assert provider is not None and probe is not None
-
-        if user_input is None:
-            return self.async_show_form(
-                step_id="result",
-                data_schema=vol.Schema({}),
-                description_placeholders={
-                    "name": provider.name,
-                    "report": _probe_report(provider, probe),
-                    "working": str(len(probe.working_models)),
-                    "total": str(len(probe.models)),
-                },
-            )
-
-        daten = {
-            CONF_PROVIDER: provider.id,
-            CONF_API_KEY: self._pending_key,
-            CONF_MODELS: merge_into_registry(provider, probe.models),
-        }
-        if self._ist_neu:
+        daten = _neue_daten(provider, api_key)
+        if self.source == SOURCE_USER:
             return self.async_create_entry(
-                title=provider.name, data=daten, unique_id=provider.id
+                title=provider.name,
+                data=daten,
+                unique_id=provider.id,
+                description_placeholders={"name": provider.name, "check": meldung},
             )
         return self.async_update_and_abort(
             self._get_entry(), self._get_reconfigure_subentry(), data=daten

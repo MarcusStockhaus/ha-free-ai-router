@@ -15,6 +15,7 @@ importieren HA ganz normal; sie werden nur von HA geladen.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -81,6 +82,8 @@ class RouterRuntime:
     uebernommener Wert stehen, auch wenn der Feed ihn zuruecknimmt.
     """
     feed: Any = None
+    messung: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    """Haelt Hintergrundmessung und Dienst ``neu_vermessen`` auseinander."""
     _coverage: dict[str, CoverageEntry] = field(default_factory=dict, repr=False)
 
     def channels_for(self, profile: str) -> list[Channel]:
@@ -106,6 +109,23 @@ class RouterRuntime:
 
 
 type FreeAIRouterConfigEntry = ConfigEntry[RouterRuntime]
+
+
+def signal_kanaele(entry_id: str) -> str:
+    """Dispatcher-Signal: die Kanaele dieser Entry haben sich geaendert.
+
+    Die ``ai_task``- und ``conversation``-Entities schreiben ihren Zustand
+    nur, wenn sie benutzt werden. Ohne dieses Signal zeigte ihr Attribut
+    ``abgeschaltet`` nach einer Hintergrundmessung weiter den alten Stand —
+    live am 24.09.2026 zwei Modelle, die laengst wieder aktiv waren.
+    """
+    return f"{DOMAIN}_{entry_id}_kanaele"
+
+
+def _kanaele_geaendert(hass: HomeAssistant, entry: FreeAIRouterConfigEntry) -> None:
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+    async_dispatcher_send(hass, signal_kanaele(entry.entry_id))
 
 
 def configured_providers(entry: FreeAIRouterConfigEntry) -> dict[str, dict[str, Any]]:
@@ -202,6 +222,7 @@ async def async_setup_entry(
     # PyYAML und jsonschema auskommen. Dasselbe gilt fuer den Feed-Client.
     from .client import RouterClient
     from .feed_client import FeedManager, feed_configured
+    from .hintergrund import async_starten
     from .services import async_setup_services
 
     try:
@@ -253,6 +274,9 @@ async def async_setup_entry(
     async_setup_services(hass)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     entry.async_on_unload(_start_issue_check(hass, runtime))
+    # Was noch nicht gemessen ist, wird jetzt gemessen — der Einrichtungs-
+    # assistent speichert nach dem Schluesseltest sofort und misst nicht mehr.
+    entry.async_on_unload(async_starten(hass, entry))
     if feed_configured():
         entry.async_on_unload(_start_feed(hass, entry, runtime))
     return True
@@ -267,6 +291,7 @@ def _start_feed(hass: HomeAssistant, entry: FreeAIRouterConfigEntry, runtime: Ro
     async def _nachsehen(_now: Any = None) -> None:
         if await runtime.feed.async_update():
             _uebernehmen(entry, runtime)
+            _kanaele_geaendert(hass, entry)
 
     entry.async_create_background_task(hass, _nachsehen(), f"{DOMAIN} Feed")
     return async_track_time_interval(
@@ -391,6 +416,23 @@ async def async_unload_entry(
 async def async_reload_entry(
     hass: HomeAssistant, entry: FreeAIRouterConfigEntry
 ) -> None:
+    """Auf eine Aenderung am Config Entry oder einem Subentry reagieren.
+
+    Neu geladen wird nur, wenn sich Anbieter oder Schluessel geaendert haben.
+    Ein neues Messergebnis dagegen wird in die laufende Instanz uebernommen:
+    die Hintergrundmessung speichert Anbieter fuer Anbieter, und ein Reload
+    nach dem ersten braeche die noch laufende Messung der anderen ab.
+    """
+    runtime = entry.runtime_data
+    eingerichtet = configured_providers(entry)
+    if api_keys(eingerichtet) == runtime.client.keys:
+        from .issues import async_pruefen
+
+        runtime.channels = build_channels(runtime.registry, eingerichtet)
+        _log_coverage(runtime)
+        async_pruefen(hass, runtime)
+        _kanaele_geaendert(hass, entry)
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 

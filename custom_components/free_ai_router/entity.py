@@ -31,9 +31,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from . import FreeAIRouterConfigEntry, RouterRuntime
+from . import FreeAIRouterConfigEntry, RouterRuntime, signal_kanaele
 
 MANUFACTURER = "Free AI Router"
 
@@ -48,6 +49,16 @@ class RouterEntity(Entity):
         self._entry = entry
         self._last_channel: str | None = None
         self._last_reserve_used: bool = False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # Nach einer Messung im Hintergrund die Attribute neu schreiben —
+        # sonst zeigt "abgeschaltet" bis zur naechsten Anfrage den alten Stand.
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, signal_kanaele(self._entry.entry_id), self.async_write_ha_state
+            )
+        )
 
     @property
     def runtime(self) -> RouterRuntime:

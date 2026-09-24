@@ -179,7 +179,11 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
             manufacturer=MANUFACTURER,
             model=f"{len(provider.models)} Modelle",
             entry_type=DeviceEntryType.SERVICE,
-            via_device=(DOMAIN, entry.entry_id),
+            # Kein via_device mehr: es zeigte auf das gemeinsame Geraet der
+            # Integration, das es seit dem 12.09.2026 nicht mehr gibt (siehe
+            # entity.py). HA meldet den Parameter ausserdem seit 2026.8 als
+            # veraltet, ab 2027.8 funktioniert er nicht mehr — live im Log
+            # am 24.09.2026.
             # Der Deep-Link auf die Key-Seite, derselbe wie im Assistenten.
             # Dort fuehrt der Weg hin, wenn ein Schluessel erneuert gehoert.
             configuration_url=provider.onboarding.signup_url,

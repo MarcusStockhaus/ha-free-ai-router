@@ -707,6 +707,119 @@ Testdocstring.
 
 ---
 
+## 11. Sofort gespeichert, im Hintergrund gemessen (24.09.2026)
+
+Vier Punkte vom Autor nach dem ersten echten Einsteiger-Durchgang:
+
+1. Grundeinrichtung schon nach dem ersten Schlüssel — vier eingegeben, nicht
+   abgeschlossen, alles weg.
+2. Stimmt die Modellauswahl, woher kommen die Daten, gibt es Modell-APIs,
+   braucht es den eigenen Server?
+3. Die Messung dauert zu lange — geht das im Hintergrund?
+4. Was tun mit den Messmeldungen, regelmäßig nachmessen?
+
+### Gebaut: 1 und 3
+
+**Der Einrichtungsassistent hat nur noch zwei Schritte**, Anbieter und
+Schlüssel. Geht der Schlüsseltest durch, legt er den Eintrag sofort an —
+`test_nach_dem_ersten_schluessel_ist_alles_gespeichert` hält das fest.
+Weitere Anbieter kommen über „Anbieter hinzufügen", derselbe kurze Weg.
+Entfallen: Fortschrittsschritt, Messergebnis-Menü, „weiterer Anbieter",
+Übersicht. Der Abschlussbildschirm zeigt die voraussichtliche Abdeckung
+(auf Grundlage der Anbieterdatei) und empfiehlt den nächsten Anbieter.
+
+**Gemessen wird in `hintergrund.py`**: 10 s nach jedem Laden, dann alle
+6 Stunden. Fällig ist nur, was offen ist (`faellige_modelle`): nie gemessen,
+bisher nur vorübergehend gestört, tot ohne Grund (Altlast, siehe unten) oder
+seit 7 Tagen tot. Was lebt, wird nicht periodisch nachgemessen — ob es noch
+antwortet, zeigt der Betrieb. Ergebnis: persistente Benachrichtigung je
+Anbieter, nur bei Änderung oder Erstmessung.
+
+**Der Update-Listener lädt nicht mehr bei jeder Subentry-Änderung neu.**
+Haben sich Anbieter und Schlüssel nicht geändert, übernimmt er die neuen
+Messwerte in die laufende Instanz. Sonst bräche jeder gespeicherte Anbieter
+die noch laufende Messung der anderen ab. Dazu ein Dispatcher-Signal, damit
+die `ai_task`- und `conversation`-Entities ihr Attribut `abgeschaltet` neu
+schreiben — die schreiben ihren Zustand sonst nur bei Benutzung.
+
+### Gefunden aus Punkt 4, alle behoben
+
+- **Ein vorübergehender Fehler schaltete ein Modell dauerhaft ab.**
+  `gemini-3.8-flash` (503 „high demand"), `mistral-small-2603` (429) und
+  `nemotron-3.5-lightning` (Zeitüberschreitung) standen nach dem Einrichten
+  als tot im Subentry, bis jemand von Hand nachmaß. Jetzt entscheidet
+  `ist_voruebergehend`: Netz, 5xx, Ratenlimit mit Kontingent, 401 bei
+  gültigem Schlüssel → offen, wird wieder versucht. Ratenlimit ohne
+  Kontingent (`limit_requests == 0`), 400, 402, 404, 403 bei gültigem
+  Schlüssel → tot, mit Grund, nach 7 Tagen wieder versucht.
+- **Ein eingepackter Upstream-Fehler zählte als Befund.** OpenRouter meldete
+  „ResourceExhausted" bei Nvidia mit HTTP 200; die Bildprüfung buchte das als
+  „kann keine Bilder". `_nicht_messbar` wertet Status unter 400 jetzt als
+  nicht messbar.
+- **Altlast „tot ohne Grund".** Einträge aus der Zeit vor dieser
+  Unterscheidung werden sofort nachgemessen; bleibt es bei einer Störung,
+  wird das Modell wieder offen statt tot.
+- **Rohe Anbieter-JSONs im Bericht.** `bericht_zeilen` schreibt Befunde in
+  ein paar Worten; ein sparsamer Lauf behauptet nichts über Fähigkeiten.
+
+Nebenbei live gefunden:
+
+- `via_device` an den Anbieter-Geräten zeigte auf das Hauptgerät, das es seit
+  dem 12.09.2026 nicht mehr gibt, und HA meldet den Parameter als veraltet
+  (Wegfall 2027.8). Entfernt.
+- „Schlüssel ersetzen" endet mit `reconfigure_successful`; der Text fehlte im
+  Anbieter-Block. Nachgetragen, und `test_jeder_abbruchgrund_hat_einen_text`
+  prüft das jetzt für jeden Abbruch im Code.
+
+**Live verifiziert** (24.09.2026, Dateien per Samba eingespielt, dreimal neu
+gestartet): Eintrag lädt ohne Log-Eintrag; die Hintergrundmessung misst
+`mistral-small-2603` nach und speichert „kein Kontingent für dieses Konto";
+`gemini-3.8-flash` und `nemotron-lightning` sind danach wieder offen und aktiv
+(Anbietersensor `aktiv = True`), ohne Neuladen der Integration; die
+Router-Entities schreiben nach der Übernahme neu (per Template-API
+`last_reported` geprüft — die REST-Antwort liefert dafür einen
+Zwischenspeicher, nicht den Live-Wert); Subentry-Flows: „Anbieter
+hinzufügen" bricht mit „alle eingerichtet" ab, „Schlüssel ersetzen" zeigt den
+Link und meldet einen absichtlich ungültigen Test-Schlüssel mit
+`key_rejected`, der Flow wurde danach verworfen. Nicht live geprüft: der
+Hauptassistent selbst (es existiert schon ein Eintrag) — er teilt den
+Schlüsselschritt mit dem Subentry-Flow.
+
+### Offen: Punkt 2, Entscheidung des Autors
+
+Live abgefragt (24.09.2026) — alle vier Anbieter haben eine Modell-Liste:
+
+| Anbieter | Modelle | Bilder erkennbar | Werkzeuge erkennbar | Kontingent erkennbar |
+|---|---:|---|---|---|
+| Google | 61 | nein | nein | nein |
+| Groq | 11 | ja (`input_modalities`) | nein | nein |
+| Mistral | 46 | ja (`capabilities`) | ja | nein |
+| OpenRouter | 458, davon 20 `:free` | ja | ja (`supported_parameters`) | nur „kostenlos ja/nein" |
+
+Abgleich mit der Registry:
+
+- **Groq vollständig.** Die übrigen acht sind Audio, TTS, Schutzmodelle.
+- **Google:** `gemini-3.6-flash` und `gemini-3.7-flash` fehlen. Tageslimit
+  unbekannt — die API nennt es nicht, und die großen Flash-Modelle hatten 20/Tag.
+- **Mistral:** `ministral-14b-2512` fehlt. Die Liste zeigt alle Modelle, auch
+  die ohne Kontingent — `mistral-small` steht drin und liefert Limit 0.
+- **OpenRouter:** 18 kostenlose Modelle fehlen, darunter `qwen/qwen3.8-27b:free`,
+  `nex-agi/nex-n2.5-*:free` (Bilder, Werkzeuge, Schema). Alle teilen sich 50
+  Anfragen am Tag je Schlüssel — mehr Modelle heißt mehr Ausweichwege, nicht
+  mehr Kontingent.
+
+Was keine Liste sagt: ob die kostenlose Stufe über die API überhaupt geht,
+wie hoch das Tageslimit ist, welches Profil ein Modell bedienen soll. Das
+bleibt Messung und redaktionelle Auswahl. **Neue Modelle bemerkt heute
+niemand:** `stale_registry_entries` meldet nur, was *verschwunden* ist.
+
+Vorschlag, noch nicht gebaut: Feed-Server abschalten, Registry-Änderungen
+als HACS-Releases ausliefern, der Prober wird zum Wächter, der neue und
+verschwundene Modelle als GitHub-Issue meldet. Die Hintergrundmessung prüft
+jedes neue Modell dann mit dem eigenen Schlüssel.
+
+---
+
 ## Kleinkram, notiert damit er nicht verlorengeht
 
 - `.env` ist gitignoriert und war nie im Repo; die Historie ist vor der

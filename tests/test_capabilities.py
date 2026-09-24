@@ -24,16 +24,26 @@ from aiohttp import web
 from aiohttp.test_utils import TestServer
 from conftest import make_model, make_provider
 
+from custom_components.free_ai_router.adapters import ProviderError
 from custom_components.free_ai_router.capabilities import (
     ALL_CHECKS,
     CHECK_LIVENESS,
+    TOT_NACHPRUEFEN_S,
+    CheckResult,
+    ModelProbe,
+    _nicht_messbar,
+    bericht_zeilen,
     describe_changes,
+    faellige_modelle,
+    ist_voruebergehend,
     merge_overrides,
     probe_model,
     probe_provider,
     quick_key_check,
     should_discard,
+    uebernehmen,
 )
+from custom_components.free_ai_router.ratelimit import RateLimitInfo
 from custom_components.free_ai_router.testimage import (
     PALETTE,
     TEST_IMAGE_SIZE,
@@ -616,3 +626,147 @@ def test_wer_vorher_schon_tot_war_darf_tot_bleiben() -> None:
 def test_erste_messung_wird_nie_verworfen() -> None:
     assert should_discard({}, lebendig=0) is False
 
+
+
+# --------------------------------------------------------------------------
+# Messen im Hintergrund: vorübergehend oder definitiv, fällig oder nicht
+# --------------------------------------------------------------------------
+
+
+def _probe(model_id: str, *, alive: bool, status: int | None = None, limit: int | None = None,
+           vision: bool | None = None) -> ModelProbe:
+    probe = ModelProbe(provider_id="p", model_id=model_id, alive=alive, status=status,
+                       rate_limit=RateLimitInfo(limit_requests=limit), checked_at=1000.0)
+    if alive:
+        probe.vision = CheckResult(vision)
+        probe.latency_total_s = 0.5
+    return probe
+
+
+@pytest.mark.parametrize(
+    ("status", "limit", "voruebergehend"),
+    [
+        (503, None, True),   # gemini-3.8-flash, "high demand", live am 24.09.2026
+        (None, None, True),  # Zeitueberschreitung, nemotron-3.5-lightning
+        (429, 30, True),     # echtes Ratenlimit
+        (429, 0, False),     # Mistral ohne API-Abo: kein Kontingent
+        (200, None, True),   # vom Vermittler eingepackter Fehler
+        (404, None, False),
+        (400, None, False),
+        (402, None, False),
+    ],
+)
+def test_lebendpruefung_unterscheidet_stoerung_von_befund(status, limit, voruebergehend) -> None:
+    probe = _probe("m", alive=False, status=status, limit=limit)
+    assert ist_voruebergehend(probe, schluessel_gueltig=True) is voruebergehend
+
+
+def test_401_bei_gueltigem_schluessel_ist_verzoegerung() -> None:
+    """Live am 17.09.2026: Mistral lehnte denselben Schluessel fuer zwei Modelle
+    ab, den es fuer ein drittes annahm — eine Woche spaeter fuer alle."""
+    probe = _probe("m", alive=False, status=401)
+    assert ist_voruebergehend(probe, schluessel_gueltig=True)
+    assert ist_voruebergehend(probe, schluessel_gueltig=False)
+
+
+def test_403_ist_nur_bei_gueltigem_schluessel_ein_befund() -> None:
+    probe = _probe("m", alive=False, status=403)
+    assert not ist_voruebergehend(probe, schluessel_gueltig=True)
+    assert ist_voruebergehend(probe, schluessel_gueltig=False)
+
+
+def test_eingepackter_fehler_ist_kein_befund_ueber_bilder() -> None:
+    """OpenRouter meldete die ausgelastete Nvidia-Hardware mit HTTP 200."""
+    fehler = ProviderError("Upstream error from Nvidia: ResourceExhausted", status=200)
+    assert _nicht_messbar(fehler)
+    assert not _nicht_messbar(ProviderError("image input not supported", status=400))
+
+
+def test_voruebergehende_stoerung_ueberschreibt_nichts() -> None:
+    vorher = {"p/a": {"alive": True, "capabilities": {"vision": True}, "checked_at": 1.0}}
+    nachher = uebernehmen(vorher, [_probe("a", alive=False, status=503),
+                                   _probe("b", alive=True)])
+    assert nachher["p/a"] == vorher["p/a"]
+    assert "p/b" in nachher
+
+
+def test_voruebergehend_gestoertes_modell_bleibt_offen() -> None:
+    nachher = uebernehmen({}, [_probe("a", alive=False, status=None), _probe("b", alive=True)])
+    assert "p/a" not in nachher
+
+
+def test_definitiv_totes_modell_wird_mit_grund_gespeichert() -> None:
+    nachher = uebernehmen({}, [_probe("a", alive=False, status=429, limit=0),
+                               _probe("b", alive=True)])
+    assert nachher["p/a"]["alive"] is False
+    assert nachher["p/a"]["grund"] == "kein Kontingent für dieses Konto"
+
+
+def test_tote_leitung_schaltet_nichts_ab() -> None:
+    """Die alte Notbremse (should_discard), jetzt je Modell: ein Netzausfall
+    liefert nur voruebergehende Fehler und ueberschreibt deshalb nichts."""
+    vorher = {"p/a": {"alive": True}, "p/b": {"alive": True}}
+    nachher = uebernehmen(vorher, [_probe("a", alive=False), _probe("b", alive=False)])
+    assert nachher == vorher
+
+
+def test_neue_messung_behaelt_ungemessene_faehigkeiten() -> None:
+    vorher = {"p/a": {"alive": True, "capabilities": {"vision": True, "tools": True}}}
+    nachher = uebernehmen(vorher, [_probe("a", alive=True, vision=None)])
+    assert nachher["p/a"]["capabilities"] == {"vision": True, "tools": True}
+
+
+def test_faellig_ist_nur_was_offen_oder_lange_tot_ist() -> None:
+    modelle = tuple(make_model(mid, "p") for mid in ("neu", "lebt", "tot", "alt_tot", "ohne_grund"))
+    provider = make_provider("p", modelle)
+    jetzt = 1_000_000.0
+    gespeichert = {
+        "p/lebt": {"alive": True, "checked_at": 0.0},
+        "p/tot": {"alive": False, "grund": "HTTP 404", "checked_at": jetzt - 3600},
+        "p/alt_tot": {"alive": False, "grund": "HTTP 404",
+                      "checked_at": jetzt - TOT_NACHPRUEFEN_S - 1},
+        # Gemessen, als ein 503 noch als tot galt: sofort nachpruefen.
+        "p/ohne_grund": {"alive": False, "checked_at": jetzt},
+    }
+    faellig = [model.id for model in faellige_modelle(provider, gespeichert, jetzt)]
+    assert faellig == ["neu", "alt_tot", "ohne_grund"]
+
+
+def test_bericht_ohne_rohe_fehlertexte() -> None:
+    zeilen = bericht_zeilen([
+        _probe("gut", alive=True, vision=True),
+        _probe("gestoert", alive=False, status=503),
+        _probe("ohne_abo", alive=False, status=429, limit=0),
+    ])
+    assert zeilen[0] == "- **gut** — Bilder · 0.5 s"
+    assert "später erneut versucht" in zeilen[1]
+    assert zeilen[2] == "- **ohne_abo** — nicht nutzbar: kein Kontingent für dieses Konto"
+    assert not any("{" in zeile for zeile in zeilen)
+
+
+def test_altes_tot_ohne_grund_wird_bei_neuer_stoerung_wieder_offen() -> None:
+    """Live am 24.09.2026: gemini-3.8-flash war mit einem 503 als tot
+    gespeichert worden, bevor es den Grund gab. Bleibt die Nachmessung wieder
+    nur gestoert, darf das alte "tot" nicht stehen bleiben — es war nie ein
+    Befund. Ein "tot" mit Grund dagegen bleibt."""
+    vorher = {
+        "p/alt": {"alive": False, "checked_at": 1.0},
+        "p/befund": {"alive": False, "grund": "Modell gibt es nicht (mehr)", "checked_at": 1.0},
+    }
+    nachher = uebernehmen(vorher, [_probe("alt", alive=False, status=503),
+                                   _probe("befund", alive=False, status=503)])
+    assert "p/alt" not in nachher
+    assert nachher["p/befund"] == vorher["p/befund"]
+
+
+def test_sparsamer_lauf_behauptet_nichts_ueber_faehigkeiten() -> None:
+    """Live am 24.09.2026: nach einem Lauf nur mit Lebendpruefung stand
+    "nur Text" im Bericht — fuer ein Modell, das Bilder kann."""
+    zeilen = bericht_zeilen([_probe("m", alive=True, vision=None)])
+    assert zeilen == ["- **m** — erreichbar · 0.5 s"]
+
+
+def test_grund_ohne_doppelte_klammern() -> None:
+    zeilen = bericht_zeilen([_probe("a", alive=True), _probe("b", alive=False, status=None),
+                             _probe("c", alive=False, status=503)])
+    assert "((" not in "".join(zeilen) and "))" not in "".join(zeilen)
