@@ -1,4 +1,9 @@
-# Free AI Router
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/free_ai_router/brand/dark_logo@2x.png">
+    <img alt="Free AI Router" src="custom_components/free_ai_router/brand/logo@2x.png" width="420">
+  </picture>
+</h1>
 
 [English](README.md) · **Deutsch**
 

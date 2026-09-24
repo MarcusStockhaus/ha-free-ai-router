@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 512" width="2400" height="512">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#14C8B4"/>
+    <stop offset="0.5" stop-color="#3B82F6"/>
+    <stop offset="1" stop-color="#7C3AED"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="0.28" cy="0.18" r="0.85">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.30"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0.6" stop-color="#1E1B4B" stop-opacity="0"/>
+    <stop offset="1" stop-color="#1E1B4B" stop-opacity="0.18"/>
+  </linearGradient>
+</defs>
+<rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bg)"/>
+<rect x="16" y="16" width="480" height="480" rx="108" fill="url(#glow)"/>
+<rect x="16" y="16" width="480" height="480" rx="108" fill="url(#shade)"/>
+<g transform="translate(12,0)">
+<g fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round">
+  <path d="M262 256 C318 256 318 156 372 156"/>
+  <path d="M262 256 H372"/>
+  <path d="M262 256 C318 256 318 356 372 356"/>
+</g>
+<circle cx="396" cy="156" r="29" fill="#fff"/>
+<circle cx="396" cy="256" r="22" fill="none" stroke="#fff" stroke-width="14"/>
+<circle cx="396" cy="356" r="22" fill="none" stroke="#fff" stroke-width="14"/>
+<path fill="#fff" d="M162 150 C171 222 190 241 262 256 C190 271 171 290 162 362 C153 290 134 271 62 256 C134 241 153 222 162 150 Z"/>
+</g>
+<text x="560" y="256" dominant-baseline="central" font-family="Segoe UI Variable Display, Segoe UI, sans-serif" font-weight="650" font-size="200" letter-spacing="-3" fill="#111827">Free AI Router</text>
+</svg>
