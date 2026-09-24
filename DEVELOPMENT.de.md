@@ -311,11 +311,6 @@ besteht; gemessen wird im Hintergrund.
 
 ## Offene Punkte
 
-- **Wächter-Schlüssel:** Die Repository-Secrets für Groq und Mistral wurden am
-  24.09. abgelehnt und müssen ersetzt werden.
-- **Ehemaliger Feed-Dienst:** Der Zweig `feed`, GitHub Pages und das Secret
-  `FAR_FEED_PRIVATE_KEY` werden nicht mehr gebraucht und können entfernt
-  werden.
 - **Reasoning-Kapazität** ist knapp: zwei Gemini-Flash-Modelle mit je 20
   Anfragen am Tag, Groq begrenzt durch 8.000 Token pro Minute, Codestral.
   Genug für gelegentliche Aufgaben; ein weiterer Anbieter bräuchte eine

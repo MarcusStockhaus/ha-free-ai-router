@@ -301,10 +301,6 @@ background.
 
 ## Open items
 
-- **Watcher keys:** the repository secrets for Groq and Mistral were rejected
-  on 24 Sep and need to be replaced.
-- **Former feed service:** the `feed` branch, GitHub Pages and the secret
-  `FAR_FEED_PRIVATE_KEY` are no longer used and can be removed.
 - **Reasoning capacity** is thin: two Gemini Flash models with 20 requests per
   day each, Groq limited by 8,000 tokens per minute, Codestral. Enough for
   occasional tasks; a further provider would need an allowlist change.
