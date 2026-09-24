@@ -77,7 +77,7 @@ class RouterRuntime:
     sprache: str = "de"
     """Sprache der Texte, die im Code entstehen — folgt der Systemsprache."""
     messung: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
-    """Haelt Hintergrundmessung und Dienst ``neu_vermessen`` auseinander."""
+    """Haelt Hintergrundmessung und Dienst ``remeasure`` auseinander."""
     _coverage: dict[str, CoverageEntry] = field(default_factory=dict, repr=False)
 
     def channels_for(self, profile: str) -> list[Channel]:
@@ -93,9 +93,9 @@ class RouterRuntime:
     def diagnostics(self) -> dict[str, Any]:
         """Ohne Schluessel — landet in Entity-Attributen und im Log."""
         return {
-            "kanaele": [channel.key for channel in self.channels if channel.enabled],
-            "abgeschaltet": [channel.key for channel in self.channels if not channel.enabled],
-            "abdeckung": {
+            "channels": [channel.key for channel in self.channels if channel.enabled],
+            "disabled": [channel.key for channel in self.channels if not channel.enabled],
+            "coverage": {
                 profile: (entry.primary.key if entry.primary else None)
                 for profile, entry in self.coverage().items()
             },
@@ -110,7 +110,7 @@ def signal_kanaele(entry_id: str) -> str:
 
     Die ``ai_task``- und ``conversation``-Entities schreiben ihren Zustand
     nur, wenn sie benutzt werden. Ohne dieses Signal zeigte ihr Attribut
-    ``abgeschaltet`` nach einer Hintergrundmessung weiter den alten Stand —
+    ``disabled`` nach einer Hintergrundmessung weiter den alten Stand —
     live am 24.09.2026 zwei Modelle, die laengst wieder aktiv waren.
     """
     return f"{DOMAIN}_{entry_id}_kanaele"

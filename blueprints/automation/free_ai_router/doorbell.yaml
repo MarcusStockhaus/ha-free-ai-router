@@ -43,7 +43,7 @@ blueprint:
                 - domain: camera
         entity:
           name: AI entity
-          default: ai_task.free_ai_router_bildanalyse
+          default: ai_task.free_ai_router_image_analysis
           selector:
             entity:
               filter:

@@ -36,35 +36,188 @@
   "entity": {
     "ai_task": {
       "schnell": {
-        "name": "Free AI Router Fast"
+        "name": "Free AI Router Fast",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Last channel"
+          },
+          "used_fallback": {
+            "name": "Used fallback"
+          },
+          "channels": {
+            "name": "Channels"
+          },
+          "disabled": {
+            "name": "Disabled"
+          },
+          "coverage": {
+            "name": "Coverage"
+          }
+        }
       },
       "vision": {
-        "name": "Free AI Router Image analysis"
+        "name": "Free AI Router Image analysis",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Last channel"
+          },
+          "used_fallback": {
+            "name": "Used fallback"
+          },
+          "channels": {
+            "name": "Channels"
+          },
+          "disabled": {
+            "name": "Disabled"
+          },
+          "coverage": {
+            "name": "Coverage"
+          }
+        }
       },
       "reasoning": {
-        "name": "Free AI Router Reasoning"
+        "name": "Free AI Router Reasoning",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Last channel"
+          },
+          "used_fallback": {
+            "name": "Used fallback"
+          },
+          "channels": {
+            "name": "Channels"
+          },
+          "disabled": {
+            "name": "Disabled"
+          },
+          "coverage": {
+            "name": "Coverage"
+          }
+        }
       }
     },
     "conversation": {
       "assist": {
-        "name": "Free AI Router Assist"
+        "name": "Free AI Router Assist",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Last channel"
+          },
+          "used_fallback": {
+            "name": "Used fallback"
+          },
+          "channels": {
+            "name": "Channels"
+          },
+          "disabled": {
+            "name": "Disabled"
+          },
+          "coverage": {
+            "name": "Coverage"
+          }
+        }
       }
     },
     "sensor": {
       "anfragen_heute": {
-        "name": "Free AI Router Requests today"
+        "name": "Free AI Router Requests today",
+        "state_attributes": {
+          "day": {
+            "name": "Day"
+          },
+          "requests": {
+            "name": "Requests"
+          },
+          "tokens": {
+            "name": "Tokens"
+          },
+          "fallbacks": {
+            "name": "Fallbacks"
+          },
+          "failed": {
+            "name": "Failed requests"
+          }
+        }
       },
       "token_heute": {
-        "name": "Free AI Router Tokens today"
+        "name": "Free AI Router Tokens today",
+        "state_attributes": {
+          "day": {
+            "name": "Day"
+          },
+          "requests": {
+            "name": "Requests"
+          },
+          "tokens": {
+            "name": "Tokens"
+          },
+          "fallbacks": {
+            "name": "Fallbacks"
+          },
+          "failed": {
+            "name": "Failed requests"
+          }
+        }
       },
       "reserve_heute": {
-        "name": "Free AI Router Fallbacks today"
+        "name": "Free AI Router Fallbacks today",
+        "state_attributes": {
+          "day": {
+            "name": "Day"
+          },
+          "requests": {
+            "name": "Requests"
+          },
+          "tokens": {
+            "name": "Tokens"
+          },
+          "fallbacks": {
+            "name": "Fallbacks"
+          },
+          "failed": {
+            "name": "Failed requests"
+          }
+        }
       },
       "verworfen_heute": {
-        "name": "Free AI Router Failed requests today"
+        "name": "Free AI Router Failed requests today",
+        "state_attributes": {
+          "day": {
+            "name": "Day"
+          },
+          "requests": {
+            "name": "Requests"
+          },
+          "tokens": {
+            "name": "Tokens"
+          },
+          "fallbacks": {
+            "name": "Fallbacks"
+          },
+          "failed": {
+            "name": "Failed requests"
+          }
+        }
       },
       "anbieter_anfragen": {
-        "name": "Requests today"
+        "name": "Requests today",
+        "state_attributes": {
+          "models": {
+            "name": "Models"
+          },
+          "blocked": {
+            "name": "Blocked"
+          },
+          "budget_usd": {
+            "name": "Budget (USD)"
+          },
+          "spent_usd": {
+            "name": "Spent (USD)"
+          },
+          "remaining_usd": {
+            "name": "Remaining (USD)"
+          }
+        }
       }
     }
   },
@@ -116,15 +269,15 @@
     }
   },
   "services": {
-    "neu_vermessen": {
+    "remeasure": {
       "name": "Measure again",
       "description": "Measures all models of the configured providers again, including those that already work. In the background only new, previously disrupted and week-old unusable models are measured. Anything that is only temporarily disrupted during this measurement does not overwrite existing results.",
       "fields": {
-        "anbieter": {
+        "providers": {
           "name": "Providers",
           "description": "Provider IDs such as google_ai_studio or groq. Leave empty for all configured providers."
         },
-        "nur_lebendigkeit": {
+        "liveness_only": {
           "name": "Liveness only",
           "description": "One request per model instead of the costly checks for images, schemas and tools. Fast and economical, keeps the capabilities measured so far."
         }

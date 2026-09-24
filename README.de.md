@@ -43,10 +43,10 @@ einem Raspberry Pi oder einem kleinen NUC.
 
 | Anwendungsfall | Entity | Beispiel |
 |---|---|---|
-| Kameraanalyse | `ai_task.free_ai_router_bildanalyse` | Bewegung in der Einfahrt → „Ein Lieferwagen, eine Person mit einem Paket.“ Mit strukturierten Feldern wie `person`, `fahrzeug`, `paket` für Bedingungen. |
-| Türklingel | `ai_task.free_ai_router_bildanalyse` | Es klingelt → ein Satz dazu, wer vor der Tür steht, als Ansage auf einem Lautsprecher oder als Nachricht aufs Handy. |
+| Kameraanalyse | `ai_task.free_ai_router_image_analysis` | Bewegung in der Einfahrt → „Ein Lieferwagen, eine Person mit einem Paket.“ Mit strukturierten Feldern wie `person`, `fahrzeug`, `paket` für Bedingungen. |
+| Türklingel | `ai_task.free_ai_router_image_analysis` | Es klingelt → ein Satz dazu, wer vor der Tür steht, als Ansage auf einem Lautsprecher oder als Nachricht aufs Handy. |
 | Sprachsteuerung | `conversation.free_ai_router_assist` | Assist mit einem Sprachmodell, das frei formulierte Anweisungen versteht und freigegebene Geräte steuert. |
-| Textaufgaben in Automationen | `ai_task.free_ai_router_schnell` | Kalender und Wetter des Tages zusammenfassen, eingehende Benachrichtigungen einordnen, Freitext in strukturierte Daten umwandeln. |
+| Textaufgaben in Automationen | `ai_task.free_ai_router_fast` | Kalender und Wetter des Tages zusammenfassen, eingehende Benachrichtigungen einordnen, Freitext in strukturierte Daten umwandeln. |
 | Anspruchsvolle Aufgaben | `ai_task.free_ai_router_reasoning` | Aufgaben mit großem Kontext oder mehreren Denkschritten, etwa Automationslogik aus einer Beschreibung entwerfen. |
 
 ## Voraussetzungen
@@ -99,13 +99,31 @@ hinzufügen** dazu. Jeder Anbieter erscheint dort als eigener Eintrag, mit
 
 | Entity | Zweck |
 |---|---|
-| `ai_task.free_ai_router_schnell` | Profil Schnell: kurze Aufgaben, Zusammenfassungen, Einordnung |
-| `ai_task.free_ai_router_bildanalyse` | Profil Bildanalyse: Kamerabilder |
+| `ai_task.free_ai_router_fast` | Profil Schnell: kurze Aufgaben, Zusammenfassungen, Einordnung |
+| `ai_task.free_ai_router_image_analysis` | Profil Bildanalyse: Kamerabilder |
 | `ai_task.free_ai_router_reasoning` | Profil Reasoning: großer Kontext, mehrstufige Aufgaben |
 | `conversation.free_ai_router_assist` | Gesprächsagent für Assist, mit Gerätesteuerung |
 
-Die Entity-IDs sind in jeder Sprache gleich. Blueprints und Automationen
-lassen sich damit zwischen Installationen austauschen.
+Entity-IDs, Attributschlüssel und der Dienst sind in jeder Sprache gleich und
+deshalb englisch. Blueprints und Automationen lassen sich damit zwischen
+Installationen austauschen. Anzeigenamen, Attributbezeichnungen, Einheiten und
+Meldungen folgen der Systemsprache von Home Assistant (Deutsch oder Englisch).
+
+Jede dieser Entities führt folgende Attribute:
+
+| Attribut | Bedeutung |
+|---|---|
+| `last_channel` | Anbieter und Modell, die die letzte Anfrage beantwortet haben |
+| `used_fallback` | Ob die letzte Anfrage von einer Reserve übernommen wurde |
+| `channels` | Modelle, die gerade genutzt werden |
+| `disabled` | Modelle, die nach der Messung ausgeschlossen sind |
+| `coverage` | Erste Wahl je Profil |
+
+> **Aktualisierung von 0.4 oder älter:** Bestehende Installationen behalten
+> ihre bisherigen deutschen Entity-IDs (etwa `ai_task.free_ai_router_bildanalyse`).
+> Umbenennen lassen sie sich unter **Einstellungen → Entities**; Automationen,
+> die sie verwenden, müssen gleichzeitig angepasst werden. Siehe
+> [Änderungsprotokoll](CHANGELOG.de.md).
 
 ## Verwendung
 
@@ -114,7 +132,7 @@ lassen sich damit zwischen Installationen austauschen.
 ```yaml
 action: ai_task.generate_data
 data:
-  entity_id: ai_task.free_ai_router_bildanalyse
+  entity_id: ai_task.free_ai_router_image_analysis
   task_name: Einfahrt
   instructions: Ist eine Person oder ein Fahrzeug zu sehen? Antworte in einem Satz.
   attachments:
@@ -196,24 +214,36 @@ nicht nutzbar gelten. Funktionierende Modelle werden nicht periodisch neu
 vermessen — ob sie antworten, zeigt der laufende Betrieb, ohne Kontingent zu
 verbrauchen.
 
-Der Dienst `free_ai_router.neu_vermessen` misst auf Anforderung alle Modelle:
+Der Dienst `free_ai_router.remeasure` („Neu vermessen“) misst auf Anforderung
+alle Modelle:
 
 ```yaml
-action: free_ai_router.neu_vermessen
+action: free_ai_router.remeasure
 data:
-  anbieter: [groq]        # optional, Vorgabe: alle Anbieter
-  nur_lebendigkeit: false # optional, nur Erreichbarkeit
+  providers: [groq]     # optional, Vorgabe: alle eingerichteten Anbieter
+  liveness_only: false  # optional, eine Anfrage je Modell statt aller Prüfungen
+response_variable: bericht
 ```
+
+Die Antwort nennt je Anbieter, wie viele Modelle gemessen wurden und
+erreichbar sind, eine kurze Zeile je Modell und was sich geändert hat.
+Ergebnisse, die nur auf einer vorübergehenden Störung beruhen (Netzfehler,
+Serverfehler, Ratenlimit), überschreiben keine früheren Messungen.
 
 ## Sensoren
 
 | Sensor | Bedeutung |
 |---|---|
-| `sensor.free_ai_router_anfragen_heute` | Anfragen heute |
-| `sensor.free_ai_router_token_heute` | Token heute |
-| `sensor.free_ai_router_reserve_gegriffen_heute` | Anfragen, die heute eine Reserve übernommen hat |
-| `sensor.free_ai_router_verworfen_heute` | Anfragen, die kein Modell übernehmen konnte |
-| `sensor.<anbieter>_anfragen_heute` | Anfragen je Anbieter; Restkontingent je Modell in den Attributen |
+| `sensor.free_ai_router_requests_today` | Anfragen heute |
+| `sensor.free_ai_router_tokens_today` | Token heute |
+| `sensor.free_ai_router_fallbacks_today` | Anfragen, die heute eine Reserve übernommen hat |
+| `sensor.free_ai_router_failed_today` | Anfragen, die kein Modell übernehmen konnte |
+| `sensor.<anbieter>_requests_today` | Anfragen je Anbieter, etwa `sensor.groq_requests_today` |
+
+Die Anbietersensoren führen den Stand jedes Modells im Attribut `models`
+(`requests_today`, `daily_limit`, `remaining`, `enabled`), aktive Sperren in
+`blocked` und — bei Anbietern mit monatlichem Ausgabendeckel — `budget_usd`,
+`spent_usd` und `remaining_usd`.
 
 Ein steigender Reserve-Zähler ist das früheste Zeichen dafür, dass ein
 Hauptkanal dauerhaft ausgefallen ist.
@@ -222,10 +252,10 @@ Hauptkanal dauerhaft ausgefallen ist.
 type: entities
 title: Free AI Router
 entities:
-  - sensor.free_ai_router_anfragen_heute
-  - sensor.free_ai_router_token_heute
-  - sensor.free_ai_router_reserve_gegriffen_heute
-  - sensor.free_ai_router_verworfen_heute
+  - sensor.free_ai_router_requests_today
+  - sensor.free_ai_router_tokens_today
+  - sensor.free_ai_router_fallbacks_today
+  - sensor.free_ai_router_failed_today
 ```
 
 ## Fehlersuche
@@ -270,8 +300,9 @@ Installation misst neue Modelle danach mit dem eigenen Schlüssel.
 
 Ein Community-Projekt ohne Supportzusage. Issues und Pull Requests sind
 willkommen. Ein neuer Anbieter braucht nur eine YAML-Datei — siehe
-[CONTRIBUTING.md](CONTRIBUTING.md). Hinweise zur Entwicklung stehen in
-[ENTWICKLUNG.md](ENTWICKLUNG.md).
+[CONTRIBUTING.de.md](CONTRIBUTING.de.md). Aufbau, Werkzeuge und gemessene
+Befunde beschreibt [DEVELOPMENT.de.md](DEVELOPMENT.de.md), die Änderungen je
+Version das [Änderungsprotokoll](CHANGELOG.de.md).
 
 ## Lizenz
 

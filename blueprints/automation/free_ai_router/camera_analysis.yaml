@@ -84,7 +84,7 @@ blueprint:
             The entity that performs the analysis. Free AI Router picks the
             suitable provider from there and falls back to a reserve channel
             if one fails.
-          default: ai_task.free_ai_router_bildanalyse
+          default: ai_task.free_ai_router_image_analysis
           selector:
             entity:
               filter:

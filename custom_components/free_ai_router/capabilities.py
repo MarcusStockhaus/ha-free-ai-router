@@ -556,7 +556,7 @@ async def probe_provider(
 #: Grobe Einordnung eines gescheiterten Schluesseltests. Der Dialog braucht
 #: mehr als "abgelehnt": ein Netzausfall, ein gestoerter Anbieter und ein
 #: fehlendes Abonnement (Mistrals ``x-ratelimit-limit-req-minute: 0``, siehe
-#: NEXT.md) sind drei verschiedene naechste Schritte fuer den Nutzer.
+#: DEVELOPMENT.de.md, Befunde) sind drei verschiedene naechste Schritte fuer den Nutzer.
 FEHLERART_AUTH = "auth"
 FEHLERART_KEIN_ABO = "no_subscription"
 FEHLERART_LIMIT = "rate_limited"

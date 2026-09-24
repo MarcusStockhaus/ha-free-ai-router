@@ -1,6 +1,6 @@
 """Dienste der Integration.
 
-Bisher genau einer: ``free_ai_router.neu_vermessen``.
+Bisher genau einer: ``free_ai_router.remeasure``.
 
 **Wozu, wenn doch im Hintergrund gemessen wird.** Die Hintergrundmessung
 (``hintergrund.py``) misst nur, was offen ist: neue Modelle, bisher nur
@@ -13,7 +13,7 @@ Funktionierende; noetig etwa, wenn sich das Messverfahren verbessert hat.
 :func:`hintergrund.async_speichern`, also mit derselben Regel: was nur
 voruebergehend gestoert war (Netz, 5xx, Ratenlimit), ueberschreibt nichts.
 Eine kaputte Leitung schaltet damit keinen Kanal ab. Beim sparsamen Lauf
-(``nur_lebendigkeit``) bleiben die bisherigen Faehigkeiten stehen — er prueft
+(``liveness_only``) bleiben die bisherigen Faehigkeiten stehen — er prueft
 sie gar nicht, und "nicht gemessen" ist nicht "kann es nicht".
 """
 
@@ -39,9 +39,9 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVICE_NEU_VERMESSEN = "neu_vermessen"
-ATTR_ANBIETER = "anbieter"
-ATTR_NUR_LEBENDIGKEIT = "nur_lebendigkeit"
+SERVICE_NEU_VERMESSEN = "remeasure"
+ATTR_ANBIETER = "providers"
+ATTR_NUR_LEBENDIGKEIT = "liveness_only"
 
 SCHEMA_NEU_VERMESSEN = vol.Schema(
     {
@@ -100,11 +100,11 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
         for provider_id in ziele:
             provider = registry.get(provider_id)
             if provider is None:
-                bericht[provider_id] = {"hinweis": t(sprache, "dienst_nicht_in_registry")}
+                bericht[provider_id] = {"note": t(sprache, "dienst_nicht_in_registry")}
                 continue
             api_key = configured[provider_id].get(CONF_API_KEY) or ""
             if not api_key:
-                bericht[provider_id] = {"hinweis": t(sprache, "dienst_kein_schluessel")}
+                bericht[provider_id] = {"note": t(sprache, "dienst_kein_schluessel")}
                 continue
 
             _LOGGER.info(
@@ -116,23 +116,23 @@ async def _async_neu_vermessen(hass: HomeAssistant, call: ServiceCall) -> Servic
             aenderungen = async_speichern(hass, entry, provider, probe, benachrichtigen=False)
             zeilen = bericht_zeilen(probe.models, sprache=sprache)
             if aenderungen is None:
-                bericht[provider_id] = {"hinweis": t(sprache, "dienst_kein_subentry")}
+                bericht[provider_id] = {"note": t(sprache, "dienst_kein_subentry")}
                 continue
             etwas_geaendert = etwas_geaendert or bool(aenderungen)
 
             bericht[provider_id] = {
-                "gemessen": len(probe.models),
-                "lebendig": len(probe.working_models),
-                "modelle": zeilen,
-                "aenderungen": aenderungen or None,
+                "measured": len(probe.models),
+                "alive": len(probe.working_models),
+                "models": zeilen,
+                "changes": aenderungen or None,
             }
             if probe.stale_registry_entries:
-                bericht[provider_id]["nicht_mehr_gefuehrt"] = probe.stale_registry_entries
+                bericht[provider_id]["no_longer_listed"] = probe.stale_registry_entries
 
     ergebnis: ServiceResponse = {
-        "anbieter": bericht,
-        "dauer_s": round(time.monotonic() - begonnen, 1),
-        "umfang": t(sprache, "dienst_umfang_sparsam" if nur_lebendigkeit else "dienst_umfang_voll"),
+        "providers": bericht,
+        "duration_s": round(time.monotonic() - begonnen, 1),
+        "scope": t(sprache, "dienst_umfang_sparsam" if nur_lebendigkeit else "dienst_umfang_voll"),
     }
 
     if not etwas_geaendert:

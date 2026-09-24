@@ -60,8 +60,9 @@ def test_beide_fassungen_tun_dasselbe(deutsch: str, englisch: str) -> None:
     feld_en = en["actions"][0]["data"]["structure"]
     assert len(feld_de) == len(feld_en)
     # Beide nutzen dieselbe Vorgabe-Entity — deren ID ist sprachunabhaengig.
-    assert "ai_task.free_ai_router_bildanalyse" in (ORDNER / deutsch).read_text(encoding="utf-8")
-    assert "ai_task.free_ai_router_bildanalyse" in (ORDNER / englisch).read_text(encoding="utf-8")
+    vorgabe = "ai_task.free_ai_router_image_analysis"
+    assert vorgabe in (ORDNER / deutsch).read_text(encoding="utf-8")
+    assert vorgabe in (ORDNER / englisch).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("name", sorted(PAARE.values()))

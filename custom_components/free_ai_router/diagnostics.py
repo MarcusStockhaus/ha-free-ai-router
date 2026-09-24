@@ -38,10 +38,10 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "config_entry_version": entry.version,
-        "anbieter": {
+        "providers": {
             provider_id: async_redact_data(daten, _REDACT)
             for provider_id, daten in eingerichtet.items()
         },
-        "laufzeit": runtime.diagnostics(),
+        "runtime": runtime.diagnostics(),
         "ledger": runtime.ledger.snapshot(),
     }

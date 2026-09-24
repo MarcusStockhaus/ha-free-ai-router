@@ -33,11 +33,13 @@ from .task_adapter import (
 _LOGGER = logging.getLogger(__name__)
 
 #: Feste Entity-IDs, unabhaengig von der Systemsprache. Home Assistant bildet
-#: die ID sonst aus dem uebersetzten Namen — auf einem englischen System hiesse
-#: die Bildanalyse dann ``ai_task.free_ai_router_image_analysis``, und jeder
-#: Blueprint mit ``ai_task.free_ai_router_bildanalyse`` als Vorgabe liefe ins
-#: Leere. Bestehende Eintraege behalten ihre ID ohnehin.
-OBJEKT_IDS = {"schnell": "schnell", "vision": "bildanalyse", "reasoning": "reasoning"}
+#: die ID sonst aus dem uebersetzten Namen — auf einem deutschen System hiesse
+#: die Bildanalyse dann ``ai_task.free_ai_router_bildanalyse``, und jeder
+#: Blueprint mit ``ai_task.free_ai_router_image_analysis`` als Vorgabe liefe
+#: ins Leere. Englisch, weil IDs nicht uebersetzt werden koennen; Anzeigenamen
+#: und Attributnamen kommen aus den Uebersetzungen. Bestehende Eintraege
+#: behalten ihre ID ohnehin.
+OBJEKT_IDS = {"schnell": "fast", "vision": "image_analysis", "reasoning": "reasoning"}
 
 
 async def async_setup_entry(

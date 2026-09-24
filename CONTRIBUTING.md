@@ -1,36 +1,48 @@
-# Mitmachen
+# Contributing
 
-Der beste Hebel, den dieses Projekt hat, fällt aus der Architektur ohnehin ab:
+**English** · [Deutsch](CONTRIBUTING.de.md)
 
-> **Ein neuer Anbieter ist eine YAML-Datei. Kein Python.**
+Contributions are welcome. The most valuable ones need no Python at all:
 
-Anbieter kommen und gehen ständig, es gibt also dauerhaft etwas zu tun. Und die
-Einstiegshürde liegt bei „bestehende Datei abschreiben", nicht bei
-„Home-Assistant-Internas verstehen".
+> **A provider is a YAML file.** Adding a provider, adding a model or
+> correcting a limit is a data change in `custom_components/free_ai_router/providers/`.
 
-Zum Erwartungsrahmen: das Projekt hat **keine Supportzusage**. Ein Pull Request
-kann liegenbleiben. Der Schema-Check in der CI ist genau dafür da — damit ein
-fehlerhafter PR sich selbst erklärt, statt auf eine Antwort zu warten.
+This is a community project without a support commitment. A pull request may
+take a while to be reviewed. The CI checks every provider file against the
+schema, so an invalid change explains itself without waiting for a reply.
 
 ---
 
-## Vorher messen, nicht abschreiben
+## Where to start
 
-Das ist keine Höflichkeitsfloskel, sondern die Grundregel dieses Projekts.
-Von sechs geprüften Anbietern haben **drei** eine kostenlose Stufe beworben,
-die über die API gar nicht erreichbar war. Und mehrere Fähigkeiten, die
-überall behauptet werden, stimmten nicht — Googles Gemma kann kein
-`responseSchema`, Groqs Qwen kann sehr wohl Bilder.
+- **Model watcher issues.** A scheduled job compares the providers' model
+  lists with the provider files and opens one issue per provider with the
+  label [`modell-waechter`](https://github.com/MarcusStockhaus/ha-free-ai-router/issues?q=label%3Amodell-waechter).
+  Each issue lists new models — with a first measurement — and models that
+  have disappeared. Turning such an issue into a provider file change is the
+  typical first contribution.
+- **Measured differences.** If the integration measures something on your
+  account that contradicts a provider file (a model that cannot process
+  images, a different daily limit), a pull request with the measurement is
+  welcome.
+- **New providers.** Free tiers that are usable through an API and do not
+  require payment details are the best fit.
 
-Also, in dieser Reihenfolge:
+## Measure first
+
+Documentation and reality differ often enough that this project relies only
+on measurements. Of six providers checked so far, three advertised a free
+tier that was not usable through the API, and several capabilities stated
+elsewhere turned out to be wrong in both directions.
+
+Set up the development environment once:
 
 ```bash
 python -m venv .venv
 ```
 
-Umfeld aktivieren — **das ist der Schritt, der gern vergessen wird.** Ohne ihn
-greift `python` aufs System-Python, und die Abhängigkeiten fehlen
-(`ModuleNotFoundError: No module named 'aiohttp'`):
+Activate it — without this step `python` uses the system interpreter and the
+dependencies are missing (`ModuleNotFoundError: No module named 'aiohttp'`):
 
 ```bash
 source .venv/bin/activate      # Linux, macOS
@@ -39,132 +51,149 @@ source .venv/bin/activate      # Linux, macOS
 
 ```bash
 pip install -r requirements-dev.txt
-cp .env.example .env           # Schlüssel eintragen
+cp .env.example .env           # add your keys as FAR_KEY_<PROVIDER_ID>
 ```
+
+List the models the provider offers. This is a single request and uses no
+quota:
 
 ```bash
-python tools/probe_cli.py --provider <deiner> --models
+python tools/probe_cli.py --provider <id> --models
 ```
 
-Das kostet einen einzigen Request und zeigt, welche Modell-IDs der Anbieter
-tatsächlich führt. **Achtung:** die Modell-Liste sagt, was der *Anbieter*
-führt, nicht was dein *Schlüssel* darf — Cerebras listet Modelle, die dann mit
-404 antworten.
+The list shows what the provider offers, not what your key may use. Some
+providers list models that then answer with 404 or 402.
 
-Danach die Datei schreiben und vermessen:
+Write or change the provider file, then validate and measure it:
 
 ```bash
-python tools/validate_registry.py custom_components/free_ai_router/providers/<deiner>.yaml
-python tools/probe_cli.py --provider <deiner> --discover
+python tools/validate_registry.py custom_components/free_ai_router/providers/<id>.yaml
+python tools/probe_cli.py --provider <id> --discover
 ```
+
+`--discover` measures every model (liveness, image input, structured output,
+tool calling, latency) and compares the provider's model list with the file.
 
 ---
 
-## Der Diff
+## Adding a provider
 
-Hier ein vollständiges Beispiel: Cerebras hinzufügen. (Genau so entstanden —
-und wieder entfernt, weil die API mit `402 Payment required` antwortete. Auch
-das ist ein Ergebnis.)
+### 1. Allow the host
 
-### 1. Host in die Allowlist
-
-Das ist der **einzige** Python-Teil, und er ist Absicht: eine Datendatei darf
-niemals einen neuen Endpunkt einführen. Anbieterdateien dürfen Modelle und
-Limits ändern, aber nie, wohin Kamerabilder fließen.
+This is the only Python change, and it is intentional: a data file must never
+be able to introduce a new destination for data. Provider files may change
+models, limits and texts, but not where camera images are sent.
 
 ```diff
 --- a/custom_components/free_ai_router/allowlist.py
 +++ b/custom_components/free_ai_router/allowlist.py
 @@ ALLOWED_HOSTS: frozenset[str] = frozenset(
-         "opencode.ai",                        # OpenCode Zen
-         "openrouter.ai",                      # OpenRouter
-+        "api.cerebras.ai",                    # Cerebras
          "api.mistral.ai",                     # Mistral
++        "api.example-ai.com",                 # Example AI
+         "api.anthropic.com",                  # Anthropic (api_style reference)
 ```
 
-### 2. Die Anbieterdatei
+### 2. Write the provider file
 
-Neu: `custom_components/free_ai_router/providers/cerebras.yaml`.
-Der Dateiname muss der `id` entsprechen.
+New file `custom_components/free_ai_router/providers/example_ai.yaml`. The
+file name must match the `id`.
 
 ```yaml
-id: cerebras
-name: Cerebras
+id: example_ai
+name: Example AI
 api_style: openai_compatible          # openai_compatible | anthropic | google
-base_url: https://api.cerebras.ai/v1
+base_url: https://api.example-ai.com/v1
 auth:
   type: bearer                        # bearer | header | query
 
-preference: 40                        # kleiner = früher. 10 = erste Wahl, 90 = Reserve
+preference: 40                        # lower = earlier; 10 = first choice, 90 = fallback
 limits_scope: per_model               # per_model | per_key
 daily_reset_timezone: UTC
 
 onboarding:
-  signup_url: https://cloud.cerebras.ai/platform/apikeys
-  summary_de: Sehr schnelle Inferenz, zweiter Kanal für Assist neben Groq.
-  summary_en: Very fast inference, second channel for Assist next to Groq.
-  steps_de:
-    - Bei Cerebras Cloud mit Google- oder GitHub-Konto anmelden
-    - 'Unter "Billing" prüfen, ob ein Tarif aktiv ist'
-    - '"Generate API Key" klicken, Namen vergeben, Key kopieren'
+  signup_url: https://console.example-ai.com/keys
+  summary_en: Fast inference, second channel for Assist.
+  summary_de: Schnelle Inferenz, zweiter Kanal für Assist.
   steps_en:
-    - Sign in to Cerebras Cloud with a Google or GitHub account
-    - 'Check under "Billing" that a plan is active'
-    - 'Click "Generate API Key", give it a name, copy the key'
-  data_note_de: Kein Training auf Inhalten der kostenlosen Stufe.
+    - Sign in with a Google or GitHub account
+    - Click "Create API key" and give it a name
+    - Copy the key, it is shown only once
+  steps_de:
+    - Mit Google- oder GitHub-Konto anmelden
+    - '"Create API key" klicken und einen Namen vergeben'
+    - Schlüssel kopieren, er wird nur einmal angezeigt
   data_note_en: No training on free-tier content.
+  data_note_de: Kein Training auf Inhalten der kostenlosen Stufe.
   credit_card_required: false
 
 models:
-  - id: qwen-3.8-27b
-    label: Qwen3.8 27B
+  - id: example-27b
+    label: Example 27B
     profiles: [schnell, reasoning]    # schnell | vision | reasoning
-    latency_class: sehr_schnell
-    capabilities:                     # Startwerte — die Messung gewinnt
+    latency_class: sehr_schnell       # sehr_schnell | schnell | normal | langsam
+    capabilities:                     # starting values — measurement takes precedence
       vision: false
       tools: true
       structured_output: true
       context_tokens: 131072
     limits:
-      rpm: 450
-      rpd: 648000
-      tpm: 150000
+      rpm: 30
+      rpd: 1000
+      tpm: 60000
 ```
 
-Das war alles. Kein Python, kein Adapter, keine Registrierung irgendwo.
+No adapter, no registration elsewhere. The profile and latency identifiers
+are internal values of the registry format and stay as shown.
 
----
+## Field reference
 
-## Was im Pull Request stehen sollte
-
-Ein Satz genügt, aber er sollte die Messung nennen:
-
-> Cerebras ergänzt. `--discover` zeigt drei Modelle, `qwen-3.8-27b` mit
-> 450 RPM / 648.000 RPD laut Kontoseite. Vision nicht getestet, weil kein
-> Bildmodell in der kostenlosen Stufe.
-
-Wenn die Messung etwas Unerwartetes ergeben hat, ist das der wertvollste Teil
-des PR. Alle interessanten Befunde dieses Projekts kamen so zustande.
-
-## Die Felder im Einzelnen
-
-| Feld | Bedeutung |
+| Field | Meaning |
 |---|---|
-| `api_style` | Welcher Dialekt. Neue Dialekte brauchen einen Adapter — dann ist es doch Python. |
-| `preference` | Redaktionelle Rangfolge über alle Anbieter. Eine inhaltliche Aussage, kein Rechenwert. |
-| `limits_scope` | Zählt der Anbieter je Modell (Google) oder je Schlüssel über alle Modelle (OpenRouter)? Wer das verwechselt, rennt in ein Limit, das der Zähler nicht kennt. |
-| `daily_reset_timezone` | Wann das Tagesfenster umschlägt. Google: `America/Los_Angeles`. |
-| `monthly_budget_usd` | Nur falls der Anbieter einen Ausgabendeckel hat statt eines Zeitfensters (Mistral: 10). Dann sind `pricing`-Angaben Pflicht. |
-| `capabilities` | Startwerte. Was die Fähigkeitsmessung feststellt, gewinnt — und ein selbst beobachteter 429 gewinnt über beides. |
-| `limits` | Leer heißt **unbekannt**, nicht unbegrenzt. |
-| `data_note_de`, `data_note_en` | Eine ehrliche Zeile, kein Rechtstext. Sie steht im Einrichtungsassistenten direkt über dem Eingabefeld für den Schlüssel. |
-| `steps_de`, `steps_en` | Die Schritte bis zum Schlüssel, in beiden Sprachen gleich viele. Die Integration zeigt die Fassung in der Systemsprache von Home Assistant; fehlt eine, lehnt der Loader die Datei ab. |
-| `summary_de`, `summary_en` | Optional, aber nur gemeinsam. |
+| `api_style` | API dialect. A new dialect requires an adapter in `adapters/`, which is a code change. |
+| `preference` | Editorial ranking across all providers, 0–100. Lower values are tried first. |
+| `limits_scope` | Whether the provider counts limits per model (Google) or per key across all models (OpenRouter). Getting this wrong leads to limits the local counter does not know about. |
+| `daily_reset_timezone` | IANA time zone in which the provider's daily window resets. Google: `America/Los_Angeles`. |
+| `monthly_budget_usd` | Only for providers with a monthly spending cap instead of a time window (Mistral: 10). Requires `pricing` for every model. |
+| `extra_headers` | Static additional headers, e.g. `HTTP-Referer` for OpenRouter. |
+| `onboarding.signup_url` | Deep link to the key page, not the home page. |
+| `onboarding.steps_en`, `steps_de` | Steps up to the key, same number in both languages. The setup dialog shows the version matching the Home Assistant system language. |
+| `onboarding.data_note_en`, `data_note_de` | One honest line on how the provider uses request content. Shown directly above the key field. |
+| `onboarding.summary_en`, `summary_de` | Optional, but only together. |
+| `onboarding.credit_card_required` | Whether payment details are required, even for the free tier. |
+| `onboarding.empfohlen` | Optional. Marks the provider as recommended to start with. Editorial, not a measurement. |
+| `models[].profiles` | Which profiles the model may serve: `schnell` (fast), `vision` (image analysis), `reasoning`. |
+| `models[].capabilities` | Starting values. The measurement with the user's key takes precedence. |
+| `models[].limits` | `rpm`, `rpd`, `tpm`, `tpd`. Missing means **unknown**, not unlimited. |
+| `models[].pricing` | `input_per_mtok`, `output_per_mtok` in USD. Required when `monthly_budget_usd` is set. |
+| `models[].latency_class` | Starting value for the ranking in the fast profile. Measured latency takes precedence. |
 
-Die maschinenlesbare Fassung derselben Regeln steht in
-`custom_components/free_ai_router/registry_schema.json`.
+The machine-readable version of these rules is
+`custom_components/free_ai_router/registry_schema.json`. The loader rejects a
+file with missing translations, unequal step counts or a host outside the
+allowlist.
 
-## Vor dem Abschicken
+## The pull request
+
+One or two sentences are enough, but they should name the measurement:
+
+> Adds Example AI. `--discover` shows three models; `example-27b` passes
+> liveness, schema and tools, no image input. Limits 30 RPM / 1,000 RPD
+> according to the account page.
+
+If the measurement showed something unexpected, that is the most valuable
+part of the pull request.
+
+## Code changes
+
+- Code, comments and internal identifiers in the integration are German;
+  everything a user sees exists in English and German. User-facing strings
+  belong in `strings.json` (English source), `translations/en.json` and
+  `translations/de.json`; text assembled in Python belongs in `sprache.py`.
+- Entity IDs, attribute keys, service names and service fields are English,
+  because they cannot be translated and end up in automations.
+- Tests run without network access and without Home Assistant.
+
+## Before submitting
 
 ```bash
 python tools/validate_registry.py
@@ -172,4 +201,4 @@ python -m pytest
 python -m ruff check custom_components tools tests
 ```
 
-Dasselbe läuft in der CI. Für reine Anbieterdateien reicht der erste Befehl.
+The CI runs the same checks plus manifest, translation and HACS validation. For provider files alone, the first command is sufficient.

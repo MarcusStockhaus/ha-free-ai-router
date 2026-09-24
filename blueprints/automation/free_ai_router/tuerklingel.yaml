@@ -46,7 +46,7 @@ blueprint:
                 - domain: camera
         entity:
           name: KI-Entity
-          default: ai_task.free_ai_router_bildanalyse
+          default: ai_task.free_ai_router_image_analysis
           selector:
             entity:
               filter:

@@ -40,10 +40,10 @@ Yellow, a Raspberry Pi or a small NUC.
 
 | Use case | Entity | Example |
 |---|---|---|
-| Camera analysis | `ai_task.free_ai_router_bildanalyse` | Motion at the driveway → "A delivery van, one person carrying a parcel." With structured fields such as `person`, `vehicle`, `package` for conditions. |
-| Doorbell | `ai_task.free_ai_router_bildanalyse` | Someone rings → a one-sentence description of who is at the door, spoken on a speaker or sent to a phone. |
+| Camera analysis | `ai_task.free_ai_router_image_analysis` | Motion at the driveway → "A delivery van, one person carrying a parcel." With structured fields such as `person`, `vehicle`, `package` for conditions. |
+| Doorbell | `ai_task.free_ai_router_image_analysis` | Someone rings → a one-sentence description of who is at the door, spoken on a speaker or sent to a phone. |
 | Voice control | `conversation.free_ai_router_assist` | Assist with a language model that understands free-form requests and controls exposed devices. |
-| Text tasks in automations | `ai_task.free_ai_router_schnell` | Summarize the day's calendar and weather, classify incoming notifications, turn free text into structured data. |
+| Text tasks in automations | `ai_task.free_ai_router_fast` | Summarize the day's calendar and weather, classify incoming notifications, turn free text into structured data. |
 | Demanding tasks | `ai_task.free_ai_router_reasoning` | Tasks with a large context or several reasoning steps, such as drafting automation logic from a description. |
 
 ## Requirements
@@ -96,13 +96,30 @@ Each provider appears as its own entry there, with **Replace key** and
 
 | Entity | Purpose |
 |---|---|
-| `ai_task.free_ai_router_schnell` | Fast profile: short tasks, summaries, classification |
-| `ai_task.free_ai_router_bildanalyse` | Image analysis profile: camera images |
+| `ai_task.free_ai_router_fast` | Fast profile: short tasks, summaries, classification |
+| `ai_task.free_ai_router_image_analysis` | Image analysis profile: camera images |
 | `ai_task.free_ai_router_reasoning` | Reasoning profile: large context, multi-step tasks |
 | `conversation.free_ai_router_assist` | Conversation agent for Assist, with device control |
 
-The entity IDs are the same in every language, so blueprints and automations
-can be shared between installations.
+Entity IDs, attribute keys and the service are identical in every language,
+so blueprints and automations can be shared between installations. Display
+names, attribute labels, units and messages follow the Home Assistant system
+language (English or German).
+
+Each of these entities exposes the following attributes:
+
+| Attribute | Meaning |
+|---|---|
+| `last_channel` | Provider and model that answered the last request |
+| `used_fallback` | Whether the last request was served by a fallback |
+| `channels` | Models currently in use |
+| `disabled` | Models excluded after measurement |
+| `coverage` | First-choice model per profile |
+
+> **Upgrading from 0.4 or earlier:** existing installations keep their
+> previous German entity IDs (for example `ai_task.free_ai_router_bildanalyse`).
+> They can be renamed under **Settings → Entities**; automations that reference
+> them have to be updated at the same time. See the [changelog](CHANGELOG.md).
 
 ## Usage
 
@@ -111,7 +128,7 @@ can be shared between installations.
 ```yaml
 action: ai_task.generate_data
 data:
-  entity_id: ai_task.free_ai_router_bildanalyse
+  entity_id: ai_task.free_ai_router_image_analysis
   task_name: Driveway
   instructions: Is a person or a vehicle visible? Answer in one sentence.
   attachments:
@@ -189,24 +206,35 @@ temporarily unavailable, and models that have been unusable for a week.
 Working models are not re-measured periodically — live traffic already shows
 whether they respond, without using quota.
 
-The service `free_ai_router.neu_vermessen` measures all models on demand:
+The service `free_ai_router.remeasure` measures all models on demand:
 
 ```yaml
-action: free_ai_router.neu_vermessen
+action: free_ai_router.remeasure
 data:
-  anbieter: [groq]        # optional, default: all providers
-  nur_lebendigkeit: false # optional, liveness only
+  providers: [groq]     # optional, default: all configured providers
+  liveness_only: false  # optional, one request per model instead of all checks
+response_variable: report
 ```
+
+The response lists, per provider, how many models were measured and are
+alive, a short line per model, and what changed. Results caused by temporary
+disruptions (network errors, server errors, rate limits) never overwrite
+earlier measurements.
 
 ## Sensors
 
 | Sensor | Meaning |
 |---|---|
-| `sensor.free_ai_router_anfragen_heute` | Requests today |
-| `sensor.free_ai_router_token_heute` | Tokens today |
-| `sensor.free_ai_router_reserve_gegriffen_heute` | Requests served by a fallback today |
-| `sensor.free_ai_router_verworfen_heute` | Requests no model could handle |
-| `sensor.<provider>_anfragen_heute` | Requests per provider; remaining quota per model in the attributes |
+| `sensor.free_ai_router_requests_today` | Requests today |
+| `sensor.free_ai_router_tokens_today` | Tokens today |
+| `sensor.free_ai_router_fallbacks_today` | Requests served by a fallback today |
+| `sensor.free_ai_router_failed_today` | Requests no model could handle |
+| `sensor.<provider>_requests_today` | Requests per provider, e.g. `sensor.groq_requests_today` |
+
+The provider sensors carry the state of each model in the attribute `models`
+(`requests_today`, `daily_limit`, `remaining`, `enabled`), active blocks in
+`blocked`, and — for providers with a monthly spending cap — `budget_usd`,
+`spent_usd` and `remaining_usd`.
 
 A rising fallback count is the earliest sign that a primary channel has
 failed permanently.
@@ -215,10 +243,10 @@ failed permanently.
 type: entities
 title: Free AI Router
 entities:
-  - sensor.free_ai_router_anfragen_heute
-  - sensor.free_ai_router_token_heute
-  - sensor.free_ai_router_reserve_gegriffen_heute
-  - sensor.free_ai_router_verworfen_heute
+  - sensor.free_ai_router_requests_today
+  - sensor.free_ai_router_tokens_today
+  - sensor.free_ai_router_fallbacks_today
+  - sensor.free_ai_router_failed_today
 ```
 
 ## Troubleshooting
@@ -260,8 +288,9 @@ with its own key.
 
 This is a community project without a support commitment. Issues and pull
 requests are welcome. Adding a provider requires only a YAML file — see
-[CONTRIBUTING.md](CONTRIBUTING.md). Development notes are in
-[ENTWICKLUNG.md](ENTWICKLUNG.md).
+[CONTRIBUTING.md](CONTRIBUTING.md). Architecture, tooling and measured
+findings are described in [DEVELOPMENT.md](DEVELOPMENT.md); changes per
+version in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

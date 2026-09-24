@@ -70,7 +70,7 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="anfragen_heute",
         icon="mdi:counter",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        objekt_id="anfragen_heute",
+        objekt_id="requests_today",
         einheit="einheit_anfragen",
         wert=lambda runtime: runtime.ledger.stats.requests,
     ),
@@ -79,7 +79,7 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="token_heute",
         icon="mdi:cash-multiple",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        objekt_id="token_heute",
+        objekt_id="tokens_today",
         einheit="einheit_token",
         wert=lambda runtime: runtime.ledger.stats.tokens,
     ),
@@ -88,7 +88,7 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="reserve_heute",
         icon="mdi:backup-restore",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        objekt_id="reserve_gegriffen_heute",
+        objekt_id="fallbacks_today",
         einheit="einheit_wechsel",
         # Bewusst *nicht* diagnostisch: das ist laut README "der Sensor, auf
         # den es ankommt" — ein still dauerhaft ausgefallener Erstkanal faellt
@@ -101,7 +101,7 @@ GESAMT_SENSOREN: tuple[RouterSensorDescription, ...] = (
         translation_key="verworfen_heute",
         icon="mdi:close-octagon-outline",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        objekt_id="verworfen_heute",
+        objekt_id="failed_today",
         einheit="einheit_anfragen",
         entity_category=EntityCategory.DIAGNOSTIC,
         wert=lambda runtime: runtime.ledger.stats.discarded,
@@ -156,11 +156,11 @@ class RouterGesamtSensor(RouterEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         stats = self.runtime.ledger.stats
         return {
-            "tag": stats.day_key,
-            "anfragen": stats.requests,
-            "token": stats.tokens,
-            "reserve_gegriffen": stats.fallbacks,
-            "verworfen": stats.discarded,
+            "day": stats.day_key,
+            "requests": stats.requests,
+            "tokens": stats.tokens,
+            "fallbacks": stats.fallbacks,
+            "failed": stats.discarded,
         }
 
 
@@ -180,7 +180,7 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
         RouterEntity.__init__(self, entry)
         self._provider_id = provider.id
         self._attr_unique_id = f"{entry.entry_id}_{provider.id}_anfragen"
-        self.entity_id = f"sensor.{provider.id}_anfragen_heute"
+        self.entity_id = f"sensor.{provider.id}_requests_today"
         self._attr_native_unit_of_measurement = t(entry.runtime_data.sprache, "einheit_anfragen")
         # Der Anbietername steht schon am Geraet. Ihn hier zu wiederholen
         # ergaebe "Google AI Studio Google AI Studio Anfragen heute" — Home
@@ -235,15 +235,15 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
             zustand = ledger.usage(channel.provider, channel.model)
             grenze = channel.model.limits.rpd
             modelle[channel.model.id] = {
-                "anfragen_heute": zustand["day_requests"],
-                "tageslimit": grenze,
-                "rest": None if grenze is None else max(0, grenze - zustand["day_requests"]),
-                "aktiv": channel.enabled,
+                "requests_today": zustand["day_requests"],
+                "daily_limit": grenze,
+                "remaining": None if grenze is None else max(0, grenze - zustand["day_requests"]),
+                "enabled": channel.enabled,
             }
             if zustand["block_reason"]:
                 gesperrt.append(f"{channel.model.id}: {zustand['block_reason']}")
 
-        attribute: dict[str, Any] = {"modelle": modelle, "gesperrt": gesperrt or None}
+        attribute: dict[str, Any] = {"models": modelle, "blocked": gesperrt or None}
 
         # Der Ausgabendeckel gehoert an den Anbieter, nicht an das Modell:
         # alle Modelle eines Kontos teilen sich denselben Betrag.
@@ -252,6 +252,6 @@ class RouterAnbieterSensor(RouterEntity, SensorEntity):
         if budget:
             ausgegeben = ledger.spend_state(kanaele[0].provider).spent_usd
             attribute["budget_usd"] = budget
-            attribute["ausgegeben_usd"] = round(ausgegeben, 4)
-            attribute["rest_usd"] = round(max(0.0, budget - ausgegeben), 4)
+            attribute["spent_usd"] = round(ausgegeben, 4)
+            attribute["remaining_usd"] = round(max(0.0, budget - ausgegeben), 4)
         return attribute

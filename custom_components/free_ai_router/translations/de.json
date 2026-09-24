@@ -36,35 +36,188 @@
   "entity": {
     "ai_task": {
       "schnell": {
-        "name": "Free AI Router Schnell"
+        "name": "Free AI Router Schnell",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Zuletzt genutzter Kanal"
+          },
+          "used_fallback": {
+            "name": "Reserve gegriffen"
+          },
+          "channels": {
+            "name": "Kanäle"
+          },
+          "disabled": {
+            "name": "Abgeschaltet"
+          },
+          "coverage": {
+            "name": "Abdeckung"
+          }
+        }
       },
       "vision": {
-        "name": "Free AI Router Bildanalyse"
+        "name": "Free AI Router Bildanalyse",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Zuletzt genutzter Kanal"
+          },
+          "used_fallback": {
+            "name": "Reserve gegriffen"
+          },
+          "channels": {
+            "name": "Kanäle"
+          },
+          "disabled": {
+            "name": "Abgeschaltet"
+          },
+          "coverage": {
+            "name": "Abdeckung"
+          }
+        }
       },
       "reasoning": {
-        "name": "Free AI Router Reasoning"
+        "name": "Free AI Router Reasoning",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Zuletzt genutzter Kanal"
+          },
+          "used_fallback": {
+            "name": "Reserve gegriffen"
+          },
+          "channels": {
+            "name": "Kanäle"
+          },
+          "disabled": {
+            "name": "Abgeschaltet"
+          },
+          "coverage": {
+            "name": "Abdeckung"
+          }
+        }
       }
     },
     "conversation": {
       "assist": {
-        "name": "Free AI Router Assist"
+        "name": "Free AI Router Assist",
+        "state_attributes": {
+          "last_channel": {
+            "name": "Zuletzt genutzter Kanal"
+          },
+          "used_fallback": {
+            "name": "Reserve gegriffen"
+          },
+          "channels": {
+            "name": "Kanäle"
+          },
+          "disabled": {
+            "name": "Abgeschaltet"
+          },
+          "coverage": {
+            "name": "Abdeckung"
+          }
+        }
       }
     },
     "sensor": {
       "anfragen_heute": {
-        "name": "Free AI Router Anfragen heute"
+        "name": "Free AI Router Anfragen heute",
+        "state_attributes": {
+          "day": {
+            "name": "Tag"
+          },
+          "requests": {
+            "name": "Anfragen"
+          },
+          "tokens": {
+            "name": "Token"
+          },
+          "fallbacks": {
+            "name": "Reserve gegriffen"
+          },
+          "failed": {
+            "name": "Verworfen"
+          }
+        }
       },
       "token_heute": {
-        "name": "Free AI Router Token heute"
+        "name": "Free AI Router Token heute",
+        "state_attributes": {
+          "day": {
+            "name": "Tag"
+          },
+          "requests": {
+            "name": "Anfragen"
+          },
+          "tokens": {
+            "name": "Token"
+          },
+          "fallbacks": {
+            "name": "Reserve gegriffen"
+          },
+          "failed": {
+            "name": "Verworfen"
+          }
+        }
       },
       "reserve_heute": {
-        "name": "Free AI Router Reserve gegriffen heute"
+        "name": "Free AI Router Reserve gegriffen heute",
+        "state_attributes": {
+          "day": {
+            "name": "Tag"
+          },
+          "requests": {
+            "name": "Anfragen"
+          },
+          "tokens": {
+            "name": "Token"
+          },
+          "fallbacks": {
+            "name": "Reserve gegriffen"
+          },
+          "failed": {
+            "name": "Verworfen"
+          }
+        }
       },
       "verworfen_heute": {
-        "name": "Free AI Router Verworfen heute"
+        "name": "Free AI Router Verworfen heute",
+        "state_attributes": {
+          "day": {
+            "name": "Tag"
+          },
+          "requests": {
+            "name": "Anfragen"
+          },
+          "tokens": {
+            "name": "Token"
+          },
+          "fallbacks": {
+            "name": "Reserve gegriffen"
+          },
+          "failed": {
+            "name": "Verworfen"
+          }
+        }
       },
       "anbieter_anfragen": {
-        "name": "Anfragen heute"
+        "name": "Anfragen heute",
+        "state_attributes": {
+          "models": {
+            "name": "Modelle"
+          },
+          "blocked": {
+            "name": "Gesperrt"
+          },
+          "budget_usd": {
+            "name": "Budget (USD)"
+          },
+          "spent_usd": {
+            "name": "Ausgegeben (USD)"
+          },
+          "remaining_usd": {
+            "name": "Rest (USD)"
+          }
+        }
       }
     }
   },
@@ -116,15 +269,15 @@
     }
   },
   "services": {
-    "neu_vermessen": {
+    "remeasure": {
       "name": "Neu vermessen",
       "description": "Misst alle Modelle der eingerichteten Anbieter neu, auch die, die schon funktionieren. Im Hintergrund werden nur neue, bisher gestörte und seit einer Woche tote Modelle gemessen. Was bei dieser Messung nur vorübergehend gestört ist, überschreibt nichts.",
       "fields": {
-        "anbieter": {
+        "providers": {
           "name": "Anbieter",
           "description": "Anbieter-IDs, etwa google_ai_studio oder groq. Leer lassen für alle eingerichteten Anbieter."
         },
-        "nur_lebendigkeit": {
+        "liveness_only": {
           "name": "Nur Lebendigkeit",
           "description": "Ein Aufruf je Modell statt der teuren Prüfungen auf Bilder, Schemata und Werkzeuge. Schnell und sparsam, lässt die bisher gemessenen Fähigkeiten unangetastet."
         }

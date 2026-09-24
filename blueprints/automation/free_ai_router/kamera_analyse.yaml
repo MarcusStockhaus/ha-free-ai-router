@@ -85,7 +85,7 @@ blueprint:
             Welche Entity die Analyse übernimmt. Der Free AI Router verteilt
             von dort aus selbst auf den passenden Anbieter und weicht auf die
             Reserve aus, wenn ein Kanal ausfällt.
-          default: ai_task.free_ai_router_bildanalyse
+          default: ai_task.free_ai_router_image_analysis
           selector:
             entity:
               filter:

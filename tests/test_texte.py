@@ -313,6 +313,52 @@ def test_sprachwahl_folgt_der_systemsprache() -> None:
     assert sprache_aus(None) == "en"
 
 
+def test_dienst_und_felder_haben_texte() -> None:
+    """``services.yaml`` und die Uebersetzungen nennen dieselben Dienste und Felder."""
+    import yaml
+
+    definiert = yaml.safe_load((WURZEL / "services.yaml").read_text(encoding="utf-8"))
+    texte = _texte()["services"]
+    assert definiert.keys() == texte.keys()
+    for dienst, inhalt in definiert.items():
+        assert (inhalt.get("fields") or {}).keys() == texte[dienst]["fields"].keys(), dienst
+
+
+def test_bezeichner_sind_englisch() -> None:
+    """IDs lassen sich nicht uebersetzen — also Englisch, fuer jede Systemsprache.
+
+    Entity-IDs, Dienstname, Feldnamen und Attributschluessel landen in
+    Automationen und Templates. Bis Fassung 0.4 waren sie deutsch
+    (``ai_task.free_ai_router_bildanalyse``, ``neu_vermessen``); die
+    Anzeigenamen dagegen kommen aus den Uebersetzungen.
+    """
+    deutsch = re.compile(r"heute|anfrage|bild|schnell|vermess|anbieter|kanal|reserve|verworfen")
+    quelle = "\n".join(
+        (WURZEL / datei).read_text(encoding="utf-8")
+        for datei in ("ai_task.py", "sensor.py", "conversation.py", "entity.py", "__init__.py")
+    )
+    ids = re.findall(r'objekt_id="(\w+)"', quelle)
+    ids += re.findall(r'self\.entity_id = f"\w+\.\{[^}]+\}_(\w+)"', quelle)
+    objekt_ids = re.search(r"^OBJEKT_IDS = (\{.*\})$", quelle, re.MULTILINE)
+    assert objekt_ids
+    ids += list(ast.literal_eval(objekt_ids.group(1)).values())
+    assert len(ids) >= 9, ids
+    assert not [i for i in ids if deutsch.search(i)], ids
+
+    texte = _texte()
+    assert not [s for s in texte["services"] if deutsch.search(s)]
+    for dienst in texte["services"].values():
+        assert not [f for f in dienst["fields"] if deutsch.search(f)]
+
+    # Jeder beschriftete Attributschluessel kommt im Code auch vor, und keiner
+    # ist deutsch.
+    for plattform in texte["entity"].values():
+        for eintrag in plattform.values():
+            for attribut in eintrag.get("state_attributes", {}):
+                assert f'"{attribut}"' in quelle, attribut
+                assert not deutsch.search(attribut), attribut
+
+
 def test_router_entities_ohne_geraet_tragen_den_integrationsnamen() -> None:
     """Ohne Geraet gibt es keinen Namenspraefix von Home Assistant.
 

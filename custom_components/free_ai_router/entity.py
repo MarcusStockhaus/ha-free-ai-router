@@ -53,7 +53,7 @@ class RouterEntity(Entity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         # Nach einer Messung im Hintergrund die Attribute neu schreiben —
-        # sonst zeigt "abgeschaltet" bis zur naechsten Anfrage den alten Stand.
+        # sonst zeigt "disabled" bis zur naechsten Anfrage den alten Stand.
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass, signal_kanaele(self._entry.entry_id), self.async_write_ha_state
@@ -73,8 +73,8 @@ class RouterEntity(Entity):
         Erstkanals erst auf, wenn auch die Reserve weg ist.
         """
         attributes: dict[str, Any] = {
-            "zuletzt_genutzter_kanal": self._last_channel,
-            "reserve_gegriffen": self._last_reserve_used,
+            "last_channel": self._last_channel,
+            "used_fallback": self._last_reserve_used,
         }
         attributes.update(self.runtime.diagnostics())
         return attributes

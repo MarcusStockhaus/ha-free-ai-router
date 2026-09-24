@@ -1,12 +1,12 @@
-neu_vermessen:
+remeasure:
   fields:
-    anbieter:
+    providers:
       required: false
       example: "mistral"
       selector:
         text:
           multiple: true
-    nur_lebendigkeit:
+    liveness_only:
       required: false
       default: false
       selector:

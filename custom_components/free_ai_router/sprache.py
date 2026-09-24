@@ -110,7 +110,7 @@ TEXTE: Final[dict[str, dict[str, str]]] = {
         "sperre_token": "Token-Minutenlimit erreicht ({genutzt}/{grenze})",
         "sperre_429": "429 vom Anbieter, gesperrt für {sekunden} s",
         "sperre_wiederholt": "wiederholt fehlgeschlagen",
-        # Dienst neu_vermessen
+        # Dienst remeasure
         "dienst_nicht_in_registry": "steht nicht mehr in der Registry",
         "dienst_kein_schluessel": "kein Schlüssel hinterlegt",
         "dienst_kein_subentry": "kein Anbieter-Eintrag gefunden",
